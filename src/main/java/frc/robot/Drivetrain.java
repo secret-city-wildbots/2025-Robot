@@ -14,7 +14,6 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Robot.MasterStates;
 import frc.robot.SwerveModule.ShiftedStates;
@@ -67,6 +66,7 @@ public class Drivetrain {
   private Robot.MasterStates masterState0 = Robot.masterState;
 
   public double swerveGroundSpeed = 0;
+  @SuppressWarnings("unused")
   private boolean headingLocked = false;
   private final PIDController strafePID = new PIDController(0, 0, 0);
 
@@ -272,38 +272,10 @@ public class Drivetrain {
     } else if (driverController.getXButton()) {
       headingLocked = false;
     }
-    boolean red = DriverStation.getAlliance().get() == Alliance.Red;
     switch (Robot.masterState) {
       case STOWED:
         headingLocked = false;
         masterState0 = MasterStates.STOWED;
-        return Double.NaN;
-      case SHOOTING:
-        double angle;
-        switch (Shooter.state) {
-          case SUB:
-            angle = Double.NaN;
-            break;
-          case TACO:
-            angle = -1 * Math.toDegrees(
-                Math.atan2(((red) ? 107 : 212) - odometry.getPoseMeters().getY(), odometry.getPoseMeters().getX()));
-            break;
-          case LOB:
-            angle = -1 * Math.toDegrees(Math.atan2(((red) ? 28.5 : 331.5) - odometry.getPoseMeters().getY(),
-                odometry.getPoseMeters().getX()));
-          default:
-            angle = Double.NaN;
-        }
-        masterState0 = MasterStates.SHOOTING;
-        return (headingLocked) ? angle : Double.NaN;
-      case AMP:
-        masterState0 = MasterStates.AMP;
-        return (headingLocked) ? ((red) ? 90 : 270) : Double.NaN;
-      case CLIMBING:
-        masterState0 = MasterStates.CLIMBING;
-        return Double.NaN;
-      case TRAP:
-        masterState0 = MasterStates.TRAP;
         return Double.NaN;
       default:
         return Double.NaN;

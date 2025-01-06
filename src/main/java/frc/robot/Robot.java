@@ -10,12 +10,11 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.util.Units;
 
 public class Robot extends TimedRobot {
 
-  private final String codeVersion = "2024-Robot-Java 1.0_dev";
+  private final String codeVersion = "2025-Robot v1.0_dev";
 
   public static enum MasterStates {
     STOWED,
@@ -35,9 +34,6 @@ public class Robot extends TimedRobot {
   private final Drivetrain drivetrain;
   private final XboxController driverController = new XboxController(0);
   private final XboxController manipController = new XboxController(1);
-  private final Intake intake = new Intake(0.5, 0.5, 0.2);
-  private final Shooter shooter = new Shooter(0.7, 0.576); // Normal power is 0.7
-  private final Elevator elevator = new Elevator();
   private final Compressor compressor = new Compressor(2, PneumaticsModuleType.REVPH);
   private final LED led = new LED();
   private static double loopTime0 = System.currentTimeMillis();
@@ -49,10 +45,7 @@ public class Robot extends TimedRobot {
 
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)", "Drive_3_(p)",
       "Azimuth_0_(p)", "Azimuth_1_(p)", "Azimuth_2_(p)", "Azimuth_3_(p)", "Swerve_0_Shifter_(b)",
-      "Swerve_1_Shifter_(b)",
-      "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)", "Elevator_(p)", "Center_Intake_(p)",
-      "Outer_Roller_Front_(p)",
-      "Outer_Roller_Back_(p)", "Indexer_(p)", "Shooter_Right_(p)", "Shooter_Left_(p)", "Wrist_(p)" };
+      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)"};
   public static final String[] legalDrivers = { "Devin", "Reed", "Driver 3", "Driver 4", "Driver 5", "Programmers",
       "Kidz" };
 
@@ -112,8 +105,6 @@ public class Robot extends TimedRobot {
     drivetrain.drive(driverController, isAutonomous(), loopTime);
 
     drivetrain.updateOutputs(isAutonomous());
-    shooter.updateOutputs();
-    elevator.updateOutputs();
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime);
@@ -146,24 +137,8 @@ public class Robot extends TimedRobot {
     // Start by updating all sensor values
     getSensors();
 
-    // Check for any drive updates and drive accordingly
-    Pose2d robotPosition = drivetrain.updateOdometry().getPoseMeters();
-    // drivetrain.drive(driverController, isAutonomous(), getPeriod());
-
     // Check for state updates based on manip inputs
     updateMasterState();
-
-    // Toggle intake if necessary
-    intake.updateIntake(driverController);
-
-    // Automatically adjust wrist and shooter based off of master state and
-    // controller inputs
-    shooter.updateWrist(robotPosition, manipController);
-    shooter.updateShooter(driverController.getRightTriggerAxis() > 0.2,
-        driverController.getLeftTriggerAxis() > 0.7, robotPosition, Intake.bbBroken);
-
-    // Adjust elevator goal output based on master state
-    elevator.updateElevator();
 
     // Adjust LED color settings based on mode using driver controller
     led.updateLED(driverController, isAutonomous());
@@ -177,9 +152,6 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    intake.updateSensors();
-    shooter.updateSensors();
-    elevator.updateSensors();
     drivetrain.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
@@ -188,9 +160,6 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    intake.updateOutputs();
-    shooter.updateOutputs();
-    elevator.updateOutputs();
     drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
   }

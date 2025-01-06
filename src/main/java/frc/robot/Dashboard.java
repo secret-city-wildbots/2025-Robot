@@ -7,7 +7,6 @@ import edu.wpi.first.networktables.DoubleArrayPublisher;
 import edu.wpi.first.networktables.DoubleArraySubscriber;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.DoubleSubscriber;
-import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringArrayPublisher;
@@ -27,8 +26,6 @@ public class Dashboard {
     public static DoubleArrayPublisher swerve1Details;
     public static DoubleArrayPublisher swerve2Details;
     public static DoubleArrayPublisher swerve3Details;
-    public static DoubleArrayPublisher intakeTemps;
-    public static DoubleArrayPublisher intakeVelocities;
     public static DoubleArrayPublisher currentDriverProfileSetpoints;
     public static BooleanArrayPublisher confirmedMasterStates;
 
@@ -36,21 +33,9 @@ public class Dashboard {
     public static StringPublisher robotProfile;
     public static StringPublisher codeVersion;
     public static DoublePublisher pressureTransducer;
-    public static DoublePublisher elevatorPosition;
-    public static DoublePublisher elevatorTemp;
-    public static DoublePublisher indexerVelocity;
-    public static DoublePublisher indexerTemp;
-    public static DoublePublisher loopTime;
-    public static BooleanPublisher intaking;
-    public static IntegerPublisher shooterState;
-    public static BooleanPublisher beambreak;
-    public static BooleanPublisher isAutonomous;
 
-    // Shooter subsystem
-    public static DoubleArrayPublisher shooterVelocities;
-    public static DoubleArrayPublisher shooterTemps;
-    public static DoublePublisher wristPosition;
-    public static DoublePublisher wristTemp;
+    public static BooleanPublisher isAutonomous;
+    public static DoublePublisher loopTime;
 
     // Array Subscribers
     public static DoubleArraySubscriber newDriverProfileSetpoints;
@@ -65,8 +50,6 @@ public class Dashboard {
     public static DoubleSubscriber freeTuningkI;
     public static DoubleSubscriber freeTuningkD;
     public static BooleanSubscriber unlockAzimuth;
-    public static BooleanSubscriber unlockElevator;
-    public static BooleanSubscriber unlockWrist;
     public static BooleanSubscriber applyProfileSetpoints;
     public static BooleanSubscriber homeWheels;
     public static BooleanSubscriber calibrateWheels;
@@ -94,28 +77,7 @@ public class Dashboard {
         calibrateWheels = table.getBooleanTopic("Calibrate_Wheels").subscribe(false);
         applyProfileSetpoints = table.getBooleanTopic("Apply_Driver_Profile_Setpoints").subscribe(false);
 
-        // Shooter subsystem
-        shooterVelocities = table.getDoubleArrayTopic("Shooter_Velocities (rpm)").publish();
-        shooterTemps = table.getDoubleArrayTopic("Shooter_Temps (C)").publish();
-
-        wristPosition = table.getDoubleTopic("Wrist_Position (deg)").publish();
-        wristTemp = table.getDoubleTopic("Wrist_Temp (C)").publish();
-        shooterState = table.getIntegerTopic("Shooter_States").publish();
-        unlockWrist = table.getBooleanTopic("Unlock_Wrist").subscribe(false);
-
-        // Intake subsystem
-        intakeTemps = table.getDoubleArrayTopic("Intake_Temps (C)").publish();
-        intakeVelocities = table.getDoubleArrayTopic("Intake_Velocities (C)").publish();
-        indexerVelocity = table.getDoubleTopic("Indexer_Velocity (rpm)").publish();
-        indexerTemp = table.getDoubleTopic("Indexer_Temp (C)").publish();
-        intaking = table.getBooleanTopic("Intaking").publish();
-        beambreak = table.getBooleanTopic("Beambreak").publish();
-
-        // Elevator Subsystem
-        elevatorPosition = table.getDoubleTopic("Elevator_Position (in)").publish();
-        elevatorTemp = table.getDoubleTopic("Elevator_Temp (C)").publish();
-        unlockElevator = table.getBooleanTopic("Unlock_Elevator").subscribe(false);
-
+        
         // Other testing
         legalActuatorNames = table.getStringArrayTopic("Legal_Actuator_Names").publish();
         confirmedMasterStates = table.getBooleanArrayTopic("Confirmed_States").publish();

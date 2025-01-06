@@ -17,9 +17,6 @@ public class LED {
     private final int numberOfLEDs;
 
     private final float stowBackground = 300;
-    private final float shootingBackground = 240;
-    private final float ampBackground = 210;
-    private final float climbingBackground = 180;
     private final float nominalChaser = 120;
     private final float humanControl = 120;
     private final float robotControl = 14;
@@ -38,8 +35,9 @@ public class LED {
     private double chaserStatus = 0;
 
     private LEDStates ledState = LEDStates.NORMAL; // default to normal
-
+    @SuppressWarnings("unused")
     private final BlinkLight blinkyBoi250 = new BlinkLight(250);
+    @SuppressWarnings("unused")
     private final BlinkLight blinkyBoi50 = new BlinkLight(50);
 
     /**
@@ -88,68 +86,7 @@ public class LED {
                 String rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
                 switch (Robot.masterState) {
                     case STOWED:
-                        // Blink while intaking without a piece (250ms)
-                        if ((!Intake.bbBroken) && Intake.enabled) {
-                            if (blinkyBoi250.blinkLight()) {
-                                rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
-                            } else {
-                                rgb = LEDHelpers.hsvToRgb(1, 1, 0);
-                            }
-                        } else {
-                            rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
-                        }
                         break;
-                    case SHOOTING:
-                        // Blink while ready to shoot (50ms) and while intaking without a piece (250ms)
-                        if (Shooter.spunUp) {
-                            if (blinkyBoi50.blinkLight()) {
-                                rgb = LEDHelpers.hsvToRgb(shootingBackground, 1, 1);
-                            } else {
-                                rgb = LEDHelpers.hsvToRgb(1, 1, 0);
-                            }
-                        } else {
-                            if ((!Intake.bbBroken) && Intake.enabled) {
-                                if (blinkyBoi250.blinkLight()) {
-                                    rgb = LEDHelpers.hsvToRgb(shootingBackground, 1, 1);
-                                } else {
-                                    rgb = LEDHelpers.hsvToRgb(1, 1, 0);
-                                }
-                            } else {
-                                rgb = LEDHelpers.hsvToRgb(shootingBackground, 1, 1);
-                            }
-                        }
-                        break;
-                    case AMP:
-                        // Blink while ready to shoot (50ms) and while intaking without a piece (250ms)
-                        if (Shooter.spunUp) {
-                            if (blinkyBoi50.blinkLight()) {
-                                rgb = LEDHelpers.hsvToRgb(ampBackground, 1, 1);
-                            } else {
-                                rgb = LEDHelpers.hsvToRgb(1, 1, 0);
-                            }
-                        } else {
-                            if ((!Intake.bbBroken) && Intake.enabled) {
-                                if (blinkyBoi250.blinkLight()) {
-                                    rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
-                                } else {
-                                    rgb = LEDHelpers.hsvToRgb(1, 1, 0);
-                                }
-                            }
-                        }
-                        break;
-                    case CLIMBING:
-                        if (Elevator.climbed) {
-                            rgb = LEDHelpers.hsvToRgb(climbingBackground, 1, 1);
-                        } else {
-                            if (blinkyBoi250.blinkLight()) {
-                                rgb = LEDHelpers.hsvToRgb(climbingBackground, 1, 1);
-                            } else {
-                                rgb = LEDHelpers.hsvToRgb(1, 1, 0);
-                            }
-                        }
-                        break;
-                    case TRAP:
-                        rgb = LEDHelpers.hsvToRgb(climbingBackground, 1, 1);
                     default:
                         rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
                         break;
