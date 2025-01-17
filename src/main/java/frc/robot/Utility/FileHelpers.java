@@ -20,6 +20,7 @@ public class FileHelpers {
         try {
             File file = new File(path);
             Scanner reader = new Scanner(file);
+            contents = reader.nextLine();
             while (reader.hasNextLine()) {
                 String data = reader.nextLine();
                 contents += "\n" + data;
@@ -64,11 +65,11 @@ public class FileHelpers {
         String file = readFile(path);
         String[] fileSetpoints = file.split("\n");
         
-        fileSetpoints[1] = "";
+        fileSetpoints[0] = "";
 
         // Parse plain text strings into doubles and places them in the output array
         //fileSetpoints.length - 1, fileSetpoints.length - 1
-        double[][] outputArray = new double[(int)(fileSetpoints.length - 1)][(int)(fileSetpoints[2].split(",").length)];
+        double[][] outputArray = new double[(int)(fileSetpoints.length - 1)][(int)(fileSetpoints[1].split(",").length)];
         int i = 0;
         int j = 0;
         for (String x : fileSetpoints) {

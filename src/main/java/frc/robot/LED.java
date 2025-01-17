@@ -45,14 +45,11 @@ public class LED {
      */
     public LED() {
         switch (Robot.robotProfile) {
-            case "2024_Robot":
+            case "2025_Robot":
                 numberOfLEDs = 20;
                 break;
-            case "Steve2":
+            case "COTS_Testbed":
                 numberOfLEDs = 20;
-                break;
-            case "Triceptasaurus":
-                numberOfLEDs = 42;
                 break;
             default:
                 numberOfLEDs = 20;

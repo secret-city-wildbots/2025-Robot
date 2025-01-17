@@ -2,9 +2,10 @@ package frc.robot.Utility;
 
 import com.ctre.phoenix6.controls.PositionDutyCycle;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.revrobotics.CANSparkBase;
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.SparkPIDController;
+import com.revrobotics.spark.ClosedLoopSlot;
+import com.revrobotics.spark.SparkClosedLoopController;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.ControlType;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
@@ -138,7 +139,7 @@ public class ActuatorInterlocks {
      * @param normalOutput The output between -1 and 1 that would go to the motor
      *                     while not in testing mode
      */
-    public static void TAI_SparkMAX_Power(CANSparkMax motor, String actuatorName, double normalOutput) {
+    public static void TAI_SparkMAX_Power(SparkMax motor, String actuatorName, double normalOutput) {
         // Get Dashboard testing values
         testingActuator = Dashboard.testActuatorName.get();
         testingPeriod = Dashboard.testActuatorPeriod.get();
@@ -182,7 +183,7 @@ public class ActuatorInterlocks {
      * @param normalOutput The output in rotations that would go to the motor while
      *                     not in testing mode
      */
-    public static void TAI_SparkMAX_Position(CANSparkMax motor, SparkPIDController pidController, String actuatorName,
+    public static void TAI_SparkMAX_Position(SparkMax motor, SparkClosedLoopController pidController, String actuatorName,
             double normalOutput, double normalFF) {
         // Get Dashboard testing values
         testingActuator = Dashboard.testActuatorName.get();
@@ -192,8 +193,7 @@ public class ActuatorInterlocks {
         // If nothing is being tested, return the normal output. Otherwise, uses
         // dashboard amplitude as double output or periodic sine output
         if (testingActuator.equals("No_Test")) {
-            pidController.setReference(normalOutput, CANSparkBase.ControlType.kPosition);
-            pidController.setFF(normalFF);
+            pidController.setReference(normalOutput, ControlType.kPosition, ClosedLoopSlot.kSlot0, normalFF);
         } else if (testingActuator.equals(actuatorName)) {
             if (testingPeriod < 0.001) {
                 motor.set(testingValue);

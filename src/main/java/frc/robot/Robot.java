@@ -8,6 +8,8 @@ import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.Commands.DrivetrainCommands;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
 import edu.wpi.first.math.util.Units;
@@ -17,11 +19,7 @@ public class Robot extends TimedRobot {
   private final String codeVersion = "2025-Robot v1.0_dev";
 
   public static enum MasterStates {
-    STOWED,
-    SHOOTING,
-    AMP,
-    CLIMBING,
-    TRAP
+    STOWED
   }
 
   public static MasterStates masterState = MasterStates.STOWED;
@@ -43,9 +41,10 @@ public class Robot extends TimedRobot {
   @SuppressWarnings("unused")
   private final Dashboard dashboard = new Dashboard();
 
-  private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)", "Drive_3_(p)",
+  private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
+      "Drive_3_(p)",
       "Azimuth_0_(p)", "Azimuth_1_(p)", "Azimuth_2_(p)", "Azimuth_3_(p)", "Swerve_0_Shifter_(b)",
-      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)"};
+      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)" };
   public static final String[] legalDrivers = { "Devin", "Reed", "Driver 3", "Driver 4", "Driver 5", "Programmers",
       "Kidz" };
 
@@ -59,16 +58,16 @@ public class Robot extends TimedRobot {
     Dashboard.legalActuatorNames.set(actuatorNames);
     Dashboard.legalDrivers.set(legalDrivers);
     switch (Robot.robotProfile) {
-      case "2024_Robot":
-        robotLength_m = Units.inchesToMeters(19);
+      case "2025_Robot":
+        robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
         break;
-      case "Steve2":
-        robotLength_m = Units.inchesToMeters(19);
+      case "COTS_Testbed":
+        robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
         break;
       default:
-        robotLength_m = Units.inchesToMeters(19);
+        robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
     }
     drivetrain = new Drivetrain();
@@ -76,6 +75,16 @@ public class Robot extends TimedRobot {
     Dashboard.codeVersion.set(codeVersion);
     Dashboard.currentDriverProfileSetpoints
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
+
+    // Enable compressor
+    compressor.enableAnalog(100, 120);
+
+    // Commands
+    configureDefaultCommands();
+
+    registerNamedCommands();
+
+    configureButtonBindings();
   }
 
   /**
@@ -83,6 +92,8 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+
+    CommandScheduler.getInstance().run();
 
     boolean[] confirmedStates = new boolean[5];
     confirmedStates[masterState.ordinal()] = true;
@@ -115,7 +126,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void disabledPeriodic() {
-    
   }
 
   /**
@@ -123,7 +133,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousPeriodic() {
-    drivetrain.updateOdometry();
   }
 
   /**
@@ -131,9 +140,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    // Enable compressor
-    compressor.enableAnalog(100, 120);
-
     // Start by updating all sensor values
     getSensors();
 
@@ -177,19 +183,35 @@ public class Robot extends TimedRobot {
      */
     if (manipController.getLeftBumper()) {
       masterState = MasterStates.STOWED;
-    } else if (masterState != MasterStates.CLIMBING && manipController.getRightBumper()) {
-      masterState = MasterStates.AMP;
-    } else if (masterState != MasterStates.CLIMBING && manipController.getRightTriggerAxis() > 0.7) {
-      masterState = MasterStates.SHOOTING;
-    } else if (manipController.getLeftTriggerAxis() > 0.7 && manipController.getStartButton()) {
-      masterState = MasterStates.CLIMBING;
     }
   }
 
-
-
   public static void updateLoopTime() {
-    loopTime = System.currentTimeMillis()-loopTime0;
+    loopTime = System.currentTimeMillis() - loopTime0;
     loopTime0 = System.currentTimeMillis();
+  }
+
+  private void configureDefaultCommands() {
+    drivetrain.setDefaultCommand(
+        DrivetrainCommands.drive(
+            drivetrain,
+            driverController,
+            isAutonomous(),
+            loopTime));
+  }
+
+  /**
+   * Use this method to register named commands for path planner.
+   */
+  private void registerNamedCommands() {
+
+  }
+
+  /**
+   * Use this method to define your button -> command mappings. Buttons can be
+   * created by passing XBoxController into a new JoystickButton
+   */
+  private void configureButtonBindings() {
+
   }
 }

@@ -13,8 +13,8 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot.MasterStates;
 import frc.robot.SwerveModule.ShiftedStates;
 import frc.robot.Utility.Control;
@@ -25,7 +25,7 @@ import frc.robot.Utility.ClassHelpers.Latch;
 import frc.robot.Utility.ClassHelpers.StickyButton;
 import edu.wpi.first.math.util.Units;
 
-public class Drivetrain {
+public class Drivetrain extends SubsystemBase{
   public static double driveHighGearRatio;
   public static double driveLowGearRatio;
   public static double azimuthGearRatio;
@@ -53,7 +53,7 @@ public class Drivetrain {
   private final SwerveDriveKinematics kinematics = new SwerveDriveKinematics(module0Location_m, module1Location_m,
       module2Location_m, module3Location_m);
 
-  private final Pigeon2 pigeon = new Pigeon2(6, "canivore");
+  private final Pigeon2 pigeon = new Pigeon2(6);
 
   public final SwerveDriveOdometry odometry;
 
@@ -66,6 +66,7 @@ public class Drivetrain {
   private Robot.MasterStates masterState0 = Robot.masterState;
 
   public double swerveGroundSpeed = 0;
+  public static boolean shiftingEnabled = false;
   @SuppressWarnings("unused")
   private boolean headingLocked = false;
   private final PIDController strafePID = new PIDController(0, 0, 0);
@@ -98,9 +99,9 @@ public class Drivetrain {
   public Drivetrain() {
     // Check for driver profile
     switch (Robot.robotProfile) {
-      case "2024_Robot":
-        nominalWheelDiameter_m = Units.inchesToMeters(5);
-        actualWheelDiameter_m = Units.inchesToMeters(4.53);
+      case "2025_Robot":
+        nominalWheelDiameter_m = Units.inchesToMeters(3);
+        actualWheelDiameter_m = Units.inchesToMeters(3);
         maxGroundSpeed_mPs = Units.feetToMeters(18.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(9.2 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
@@ -108,17 +109,19 @@ public class Drivetrain {
         driveHighGearRatio = 7.13;
         driveLowGearRatio = 14.66;
         azimuthGearRatio = 16;
+        shiftingEnabled = true;
         break;
-      case "Steve2":
-        nominalWheelDiameter_m = Units.inchesToMeters(5);
-        actualWheelDiameter_m = Units.inchesToMeters(4.78);
+      case "COTS_Testbed":
+        nominalWheelDiameter_m = Units.inchesToMeters(4);
+        actualWheelDiameter_m = Units.inchesToMeters(4);
         maxGroundSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
-        maxLowGearSpeed_mPs = Units.feetToMeters(8.3 * (actualWheelDiameter_m / nominalWheelDiameter_m));
+        maxLowGearSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
             / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
-        driveHighGearRatio = 6.42;
-        driveLowGearRatio = 14.12;
-        azimuthGearRatio = 15.6;
+        driveHighGearRatio = 0.0;
+        driveLowGearRatio = 6.12;
+        azimuthGearRatio = 150 / 7;
+        shiftingEnabled = false;
         break;
       default:
         nominalWheelDiameter_m = Units.inchesToMeters(5);
@@ -130,6 +133,7 @@ public class Drivetrain {
         driveHighGearRatio = 6.42;
         driveLowGearRatio = 14.12;
         azimuthGearRatio = 15.6;
+        shiftingEnabled = true;
     }
 
     module0 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 0, driveConfigs[0],
@@ -200,7 +204,7 @@ public class Drivetrain {
 
     double[] assistedStrafe = SwerveUtils.assistStrafe(limitedStrafe, new double[] { Double.NaN, Double.NaN },
         strafePID);
-    double[] orientedStrafe = SwerveUtils.fieldOrientedTransform(assistedStrafe, pigeon.getAngle() % 360);
+    double[] orientedStrafe = SwerveUtils.fieldOrientedTransform(assistedStrafe, (-pigeon.getYaw().getValueAsDouble()) % 360);
 
     // Adjust rotate outputs
     double rotateOutput = SwerveUtils.swerveScaleRotate(driverController, isAutonomous);
@@ -239,25 +243,25 @@ public class Drivetrain {
         moduleStates[0].angle.getDegrees() % 360,
         module0.getTemp(),
         moduleStates[0].speedMetersPerSecond,
-        (module0.shifter.get() == Value.kForward) ? 1 : 0
+        (module0.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
     Dashboard.swerve1Details.set(new double[] {
         moduleStates[1].angle.getDegrees() % 360,
         module1.getTemp(),
         moduleStates[1].speedMetersPerSecond,
-        (module1.shifter.get() == Value.kForward) ? 1 : 0
+        (module1.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
     Dashboard.swerve2Details.set(new double[] {
         moduleStates[2].angle.getDegrees() % 360,
         module2.getTemp(),
         moduleStates[2].speedMetersPerSecond,
-        (module2.shifter.get() == Value.kForward) ? 1 : 0
+        (module2.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
     Dashboard.swerve3Details.set(new double[] {
         moduleStates[3].angle.getDegrees() % 360,
         module3.getTemp(),
         moduleStates[3].speedMetersPerSecond,
-        (module3.shifter.get() == Value.kForward) ? 1 : 0
+        (module3.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
   }
 
@@ -294,7 +298,7 @@ public class Drivetrain {
    */
   private double swerveAssistHeading(double lockedHeading, double joystickRotation, double[] limitedStrafe,
       boolean isAutonomous, XboxController driverController) {
-    double pigeonAngle = pigeon.getAngle() % 360;
+    double pigeonAngle = (-pigeon.getYaw().getValueAsDouble()) % 360;
     if (lockedHeading != lockedHeading) {
       lockHeading0 = false;
       boolean disableHeadingAssist = false;
