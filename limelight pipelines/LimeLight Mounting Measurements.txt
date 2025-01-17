@@ -1,0 +1,9 @@
+positive x-offset (LL Forward): -5.3in -0.135m
+negative y-offset (LL Right): -1.18in -0.03m
+positive z-offset (LL Up): 8.5in 0.216m
+roll (LL Roll): 0 deg
+pitch (LL Pitch): 15 deg
+yaw (LL Yaw): 178.9 deg
+robot bumper width (Bot W): 0.902 m
+robot bumper length (Bot L): 0.902 m
+drivebase (Type): Swerve
