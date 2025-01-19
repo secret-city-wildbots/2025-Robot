@@ -104,13 +104,7 @@ public class SwerveModule {
             TalonFXConfiguration driveConfig, TalonFXConfiguration azimuthConfig) {
         shiftingEnabled = Drivetrain.shiftingEnabled;
         if (shiftingEnabled) {
-            if (moduleNumber < 1) {
-                // shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, 2 - moduleNumber, 13 + moduleNumber);
-                shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, 4, 11);
-            } else {
-                // shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, 3, 12);
-                shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, moduleNumber, 15-moduleNumber);
-            }
+                shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, moduleNumber, 15 - moduleNumber);
             shifter.set(Value.kForward);
         }
 
@@ -326,15 +320,15 @@ public class SwerveModule {
 
         // Decide whether to put azimuth in coast mode
         boolean unlockAzimuth = Dashboard.unlockAzimuth.get();
-        if ((unlockAzimuth != unlockAzimuth0) || moduleFailure) {
+        if (((unlockAzimuth || moduleFailure) != unlockAzimuth0)) {
             if (unlockAzimuth || moduleFailure) {
-                // if (azimuthSparkActive) {
-                //     SparkMaxConfig config = new SparkMaxConfig();
-                //     config.idleMode(IdleMode.kCoast);
-                //     azimuthSpark.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
-                // } else {
-                //     azimuthTalon.setNeutralMode(NeutralModeValue.Coast);
-                // }
+                if (azimuthSparkActive) {
+                    SparkMaxConfig config = new SparkMaxConfig();
+                    config.idleMode(IdleMode.kCoast);
+                    azimuthSpark.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+                } else {
+                    azimuthTalon.setNeutralMode(NeutralModeValue.Coast);
+                }
             } else {
                 if (azimuthSparkActive) {
                     SparkMaxConfig config = new SparkMaxConfig();
