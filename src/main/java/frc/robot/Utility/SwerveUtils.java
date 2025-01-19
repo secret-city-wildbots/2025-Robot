@@ -67,7 +67,7 @@ public class SwerveUtils {
     configs[0].MotorOutput.NeutralMode = NeutralModeValue.Brake;
     configs[0].OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.1;
     configs[0].ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.1;
-    configs[0].MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+    configs[0].MotorOutput.Inverted = (Drivetrain.invertDriveDirection)? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
 
     // Front Left
     configs[1] = new TalonFXConfiguration();
@@ -76,7 +76,7 @@ public class SwerveUtils {
     configs[1].MotorOutput.NeutralMode = NeutralModeValue.Brake;
     configs[1].OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.1;
     configs[1].ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.1;
-    configs[1].MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+    configs[1].MotorOutput.Inverted = (Drivetrain.invertDriveDirection)? InvertedValue.CounterClockwise_Positive : InvertedValue.Clockwise_Positive;
 
     // Back left
     configs[2] = new TalonFXConfiguration();
@@ -85,7 +85,7 @@ public class SwerveUtils {
     configs[2].MotorOutput.NeutralMode = NeutralModeValue.Brake;
     configs[2].OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.1;
     configs[2].ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.1;
-    configs[2].MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+    configs[2].MotorOutput.Inverted = (Drivetrain.invertDriveDirection)? InvertedValue.CounterClockwise_Positive : InvertedValue.Clockwise_Positive;
 
     // Back right
     configs[3] = new TalonFXConfiguration();
@@ -94,7 +94,7 @@ public class SwerveUtils {
     configs[3].MotorOutput.NeutralMode = NeutralModeValue.Brake;
     configs[3].OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.1;
     configs[3].ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.1;
-    configs[3].MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+    configs[3].MotorOutput.Inverted = (Drivetrain.invertDriveDirection)? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
 
     return configs;
   }
@@ -115,13 +115,13 @@ public class SwerveUtils {
    */
   public static TalonFXConfiguration[] swerveModuleAzimuthConfigs() {
     TalonFXConfiguration[] configs = new TalonFXConfiguration[4];
-
+    InvertedValue inverted = (Drivetrain.invertAzimuthDirection)? InvertedValue.CounterClockwise_Positive : InvertedValue.Clockwise_Positive;
     for (int i = 0; i < 4; i++) {
       configs[i] = new TalonFXConfiguration();
       configs[i].MotorOutput.NeutralMode = NeutralModeValue.Brake;
       configs[i].OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.1;
       configs[i].ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.1;
-      configs[i].MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+      configs[i].MotorOutput.Inverted = inverted;
     }
 
     return configs;

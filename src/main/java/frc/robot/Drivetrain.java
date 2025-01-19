@@ -34,9 +34,12 @@ public class Drivetrain extends SubsystemBase{
   public static double maxRotateSpeed_radPs;
   public static double actualWheelDiameter_m;
   public static double nominalWheelDiameter_m;
+  public static boolean invertDriveDirection = false;
+  public static boolean invertAzimuthDirection = false;
+  public static boolean azimuthSparkEnabled;
 
-  private final TalonFXConfiguration[] driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
-  private final TalonFXConfiguration[] azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
+  private final TalonFXConfiguration[] driveConfigs;
+  private final TalonFXConfiguration[] azimuthConfigs;
 
   private SwerveModuleState[] moduleStates = new SwerveModuleState[4];
 
@@ -97,7 +100,7 @@ public class Drivetrain extends SubsystemBase{
   }
 
   public Drivetrain() {
-    // Check for driver profile
+    // Check for driver profile and set constants
     switch (Robot.robotProfile) {
       case "2025_Robot":
         nominalWheelDiameter_m = Units.inchesToMeters(3);
@@ -106,10 +109,15 @@ public class Drivetrain extends SubsystemBase{
         maxLowGearSpeed_mPs = Units.feetToMeters(9.2 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
             / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
-        driveHighGearRatio = 7.13;
-        driveLowGearRatio = 14.66;
-        azimuthGearRatio = 16;
+        driveHighGearRatio = 4.54;
+        driveLowGearRatio = 10;
+        azimuthGearRatio = 35.45;
         shiftingEnabled = true;
+        azimuthSparkEnabled = true;
+        invertDriveDirection = false;
+        invertAzimuthDirection = false;
+        driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
+        azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
         break;
       case "COTS_Testbed":
         nominalWheelDiameter_m = Units.inchesToMeters(4);
@@ -118,10 +126,15 @@ public class Drivetrain extends SubsystemBase{
         maxLowGearSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
             / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
-        driveHighGearRatio = 0.0;
+        driveHighGearRatio = 0.0; // Bc no shifting
         driveLowGearRatio = 6.12;
         azimuthGearRatio = 150 / 7;
         shiftingEnabled = false;
+        azimuthSparkEnabled = false;
+        invertDriveDirection = true;
+        invertAzimuthDirection = false;
+        driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
+        azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
         break;
       default:
         nominalWheelDiameter_m = Units.inchesToMeters(5);
@@ -134,8 +147,14 @@ public class Drivetrain extends SubsystemBase{
         driveLowGearRatio = 14.12;
         azimuthGearRatio = 15.6;
         shiftingEnabled = true;
+        azimuthSparkEnabled = true;
+        invertDriveDirection = false;
+        invertAzimuthDirection = false;
+        driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
+        azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
     }
 
+    // Defining all modules 
     module0 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 0, driveConfigs[0],
         azimuthConfigs[0]);
     module1 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 1, driveConfigs[1],
@@ -145,6 +164,7 @@ public class Drivetrain extends SubsystemBase{
     module3 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 3, driveConfigs[3],
         azimuthConfigs[3]);
 
+    // Odometry object for tracking robot position using kinematics
     odometry = new SwerveDriveOdometry(
         kinematics, pigeon.getRotation2d(),
         new SwerveModulePosition[] {
@@ -154,14 +174,20 @@ public class Drivetrain extends SubsystemBase{
             module3.getPosition()
         });
 
-    antiDriftPID.enableContinuousInput(0, 360);
-    headingAnglePID.enableContinuousInput(0, 360);
+    /* Setting up angle wrapping for control PIDs
+       Makes it so that 2pi = 0 and automatic direct angle calculations*/ 
+    antiDriftPID.enableContinuousInput(0, 2*Math.PI);
+    headingAnglePID.enableContinuousInput(0, 2*Math.PI);
 
+    // Set up initial module states for init and constructors
     for (int i = 0; i < 4; i++) {
       moduleStateOutputs[i] = new SwerveModuleState();
     }
   }
 
+  // Update all sensors on swerve modules including shifter sensors
+  // Each module returns a ModuleState with current speed and position
+  // Logs information to SmartDashboard
   public void updateSensors() {
     moduleStates = new SwerveModuleState[] {
         module0.updateSensors(),
@@ -171,13 +197,13 @@ public class Drivetrain extends SubsystemBase{
     };
 
     double[] loggingState = new double[] {
-        moduleStates[1].angle.getDegrees(),
+        moduleStates[1].angle.getRadians(),
         moduleStates[1].speedMetersPerSecond,
-        moduleStates[0].angle.getDegrees(),
+        moduleStates[0].angle.getRadians(),
         moduleStates[0].speedMetersPerSecond,
-        moduleStates[2].angle.getDegrees(),
+        moduleStates[2].angle.getRadians(),
         moduleStates[2].speedMetersPerSecond,
-        moduleStates[3].angle.getDegrees(),
+        moduleStates[3].angle.getRadians(),
         moduleStates[3].speedMetersPerSecond
     };
 
@@ -222,16 +248,16 @@ public class Drivetrain extends SubsystemBase{
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
 
     double[] loggingState = new double[] {
-        moduleStateOutputs[1].angle.getDegrees(),
+        moduleStateOutputs[1].angle.getRadians(),
         moduleStateOutputs[1].speedMetersPerSecond / maxGroundSpeed_mPs
             * ((module1.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-        moduleStateOutputs[0].angle.getDegrees(),
+        moduleStateOutputs[0].angle.getRadians(),
         moduleStateOutputs[0].speedMetersPerSecond / maxGroundSpeed_mPs
             * ((module0.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-        moduleStateOutputs[2].angle.getDegrees(),
+        moduleStateOutputs[2].angle.getRadians(),
         moduleStateOutputs[2].speedMetersPerSecond / maxGroundSpeed_mPs
             * ((module2.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-        moduleStateOutputs[3].angle.getDegrees(),
+        moduleStateOutputs[3].angle.getRadians(),
         moduleStateOutputs[3].speedMetersPerSecond / maxGroundSpeed_mPs
             * ((module3.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs)
     };
