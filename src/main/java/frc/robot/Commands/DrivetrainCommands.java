@@ -3,7 +3,7 @@ package frc.robot.Commands;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.robot.Drivetrain;
+import frc.robot.Subsystems.Drivetrain;
 
 public class DrivetrainCommands {
     private DrivetrainCommands() {}
@@ -19,7 +19,7 @@ public class DrivetrainCommands {
             double period_ms) {
         return Commands.run(
                 () -> {
-                    driveSystem.drive(
+                    driveSystem.driveTeleop(
                             driveController,
                             isAutonomous,
                             period_ms);

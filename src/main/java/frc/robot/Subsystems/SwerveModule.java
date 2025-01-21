@@ -1,5 +1,6 @@
-package frc.robot;
+package frc.robot.Subsystems;
 
+import frc.robot.Dashboard;
 import frc.robot.Utility.ActuatorInterlocks;
 import frc.robot.Utility.SwerveUtils;
 import frc.robot.Utility.ClassHelpers.Timer;
@@ -104,7 +105,7 @@ public class SwerveModule {
             TalonFXConfiguration driveConfig, TalonFXConfiguration azimuthConfig) {
         shiftingEnabled = Drivetrain.shiftingEnabled;
         if (shiftingEnabled) {
-                shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, moduleNumber, 15 - moduleNumber);
+                shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, moduleNumber, 15-moduleNumber);
             shifter.set(Value.kForward);
         }
 
@@ -309,7 +310,6 @@ public class SwerveModule {
             /* PID tuning code END */
 
             if (Dashboard.calibrateWheels.get()) {
-                System.out.println("homing wheels");
                 azimuthTalon.setPosition(0.0);
             }
 
@@ -339,7 +339,7 @@ public class SwerveModule {
                 }
             }
         }
-        unlockAzimuth0 = unlockAzimuth;
+        unlockAzimuth0 = (unlockAzimuth || moduleFailure);
 
         // Output drive
         double driveOutput = (shiftingEnabled) ? SwerveUtils.driveCommandToPower(moduleState, shifterOutput0)

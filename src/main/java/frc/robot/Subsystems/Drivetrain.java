@@ -1,10 +1,15 @@
-package frc.robot;
+package frc.robot.Subsystems;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.Pigeon2;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.PIDConstants;
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -15,8 +20,10 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Dashboard;
+import frc.robot.Robot;
 import frc.robot.Robot.MasterStates;
-import frc.robot.SwerveModule.ShiftedStates;
+import frc.robot.Subsystems.SwerveModule.ShiftedStates;
 import frc.robot.Utility.Control;
 import frc.robot.Utility.SwerveUtils;
 // import frc.robot.Utility.ClassHelpers.DriverProfile;
@@ -48,10 +55,10 @@ public class Drivetrain extends SubsystemBase{
   private final SwerveModule module2;
   private final SwerveModule module3;
 
-  private final Translation2d module0Location_m = new Translation2d(0.254, -0.311);
-  private final Translation2d module1Location_m = new Translation2d(0.254, 0.311);
-  private final Translation2d module2Location_m = new Translation2d(-0.254, 0.311);
-  private final Translation2d module3Location_m = new Translation2d(-0.254, -0.311);
+  private final Translation2d module0Location_m = new Translation2d(0.305, -0.305);
+  private final Translation2d module1Location_m = new Translation2d(0.305, 0.305);
+  private final Translation2d module2Location_m = new Translation2d(-0.305, 0.305);
+  private final Translation2d module3Location_m = new Translation2d(-0.305, -0.305);
 
   private final SwerveDriveKinematics kinematics = new SwerveDriveKinematics(module0Location_m, module1Location_m,
       module2Location_m, module3Location_m);
@@ -183,6 +190,40 @@ public class Drivetrain extends SubsystemBase{
     for (int i = 0; i < 4; i++) {
       moduleStateOutputs[i] = new SwerveModuleState();
     }
+
+    RobotConfig config;
+    try{
+      
+      config = RobotConfig.fromGUISettings();
+
+      // Configure AutoBuilder last
+      AutoBuilder.configure(
+              this::getPose, // Robot pose supplier
+              this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
+              this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+              this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also optionally outputs individual module feedforwards
+              new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for holonomic drive trains
+                      new PIDConstants(20, 0.0, 0.0), // Translation PID constants
+                      new PIDConstants(20, 0.0, 0.0) // Rotation PID constants
+              ),
+              config, // The robot configuration
+              () -> {
+                // Boolean supplier that controls when the path will be mirrored for the red alliance
+                // This will flip the path being followed to the red side of the field.
+                // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+
+                var alliance = DriverStation.getAlliance();
+                if (alliance.isPresent()) {
+                  return alliance.get() == DriverStation.Alliance.Red;
+                }
+                return false;
+              },
+              this // Reference to this subsystem to set requirements
+      );
+    } catch (Exception e) {
+      // Handle exception as needed
+      e.printStackTrace();
+    }
   }
 
   // Update all sensors on swerve modules including shifter sensors
@@ -211,6 +252,43 @@ public class Drivetrain extends SubsystemBase{
   }
 
   /**
+   * gets the current pose from the swerve odometry.
+   * Used for pathplanner
+   * 
+   * @return Pose2d
+   */
+  public Pose2d getPose() {
+    return odometry.getPoseMeters();
+  }
+
+  /**
+   * Resets the odometry to the specified pose.
+   * Used for autoBuilder (pathplanner)
+   *
+   * @param pose The pose to which to set the odometry.
+   */
+  public void resetPose(Pose2d pose) {
+    odometry.resetPosition(
+        pigeon.getRotation2d(),
+        new SwerveModulePosition[] {
+          module0.getPosition(),
+          module1.getPosition(),
+          module2.getPosition(),
+          module3.getPosition()
+        },
+        pose);
+  }
+
+  /**
+   * Gives current robot chassis speed.
+   * Used for autoBuilder (pathplanner)
+   * @return current chassis speed
+   */
+  public ChassisSpeeds getCurrentSpeeds() {
+    return kinematics.toChassisSpeeds(moduleStates);
+  }
+
+  /**
    * Adjusts joystick outputs based on driver profile, acceleration limits,
    * assisted and locked headings, and driving orientation
    * and stores them in the modulestates[] object
@@ -219,7 +297,7 @@ public class Drivetrain extends SubsystemBase{
    * @param isAutonomous
    * @param period_ms           How long it has been since the last loop cycle
    */
-  public void drive(XboxController driverController, boolean isAutonomous, double period_ms) {
+  public void driveTeleop(XboxController driverController, boolean isAutonomous, double period_ms) {
 
     // Adjust strafe outputs
     double[] strafeOutputs = SwerveUtils.swerveScaleStrafe(driverController, isAutonomous);
@@ -246,49 +324,6 @@ public class Drivetrain extends SubsystemBase{
             orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs, assistedRotation * maxRotateSpeed_radPs,
             pigeon.getRotation2d()), 0.001 * period_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
-
-    double[] loggingState = new double[] {
-        moduleStateOutputs[1].angle.getRadians(),
-        moduleStateOutputs[1].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module1.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-        moduleStateOutputs[0].angle.getRadians(),
-        moduleStateOutputs[0].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module0.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-        moduleStateOutputs[2].angle.getRadians(),
-        moduleStateOutputs[2].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module2.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-        moduleStateOutputs[3].angle.getRadians(),
-        moduleStateOutputs[3].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module3.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs)
-    };
-
-    SmartDashboard.putNumberArray("modulestates", loggingState);
-
-    // Report to the dashboard
-    Dashboard.swerve0Details.set(new double[] {
-        moduleStates[0].angle.getDegrees() % 360,
-        module0.getTemp(),
-        moduleStates[0].speedMetersPerSecond,
-        (module0.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-    });
-    Dashboard.swerve1Details.set(new double[] {
-        moduleStates[1].angle.getDegrees() % 360,
-        module1.getTemp(),
-        moduleStates[1].speedMetersPerSecond,
-        (module1.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-    });
-    Dashboard.swerve2Details.set(new double[] {
-        moduleStates[2].angle.getDegrees() % 360,
-        module2.getTemp(),
-        moduleStates[2].speedMetersPerSecond,
-        (module2.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-    });
-    Dashboard.swerve3Details.set(new double[] {
-        moduleStates[3].angle.getDegrees() % 360,
-        module3.getTemp(),
-        moduleStates[3].speedMetersPerSecond,
-        (module3.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-    });
   }
 
   /**
@@ -303,7 +338,8 @@ public class Drivetrain extends SubsystemBase{
       headingLocked = false;
     }
     switch (Robot.masterState) {
-      case STOWED:
+
+      case STOWED: 
         headingLocked = false;
         masterState0 = MasterStates.STOWED;
         return Double.NaN;
@@ -408,6 +444,61 @@ public class Drivetrain extends SubsystemBase{
     module1.updateOutputs(moduleStateOutputs[1], isAutonomous, fLow, driveFaults[1] || azimuthFaults[1], homeWheels);
     module2.updateOutputs(moduleStateOutputs[2], isAutonomous, fLow, driveFaults[2] || azimuthFaults[2], homeWheels);
     module3.updateOutputs(moduleStateOutputs[3], isAutonomous, fLow, driveFaults[3] || azimuthFaults[3], homeWheels);
+
+    double[] loggingState = new double[] {
+      moduleStateOutputs[1].angle.getRadians(),
+      moduleStateOutputs[1].speedMetersPerSecond / maxGroundSpeed_mPs
+          * ((module1.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+      moduleStateOutputs[0].angle.getRadians(),
+      moduleStateOutputs[0].speedMetersPerSecond / maxGroundSpeed_mPs
+          * ((module0.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+      moduleStateOutputs[2].angle.getRadians(),
+      moduleStateOutputs[2].speedMetersPerSecond / maxGroundSpeed_mPs
+          * ((module2.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+      moduleStateOutputs[3].angle.getRadians(),
+      moduleStateOutputs[3].speedMetersPerSecond / maxGroundSpeed_mPs
+          * ((module3.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs)
+  };
+
+  SmartDashboard.putNumberArray("modulestates", loggingState);
+
+  // Report to the dashboard
+  Dashboard.swerve0Details.set(new double[] {
+      moduleStates[0].angle.getDegrees() % 360,
+      module0.getTemp(),
+      moduleStates[0].speedMetersPerSecond,
+      (module0.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+  });
+  Dashboard.swerve1Details.set(new double[] {
+      moduleStates[1].angle.getDegrees() % 360,
+      module1.getTemp(),
+      moduleStates[1].speedMetersPerSecond,
+      (module1.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+  });
+  Dashboard.swerve2Details.set(new double[] {
+      moduleStates[2].angle.getDegrees() % 360,
+      module2.getTemp(),
+      moduleStates[2].speedMetersPerSecond,
+      (module2.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+  });
+  Dashboard.swerve3Details.set(new double[] {
+      moduleStates[3].angle.getDegrees() % 360,
+      module3.getTemp(),
+      moduleStates[3].speedMetersPerSecond,
+      (module3.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+  });
+  }
+
+  /**
+   * set module state outputs to target states that are contained within the given ChassisSpeeds.
+   * Used for autoBuilder (pathplanner)
+   * 
+   * @param robotRelativeSpeeds chassis speeds to set desired to
+   */
+  public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds) {
+
+    moduleStateOutputs = kinematics.toSwerveModuleStates(ChassisSpeeds.discretize(robotRelativeSpeeds, 0.001*Robot.loopTime_ms));
+    SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
 
   }
 }

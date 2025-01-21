@@ -8,11 +8,14 @@ import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Commands.DrivetrainCommands;
+import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
 import edu.wpi.first.math.util.Units;
+import com.pathplanner.lib.commands.PathPlannerAuto;
 
 public class Robot extends TimedRobot {
 
@@ -27,7 +30,9 @@ public class Robot extends TimedRobot {
   public static double robotLength_m;
   public static double robotWidth_m;
 
-  public static double loopTime = 20;
+  public static double loopTime_ms = 20;
+
+  private Command autonomousCommand;
 
   private final Drivetrain drivetrain;
   private final XboxController driverController = new XboxController(0);
@@ -87,11 +92,19 @@ public class Robot extends TimedRobot {
     configureButtonBindings();
   }
 
+  @Override
+  public void robotInit() {
+    getSensors();
+  }
+
   /**
    * This is called on every loop cycle
    */
   @Override
   public void robotPeriodic() {
+
+    // Start by updating all sensor values
+    getSensors();
 
     CommandScheduler.getInstance().run();
 
@@ -110,15 +123,10 @@ public class Robot extends TimedRobot {
       SwerveUtils.updateDriverProfile(setpoints);
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
     }
-
-    drivetrain.updateSensors();
-
-    drivetrain.drive(driverController, isAutonomous(), loopTime);
-
-    drivetrain.updateOutputs(isAutonomous());
+    
 
     updateLoopTime();
-    Dashboard.loopTime.set(loopTime);
+    Dashboard.loopTime.set(loopTime_ms);
   }
 
   /**
@@ -126,6 +134,16 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void disabledPeriodic() {
+    updateOutputs();
+  }
+
+  @Override
+  public void autonomousInit() {
+    autonomousCommand = new PathPlannerAuto("Example Auto");
+
+    if (autonomousCommand != null) {
+      autonomousCommand.schedule();
+    }
   }
 
   /**
@@ -133,6 +151,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousPeriodic() {
+    updateOutputs();
   }
 
   /**
@@ -140,8 +159,8 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    // Start by updating all sensor values
-    getSensors();
+
+    drivetrain.driveTeleop(driverController, isAutonomous(), loopTime_ms);
 
     // Check for state updates based on manip inputs
     updateMasterState();
@@ -187,7 +206,7 @@ public class Robot extends TimedRobot {
   }
 
   public static void updateLoopTime() {
-    loopTime = System.currentTimeMillis() - loopTime0;
+    loopTime_ms = System.currentTimeMillis() - loopTime0;
     loopTime0 = System.currentTimeMillis();
   }
 
@@ -197,7 +216,7 @@ public class Robot extends TimedRobot {
             drivetrain,
             driverController,
             isAutonomous(),
-            loopTime));
+            loopTime_ms));
   }
 
   /**
