@@ -203,8 +203,8 @@ public class Drivetrain extends SubsystemBase{
               this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
               this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also optionally outputs individual module feedforwards
               new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for holonomic drive trains
-                      new PIDConstants(20, 0.0, 0.0), // Translation PID constants
-                      new PIDConstants(20, 0.0, 0.0) // Rotation PID constants
+                      new PIDConstants(5, 0.0, 0.0), // Translation PID constants
+                      new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
               ),
               config, // The robot configuration
               () -> {
@@ -236,6 +236,14 @@ public class Drivetrain extends SubsystemBase{
         module2.updateSensors(),
         module3.updateSensors()
     };
+
+    odometry.update(pigeon.getRotation2d(), 
+    new SwerveModulePosition[] {
+      module0.getPosition(),
+      module1.getPosition(),
+      module2.getPosition(),
+      module3.getPosition()
+  });
 
     double[] loggingState = new double[] {
         moduleStates[1].angle.getRadians(),
@@ -319,6 +327,7 @@ public class Drivetrain extends SubsystemBase{
     
 
     // Store information in modulestates
+    System.out.println(orientedStrafe[0]);
     moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
             orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs, assistedRotation * maxRotateSpeed_radPs,
@@ -496,9 +505,7 @@ public class Drivetrain extends SubsystemBase{
    * @param robotRelativeSpeeds chassis speeds to set desired to
    */
   public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds) {
-
     moduleStateOutputs = kinematics.toSwerveModuleStates(ChassisSpeeds.discretize(robotRelativeSpeeds, 0.001*Robot.loopTime_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
-
   }
 }

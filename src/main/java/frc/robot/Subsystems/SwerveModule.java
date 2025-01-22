@@ -105,7 +105,7 @@ public class SwerveModule {
             TalonFXConfiguration driveConfig, TalonFXConfiguration azimuthConfig) {
         shiftingEnabled = Drivetrain.shiftingEnabled;
         if (shiftingEnabled) {
-                shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, moduleNumber, 15-moduleNumber);
+            shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, moduleNumber, 15 - moduleNumber);
             shifter.set(Value.kForward);
         }
 
@@ -120,7 +120,6 @@ public class SwerveModule {
 
         azimuthSparkActive = false;
 
-                 
         if (Drivetrain.azimuthSparkEnabled) {
             this.azimuthSpark = new SparkMax(20 + moduleNumber, MotorType.kBrushless);
             azimuthPidController = azimuthSpark.getClosedLoopController();
@@ -150,8 +149,9 @@ public class SwerveModule {
                 if (azimuthForwardLimit.isPressed() && azimuthReverseLimit.isPressed()) {
                     shiftedState = ShiftedStates.LOW;
                     // System.out
-                    //         .println("Error: High and low sensor are triggered at the same time on module "
-                    //                 + moduleNumber);
+                    // .println("Error: High and low sensor are triggered at the same time on module
+                    // "
+                    // + moduleNumber);
                 } else if (azimuthForwardLimit.isPressed()) {
                     shiftedState = ShiftedStates.HIGH;
                 } else if (azimuthReverseLimit.isPressed()) {
@@ -167,7 +167,8 @@ public class SwerveModule {
                 if (forwardLimit && reverseLimit) {
                     shiftedState = ShiftedStates.LOW;
                     // System.out.println(
-                    //         "Error: High and low sensor are triggered at the same time on module " + moduleNumber);
+                    // "Error: High and low sensor are triggered at the same time on module " +
+                    // moduleNumber);
                 } else if (forwardLimit) {
                     shiftedState = ShiftedStates.HIGH;
                 } else if (reverseLimit) {
@@ -200,10 +201,10 @@ public class SwerveModule {
         Rotation2d rotation;
         // Decide between using spark and talon
         if (azimuthSparkActive) {
-            rotation = new Rotation2d(azimuthEncoder.getPosition() / azimuthRatio * 2 * Math.PI);
+            rotation = new Rotation2d(Units.rotationsToRadians(azimuthEncoder.getPosition() / azimuthRatio));
         } else {
             rotation = new Rotation2d(
-                    (azimuthTalon.getRotorPosition().getValueAsDouble() / azimuthRatio) * 2 * Math.PI);
+                    (Units.rotationsToRadians(azimuthTalon.getRotorPosition().getValueAsDouble() / azimuthRatio)));
         }
         return new SwerveModulePosition(
                 (drive.getRotorPosition().getValueAsDouble()

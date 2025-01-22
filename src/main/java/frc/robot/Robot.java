@@ -160,13 +160,13 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    drivetrain.driveTeleop(driverController, isAutonomous(), loopTime_ms);
+    drivetrain.driveTeleop(driverController, false, loopTime_ms);
 
     // Check for state updates based on manip inputs
     updateMasterState();
 
     // Adjust LED color settings based on mode using driver controller
-    led.updateLED(driverController, isAutonomous());
+    led.updateLED(driverController, false);
 
     // Update outputs for everything
     // This includes all motors, pistons, and other things
