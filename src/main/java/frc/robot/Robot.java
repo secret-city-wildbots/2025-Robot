@@ -35,7 +35,7 @@ public class Robot extends TimedRobot {
   private Command autonomousCommand;
 
   private final Drivetrain drivetrain;
-  private final XboxController driverController = new XboxController(0);
+  public static final XboxController driverController = new XboxController(0);
   private final XboxController manipController = new XboxController(1);
   private final Compressor compressor = new Compressor(2, PneumaticsModuleType.REVPH);
   private final LED led = new LED();

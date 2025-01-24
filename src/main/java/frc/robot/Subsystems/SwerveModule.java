@@ -51,6 +51,7 @@ public class SwerveModule {
     private final TalonFX azimuthTalon;
     private Slot0Configs azimuthPIDConfigs = new Slot0Configs();
     private SparkMax azimuthSpark;
+    private SparkMaxConfig azimuthSparkConfig;
     private RelativeEncoder azimuthEncoder;
     private SparkClosedLoopController azimuthPidController;
     private SparkLimitSwitch azimuthForwardLimit;
@@ -123,6 +124,9 @@ public class SwerveModule {
         if (Drivetrain.azimuthSparkEnabled) {
             this.azimuthSpark = new SparkMax(20 + moduleNumber, MotorType.kBrushless);
             azimuthPidController = azimuthSpark.getClosedLoopController();
+            azimuthSparkConfig = new SparkMaxConfig();
+            azimuthSparkConfig.closedLoop.pid(0.12,0,0);
+            azimuthSpark.configure(azimuthSparkConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
             this.azimuthEncoder = azimuthSpark.getEncoder();
             azimuthSparkActive = true;
             if (shiftingEnabled) {
@@ -346,6 +350,7 @@ public class SwerveModule {
         double driveOutput = (shiftingEnabled) ? SwerveUtils.driveCommandToPower(moduleState, shifterOutput0)
                 : moduleState.speedMetersPerSecond / Drivetrain.maxGroundSpeed_mPs;
 
+        // System.out.println(SwerveUtils.driveCommandToPower(moduleState, shifterOutput0) + ", " + moduleState.speedMetersPerSecond + ", " +  Drivetrain.maxGroundSpeed_mPs);
         ActuatorInterlocks.TAI_TalonFX_Power(drive, "Drive_" + ((Integer) moduleNumber).toString() + "_(p)",
                 driveOutput);
 
@@ -355,14 +360,16 @@ public class SwerveModule {
             robotDisabled.reset();
         }
 
-        if (((robotDisabled.getTimeMillis() > 7000) != unlockDrive0) || moduleFailure) {
-            if (moduleFailure || (robotDisabled.getTimeMillis() > 7000)) {
-                drive.setNeutralMode(NeutralModeValue.Coast);
+        boolean unlockDrive = (robotDisabled.getTimeMillis() > 7000) || moduleFailure;
+
+        if (unlockDrive != unlockDrive0) {
+            if (unlockDrive) {
+            drive.setNeutralMode(NeutralModeValue.Coast);
             } else {
                 drive.setNeutralMode(NeutralModeValue.Brake);
             }
         }
-        unlockDrive0 = robotDisabled.getTimeMillis() > 7000;
+        unlockDrive0 = unlockDrive;
     }
 
     /**

@@ -10,6 +10,7 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -30,6 +31,7 @@ import frc.robot.Utility.SwerveUtils;
 import frc.robot.Utility.ClassHelpers.Latch;
 // import frc.robot.Utility.ClassHelpers.LimitAcceleration;
 import frc.robot.Utility.ClassHelpers.StickyButton;
+import frc.robot.Utility.ClassHelpers.Timer;
 import edu.wpi.first.math.util.Units;
 
 public class Drivetrain extends SubsystemBase{
@@ -93,6 +95,9 @@ public class Drivetrain extends SubsystemBase{
   private StickyButton noRotationSticky = new StickyButton();
   private boolean lockHeading0 = false;
   private final double headingFudgeMax = 10; // degrees
+
+  private Timer resetIMUTimer = new Timer();
+  private boolean resetIMU0 = false;
 
   public SwerveDriveOdometry updateOdometry() {
     odometry.update(
@@ -237,6 +242,14 @@ public class Drivetrain extends SubsystemBase{
         module3.updateSensors()
     };
 
+    if (Robot.driverController.getPOV()>225 || Robot.driverController.getPOV() < 135) {
+      resetIMUTimer.reset();
+      resetIMU0 = false;
+    } else if (resetIMUTimer.getTimeMillis() > 3000) {
+      if (!resetIMU0) {odometry.resetRotation(new Rotation2d()); System.out.println(odometry.getPoseMeters().getRotation().getDegrees());}
+      resetIMU0 = true;
+    }
+
     odometry.update(pigeon.getRotation2d(), 
     new SwerveModulePosition[] {
       module0.getPosition(),
@@ -309,14 +322,14 @@ public class Drivetrain extends SubsystemBase{
 
     // Adjust strafe outputs
     double[] strafeOutputs = SwerveUtils.swerveScaleStrafe(driverController, isAutonomous);
-    double limitedStrafeX = Math.signum(strafeOutputs[0]) * xAccelerationLimiter.calculate(Math.abs(strafeOutputs[0]));
-    double limitedStrafeY = Math.signum(strafeOutputs[1]) * yAccelerationLimiter.calculate(Math.abs(strafeOutputs[1]));
+    double limitedStrafeX = Control.clamp(Math.signum(strafeOutputs[0]) * xAccelerationLimiter.calculate(Math.abs(strafeOutputs[0])), -1, 1);
+    double limitedStrafeY = Control.clamp(Math.signum(strafeOutputs[1]) * yAccelerationLimiter.calculate(Math.abs(strafeOutputs[1])), -1, 1);
 
     double[] limitedStrafe = new double[] { limitedStrafeX, limitedStrafeY };
 
     double[] assistedStrafe = SwerveUtils.assistStrafe(limitedStrafe, new double[] { Double.NaN, Double.NaN },
         strafePID);
-    double[] orientedStrafe = SwerveUtils.fieldOrientedTransform(assistedStrafe, (-pigeon.getYaw().getValueAsDouble()) % 360);
+    double[] orientedStrafe = assistedStrafe;
 
     // Adjust rotate outputs
     double rotateOutput = SwerveUtils.swerveScaleRotate(driverController, isAutonomous);
@@ -324,10 +337,7 @@ public class Drivetrain extends SubsystemBase{
     double assistedRotation = swerveAssistHeading(modeDrivebase(driverController), rotateOutput, limitedStrafe,
         isAutonomous, driverController);
 
-    
-
     // Store information in modulestates
-    System.out.println(orientedStrafe[0]);
     moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
             orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs, assistedRotation * maxRotateSpeed_radPs,
