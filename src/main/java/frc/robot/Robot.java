@@ -19,7 +19,7 @@ import com.pathplanner.lib.commands.PathPlannerAuto;
 
 public class Robot extends TimedRobot {
 
-  private final String codeVersion = "2025-Robot v1.0_stable";
+  private final String codeVersion = "2025-Robot v1.1_dev";
 
   public static enum MasterStates {
     STOWED

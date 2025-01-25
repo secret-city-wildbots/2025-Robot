@@ -140,10 +140,10 @@ public class Drivetrain extends SubsystemBase{
             / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
         driveHighGearRatio = 0.0; // Bc no shifting
         driveLowGearRatio = 6.12;
-        azimuthGearRatio = 150 / 7;
+        azimuthGearRatio = 150.0/7.0;
         shiftingEnabled = false;
         azimuthSparkEnabled = false;
-        invertDriveDirection = true;
+        invertDriveDirection = false;
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
