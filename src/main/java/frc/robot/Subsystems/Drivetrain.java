@@ -464,7 +464,7 @@ public class Drivetrain extends SubsystemBase{
    */
   public void updateOutputs(boolean isAutonomous) {
     boolean[] faults = getFaults();
-    boolean fLow = faults[0] || faults[1];
+    boolean fLow = faults[0] || faults[1] || Robot.driverController.getRightStickButton();
     boolean homeWheels = Dashboard.homeWheels.get();
     module0.updateOutputs(moduleStateOutputs[0], isAutonomous, fLow, driveFaults[0] || azimuthFaults[0], homeWheels);
     module1.updateOutputs(moduleStateOutputs[1], isAutonomous, fLow, driveFaults[1] || azimuthFaults[1], homeWheels);

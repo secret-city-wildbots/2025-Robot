@@ -38,8 +38,8 @@ public class SwerveModule {
         HIGH
     }
 
-    private final double shiftToHigh_radPs = Units.rotationsPerMinuteToRadiansPerSecond(4000);
-    private final double shiftToLow_radPs = Units.rotationsPerMinuteToRadiansPerSecond(500);
+    // private final double shiftToHigh_radPs = Units.rotationsPerMinuteToRadiansPerSecond(4000);
+    // private final double shiftToLow_radPs = Units.rotationsPerMinuteToRadiansPerSecond(500);
     private static double kWheelRadius_m;
 
     private final double driveHighGearRatio;
@@ -67,7 +67,7 @@ public class SwerveModule {
     private boolean unlockAzimuth0 = false;
     private boolean shifterOutput0 = false;
     private boolean unlockDrive0 = false;
-    private Timer shiftThreshold = new Timer();
+    // private Timer shiftThreshold = new Timer();
     private Timer robotDisabled = new Timer();
 
     private double currentDriveSpeed_mPs = 0;
@@ -254,28 +254,29 @@ public class SwerveModule {
             if (fLow) {
                 shifterOutput0 = false;
             } else {
-                if (isAutonomous) {
-                    shifterOutput0 = true;
-                } else {
-                    if (shifterOutput0) {
-                        // Currently commanded to high gear
-                        if (Units.rotationsToRadians(
-                                Math.abs(drive.getVelocity().getValueAsDouble())) > shiftToLow_radPs) {
-                            shiftThreshold.reset();
-                        }
-                        shifterOutput0 = shiftThreshold.getTimeMillis() < 150;
-                    } else {
-                        // Currently commanded to low gear
-                        if (Units
-                                .rotationsToRadians(
-                                        Math.abs(drive.getVelocity().getValueAsDouble())) < shiftToHigh_radPs) {
-                            shiftThreshold.reset();
-                        }
-                        shifterOutput0 = shiftThreshold.getTimeMillis() > 150;
-                    }
-                }
+                // FOR AUTO-SHIFTING ONLY
+                // if (isAutonomous) {
+                //     shifterOutput0 = true;
+                // } else {
+                //     if (shifterOutput0) {
+                //         // Currently commanded to high gear
+                //         if (Units.rotationsToRadians(
+                //                 Math.abs(drive.getVelocity().getValueAsDouble())) > shiftToLow_radPs) {
+                //             shiftThreshold.reset();
+                //         }
+                //         shifterOutput0 = shiftThreshold.getTimeMillis() < 150;
+                //     } else {
+                //         // Currently commanded to low gear
+                //         if (Units
+                //                 .rotationsToRadians(
+                //                         Math.abs(drive.getVelocity().getValueAsDouble())) < shiftToHigh_radPs) {
+                //             shiftThreshold.reset();
+                //         }
+                //         shifterOutput0 = shiftThreshold.getTimeMillis() > 150;
+                //     }
+                // }
+                shifterOutput0 = true;
             }
-            shifterOutput0 = true;
             // Output to shifter
             ActuatorInterlocks.TAI_Solenoids(shifter, "Swerve_" + ((Integer) moduleNumber).toString() + "_Shifter_(b)",
                     shifterOutput0);

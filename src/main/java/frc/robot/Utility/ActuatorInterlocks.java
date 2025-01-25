@@ -242,7 +242,7 @@ public class ActuatorInterlocks {
                 solenoid.set(Value.kReverse);
             }
         } else {
-            solenoid.set(Value.kReverse);
+            solenoid.set(Value.kForward);
         }
     }
 
