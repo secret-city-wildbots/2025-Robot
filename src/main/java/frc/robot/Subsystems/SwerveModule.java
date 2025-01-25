@@ -205,7 +205,7 @@ public class SwerveModule {
         Rotation2d rotation;
         // Decide between using spark and talon
         if (azimuthSparkActive) {
-            rotation = new Rotation2d(Units.rotationsToRadians(azimuthEncoder.getPosition() / azimuthRatio));
+            rotation = new Rotation2d(Units.rotationsToRadians(azimuthEncoder.getPosition()) / azimuthRatio);
         } else {
             rotation = new Rotation2d(
                     (Units.rotationsToRadians(azimuthTalon.getRotorPosition().getValueAsDouble() / azimuthRatio)));
@@ -275,6 +275,7 @@ public class SwerveModule {
                     }
                 }
             }
+            shifterOutput0 = true;
             // Output to shifter
             ActuatorInterlocks.TAI_Solenoids(shifter, "Swerve_" + ((Integer) moduleNumber).toString() + "_Shifter_(b)",
                     shifterOutput0);
@@ -350,8 +351,7 @@ public class SwerveModule {
         double driveOutput = (shiftingEnabled) ? SwerveUtils.driveCommandToPower(moduleState, shifterOutput0)
                 : moduleState.speedMetersPerSecond / Drivetrain.maxGroundSpeed_mPs;
 
-        // System.out.println(SwerveUtils.driveCommandToPower(moduleState, shifterOutput0) + ", " + moduleState.speedMetersPerSecond + ", " +  Drivetrain.maxGroundSpeed_mPs);
-        ActuatorInterlocks.TAI_TalonFX_Power(drive, "Drive_" + ((Integer) moduleNumber).toString() + "_(p)",
+                ActuatorInterlocks.TAI_TalonFX_Power(drive, "Drive_" + ((Integer) moduleNumber).toString() + "_(p)",
                 driveOutput);
 
         // unlock drive motor if robot is disabled for more than 7 seconds or module

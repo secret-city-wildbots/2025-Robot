@@ -65,7 +65,7 @@ public class Drivetrain extends SubsystemBase{
   private final SwerveDriveKinematics kinematics = new SwerveDriveKinematics(module0Location_m, module1Location_m,
       module2Location_m, module3Location_m);
 
-  private final Pigeon2 pigeon = new Pigeon2(6);
+  private static final Pigeon2 pigeon = new Pigeon2(6);
 
   public final SwerveDriveOdometry odometry;
 
@@ -101,7 +101,7 @@ public class Drivetrain extends SubsystemBase{
 
   public SwerveDriveOdometry updateOdometry() {
     odometry.update(
-        pigeon.getRotation2d(),
+        getIMURotation(),
         new SwerveModulePosition[] {
             module0.getPosition(),
             module1.getPosition(),
@@ -178,7 +178,7 @@ public class Drivetrain extends SubsystemBase{
 
     // Odometry object for tracking robot position using kinematics
     odometry = new SwerveDriveOdometry(
-        kinematics, pigeon.getRotation2d(),
+        kinematics, getIMURotation(),
         new SwerveModulePosition[] {
             module0.getPosition(),
             module1.getPosition(),
@@ -231,6 +231,13 @@ public class Drivetrain extends SubsystemBase{
     }
   }
 
+
+  private static Rotation2d imuOffset = new Rotation2d();
+  public static Rotation2d getIMURotation() {
+    Rotation2d imuRelativeRotation = pigeon.getRotation2d();
+    return imuRelativeRotation.minus(imuOffset);
+  }
+
   // Update all sensors on swerve modules including shifter sensors
   // Each module returns a ModuleState with current speed and position
   // Logs information to SmartDashboard
@@ -246,11 +253,11 @@ public class Drivetrain extends SubsystemBase{
       resetIMUTimer.reset();
       resetIMU0 = false;
     } else if (resetIMUTimer.getTimeMillis() > 3000) {
-      if (!resetIMU0) {odometry.resetRotation(new Rotation2d()); System.out.println(odometry.getPoseMeters().getRotation().getDegrees());}
+      if (!resetIMU0) {imuOffset = pigeon.getRotation2d();}
       resetIMU0 = true;
     }
 
-    odometry.update(pigeon.getRotation2d(), 
+    odometry.update(getIMURotation(), 
     new SwerveModulePosition[] {
       module0.getPosition(),
       module1.getPosition(),
@@ -290,7 +297,7 @@ public class Drivetrain extends SubsystemBase{
    */
   public void resetPose(Pose2d pose) {
     odometry.resetPosition(
-        pigeon.getRotation2d(),
+        getIMURotation(),
         new SwerveModulePosition[] {
           module0.getPosition(),
           module1.getPosition(),
@@ -340,8 +347,8 @@ public class Drivetrain extends SubsystemBase{
     // Store information in modulestates
     moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
-            orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs, assistedRotation * maxRotateSpeed_radPs,
-            pigeon.getRotation2d()), 0.001 * period_ms));
+            orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs, -assistedRotation * maxRotateSpeed_radPs,
+            getIMURotation()), 0.001 * period_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
   }
 
@@ -379,7 +386,7 @@ public class Drivetrain extends SubsystemBase{
    */
   private double swerveAssistHeading(double lockedHeading, double joystickRotation, double[] limitedStrafe,
       boolean isAutonomous, XboxController driverController) {
-    double pigeonAngle = (-pigeon.getYaw().getValueAsDouble()) % 360;
+    Rotation2d pigeonAngle = getIMURotation();
     if (lockedHeading != lockedHeading) {
       lockHeading0 = false;
       boolean disableHeadingAssist = false;
@@ -401,8 +408,8 @@ public class Drivetrain extends SubsystemBase{
 
       antiDriftPID.setP(swerveGroundSpeed * antiDriftPID.getP()); // increase kp base on ground velocity
       double assistedRotation = antiDriftPID.calculate(
-          pigeonAngle,
-          headingLatch.updateLatch(pigeonAngle, pigeonAngle,
+          pigeonAngle.getRadians(),
+          headingLatch.updateLatch(pigeonAngle.getRadians(), pigeonAngle.getRadians(),
               (!headingLatchSignal0) && headingLatchSignal,
               !headingLatchSignal));
       headingLatchSignal0 = headingLatchSignal;
@@ -423,7 +430,7 @@ public class Drivetrain extends SubsystemBase{
       }
       driverHeadingFudge0 = Control.clamp(driverHeadingFudge0, headingFudgeMax, -1 * headingFudgeMax);
       lockHeading0 = true;
-      double assistedRotation = headingAnglePID.calculate(pigeonAngle, lockedHeading + driverHeadingFudge0);
+      double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(), lockedHeading + driverHeadingFudge0);
       return (Math.abs(assistedRotation) > 0.02) ? assistedRotation : 0.0;
     }
   }
