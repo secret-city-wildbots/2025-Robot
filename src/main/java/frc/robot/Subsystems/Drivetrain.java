@@ -34,51 +34,45 @@ import frc.robot.Utility.ClassHelpers.StickyButton;
 import frc.robot.Utility.ClassHelpers.Timer;
 import edu.wpi.first.math.util.Units;
 
-public class Drivetrain extends SubsystemBase{
-  public static double driveHighGearRatio;
-  public static double driveLowGearRatio;
-  public static double azimuthGearRatio;
+public class Drivetrain extends SubsystemBase {
+  // Constants
+  private final double driveHighGearRatio;
+  private final double driveLowGearRatio;
+  private final double azimuthGearRatio;
   public static double maxGroundSpeed_mPs;
-  public static double maxLowGearSpeed_mPs;
-  public static double maxRotateSpeed_radPs;
+  private final double maxLowGearSpeed_mPs;
+  private final double maxRotateSpeed_radPs;
   public static double actualWheelDiameter_m;
   public static double nominalWheelDiameter_m;
   public static boolean invertDriveDirection = false;
   public static boolean invertAzimuthDirection = false;
   public static boolean azimuthSparkEnabled;
-  private double[] driveManualAdjustments = new double[]{1,1,1,1};
+  private double[] driveManualAdjustments = new double[] { 1, 1, 1, 1 };
 
-  private final TalonFXConfiguration[] driveConfigs;
-  private final TalonFXConfiguration[] azimuthConfigs;
-
-  private SwerveModuleState[] moduleStates = new SwerveModuleState[4];
-
+  // Modules
   private final SwerveModule module0;
   private final SwerveModule module1;
   private final SwerveModule module2;
   private final SwerveModule module3;
-
   private final Translation2d module0Location_m = new Translation2d(0.305, -0.305);
   private final Translation2d module1Location_m = new Translation2d(0.305, 0.305);
   private final Translation2d module2Location_m = new Translation2d(-0.305, 0.305);
   private final Translation2d module3Location_m = new Translation2d(-0.305, -0.305);
+  private final TalonFXConfiguration[] driveConfigs;
+  private final TalonFXConfiguration[] azimuthConfigs;
+  private SwerveModuleState[] moduleStates = new SwerveModuleState[4];
 
+  // Major objects
   private final SwerveDriveKinematics kinematics = new SwerveDriveKinematics(module0Location_m, module1Location_m,
       module2Location_m, module3Location_m);
-
   private static final Pigeon2 pigeon = new Pigeon2(6);
-
   public final SwerveDriveOdometry odometry;
-
   SlewRateLimiter xAccelerationLimiter = new SlewRateLimiter(4.4, -1000, 0.0);
   SlewRateLimiter yAccelerationLimiter = new SlewRateLimiter(4.4, -1000, 0.0);
-
   private SwerveModuleState[] moduleStateOutputs = new SwerveModuleState[4];
 
   // Used for modeDrivebase to check if master states changed
   private Robot.MasterStates masterState0 = Robot.masterState;
-
-  public double swerveGroundSpeed = 0;
   public static boolean shiftingEnabled = false;
   @SuppressWarnings("unused")
   private boolean headingLocked = false;
@@ -99,6 +93,8 @@ public class Drivetrain extends SubsystemBase{
 
   private Timer resetIMUTimer = new Timer();
   private boolean resetIMU0 = false;
+
+  private double currentDriveSpeed_mPs;
 
   public SwerveDriveOdometry updateOdometry() {
     odometry.update(
@@ -131,7 +127,7 @@ public class Drivetrain extends SubsystemBase{
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
-        driveManualAdjustments = new double[]{104.0/105.0, 104.0/107.7, 104.0/107.0, 104.0/106.0};
+        driveManualAdjustments = new double[] { 104.0 / 105.0, 104.0 / 107.7, 104.0 / 107.0, 104.0 / 106.0 };
         break;
       case "COTS_Testbed":
         nominalWheelDiameter_m = Units.inchesToMeters(4);
@@ -142,14 +138,14 @@ public class Drivetrain extends SubsystemBase{
             / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
         driveHighGearRatio = 0.0; // Bc no shifting
         driveLowGearRatio = 6.12;
-        azimuthGearRatio = 150.0/7.0;
+        azimuthGearRatio = 150.0 / 7.0;
         shiftingEnabled = false;
         azimuthSparkEnabled = false;
         invertDriveDirection = false;
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
-        driveManualAdjustments = new double[]{1, 1, 1, 1};
+        driveManualAdjustments = new double[] { 1, 1, 1, 1 };
         break;
       default:
         nominalWheelDiameter_m = Units.inchesToMeters(5);
@@ -167,10 +163,10 @@ public class Drivetrain extends SubsystemBase{
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
-        driveManualAdjustments = new double[]{1, 1, 1, 1};
+        driveManualAdjustments = new double[] { 1, 1, 1, 1 };
     }
 
-    // Defining all modules 
+    // Defining all modules
     module0 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 0, driveConfigs[0],
         azimuthConfigs[0]);
     module1 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 1, driveConfigs[1],
@@ -190,10 +186,12 @@ public class Drivetrain extends SubsystemBase{
             module3.getPosition()
         });
 
-    /* Setting up angle wrapping for control PIDs
-       Makes it so that 2pi = 0 and automatic direct angle calculations*/ 
-    antiDriftPID.enableContinuousInput(0, 2*Math.PI);
-    headingAnglePID.enableContinuousInput(0, 2*Math.PI);
+    /*
+     * Setting up angle wrapping for control PIDs
+     * Makes it so that 2pi = 0 and automatic direct angle calculations
+     */
+    antiDriftPID.enableContinuousInput(0, 2 * Math.PI);
+    headingAnglePID.enableContinuousInput(0, 2 * Math.PI);
 
     // Set up initial module states for init and constructors
     for (int i = 0; i < 4; i++) {
@@ -201,33 +199,36 @@ public class Drivetrain extends SubsystemBase{
     }
 
     RobotConfig config;
-    try{
-      
+    try {
+
       config = RobotConfig.fromGUISettings();
 
       // Configure AutoBuilder last
       AutoBuilder.configure(
-              this::getPose, // Robot pose supplier
-              this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
-              this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-              this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also optionally outputs individual module feedforwards
-              new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for holonomic drive trains
-                      new PIDConstants(5, 0.0, 0.0), // Translation PID constants
-                      new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
-              ),
-              config, // The robot configuration
-              () -> {
-                // Boolean supplier that controls when the path will be mirrored for the red alliance
-                // This will flip the path being followed to the red side of the field.
-                // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+          this::getPose, // Robot pose supplier
+          this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
+          this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+          this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also
+                                    // optionally outputs individual module feedforwards
+          new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
+                                          // holonomic drive trains
+              new PIDConstants(5, 0.0, 0.0), // Translation PID constants
+              new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
+          ),
+          config, // The robot configuration
+          () -> {
+            // Boolean supplier that controls when the path will be mirrored for the red
+            // alliance
+            // This will flip the path being followed to the red side of the field.
+            // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
 
-                var alliance = DriverStation.getAlliance();
-                if (alliance.isPresent()) {
-                  return alliance.get() == DriverStation.Alliance.Red;
-                }
-                return false;
-              },
-              this // Reference to this subsystem to set requirements
+            var alliance = DriverStation.getAlliance();
+            if (alliance.isPresent()) {
+              return alliance.get() == DriverStation.Alliance.Red;
+            }
+            return false;
+          },
+          this // Reference to this subsystem to set requirements
       );
     } catch (Exception e) {
       // Handle exception as needed
@@ -235,8 +236,8 @@ public class Drivetrain extends SubsystemBase{
     }
   }
 
-
   private static Rotation2d imuOffset = new Rotation2d();
+
   public static Rotation2d getIMURotation() {
     Rotation2d imuRelativeRotation = pigeon.getRotation2d();
     return imuRelativeRotation.minus(imuOffset);
@@ -245,7 +246,7 @@ public class Drivetrain extends SubsystemBase{
   // Update all sensors on swerve modules including shifter sensors
   // Each module returns a ModuleState with current speed and position
   // Logs information to SmartDashboard
-  public void updateSensors() {
+  public void updateSensors(XboxController driverController) {
     moduleStates = new SwerveModuleState[] {
         module0.updateSensors(),
         module1.updateSensors(),
@@ -253,22 +254,28 @@ public class Drivetrain extends SubsystemBase{
         module3.updateSensors()
     };
 
-    if (Robot.driverController.getPOV()>225 || Robot.driverController.getPOV() < 135) {
+    ChassisSpeeds currentSpeeds = kinematics.toChassisSpeeds(moduleStates);
+    currentDriveSpeed_mPs = Math
+        .sqrt(Math.pow(currentSpeeds.vxMetersPerSecond, 2) + Math.pow(currentSpeeds.vyMetersPerSecond, 2));
+
+    if (driverController.getPOV() > 225 || driverController.getPOV() < 135) {
       resetIMUTimer.reset();
       resetIMU0 = false;
     } else if (resetIMUTimer.getTimeMillis() > 3000) {
-      if (!resetIMU0) {imuOffset = pigeon.getRotation2d();}
+      if (!resetIMU0) {
+        imuOffset = pigeon.getRotation2d();
+      }
       resetIMU0 = true;
     }
 
     odometry.update(
-      getIMURotation(), 
-      new SwerveModulePosition[] {
-        module0.getPosition(),
-        module1.getPosition(),
-        module2.getPosition(),
-        module3.getPosition()
-    });
+        getIMURotation(),
+        new SwerveModulePosition[] {
+            module0.getPosition(),
+            module1.getPosition(),
+            module2.getPosition(),
+            module3.getPosition()
+        });
 
     double[] loggingState = new double[] {
         moduleStates[1].angle.getRadians(),
@@ -304,10 +311,10 @@ public class Drivetrain extends SubsystemBase{
     odometry.resetPosition(
         getIMURotation(),
         new SwerveModulePosition[] {
-          module0.getPosition(),
-          module1.getPosition(),
-          module2.getPosition(),
-          module3.getPosition()
+            module0.getPosition(),
+            module1.getPosition(),
+            module2.getPosition(),
+            module3.getPosition()
         },
         pose);
   }
@@ -315,6 +322,7 @@ public class Drivetrain extends SubsystemBase{
   /**
    * Gives current robot chassis speed.
    * Used for autoBuilder (pathplanner)
+   * 
    * @return current chassis speed
    */
   public ChassisSpeeds getCurrentSpeeds() {
@@ -328,14 +336,16 @@ public class Drivetrain extends SubsystemBase{
    * 
    * @param driverController
    * @param isAutonomous
-   * @param period_ms           How long it has been since the last loop cycle
+   * @param period_ms        How long it has been since the last loop cycle
    */
   public void driveTeleop(XboxController driverController, boolean isAutonomous, double period_ms) {
 
     // Adjust strafe outputs
     double[] strafeOutputs = SwerveUtils.swerveScaleStrafe(driverController, isAutonomous);
-    double limitedStrafeX = Control.clamp(Math.signum(strafeOutputs[0]) * xAccelerationLimiter.calculate(Math.abs(strafeOutputs[0])), -1, 1);
-    double limitedStrafeY = Control.clamp(Math.signum(strafeOutputs[1]) * yAccelerationLimiter.calculate(Math.abs(strafeOutputs[1])), -1, 1);
+    double limitedStrafeX = Control
+        .clamp(Math.signum(strafeOutputs[0]) * xAccelerationLimiter.calculate(Math.abs(strafeOutputs[0])), -1, 1);
+    double limitedStrafeY = Control
+        .clamp(Math.signum(strafeOutputs[1]) * yAccelerationLimiter.calculate(Math.abs(strafeOutputs[1])), -1, 1);
 
     double[] limitedStrafe = new double[] { limitedStrafeX, limitedStrafeY };
 
@@ -351,7 +361,8 @@ public class Drivetrain extends SubsystemBase{
     // Store information in modulestates
     moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
-            orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs, -assistedRotation * maxRotateSpeed_radPs,
+            orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs,
+            -assistedRotation * maxRotateSpeed_radPs,
             getIMURotation()), 0.001 * period_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
   }
@@ -369,7 +380,7 @@ public class Drivetrain extends SubsystemBase{
     }
     switch (Robot.masterState) {
 
-      case STOWED: 
+      case STOWED:
         headingLocked = false;
         masterState0 = MasterStates.STOWED;
         return Double.NaN;
@@ -394,7 +405,7 @@ public class Drivetrain extends SubsystemBase{
     if (lockedHeading != lockedHeading) {
       lockHeading0 = false;
       boolean disableHeadingAssist = false;
-      boolean lowSpeed = !highSpeedSticky.isStuck(swerveGroundSpeed > 1, 250);
+      boolean lowSpeed = !highSpeedSticky.isStuck(currentDriveSpeed_mPs > 1, 250);
       disableHeadingAssist |= lowSpeed; // Driving at low speed
       disableHeadingAssist |= (Math.max(Math.abs(limitedStrafe[0]), Math.abs(limitedStrafe[1]))) <= 0.001; // Driver not
                                                                                                            // driving
@@ -410,7 +421,7 @@ public class Drivetrain extends SubsystemBase{
       boolean headingLatchSignal = (noRotationSticky.isStuck(Math.abs(joystickRotation) <= 0.001, 100.0)
           && !(DriverStation.isDisabled() || isAutonomous || lowSpeed));
 
-      antiDriftPID.setP(swerveGroundSpeed * antiDriftPID.getP()); // increase kp base on ground velocity
+      antiDriftPID.setP(currentDriveSpeed_mPs * antiDriftPID.getP()); // increase kp base on ground velocity
       double assistedRotation = antiDriftPID.calculate(
           pigeonAngle.getRadians(),
           headingLatch.updateLatch(pigeonAngle.getRadians(), pigeonAngle.getRadians(),
@@ -434,7 +445,8 @@ public class Drivetrain extends SubsystemBase{
       }
       driverHeadingFudge0 = Control.clamp(driverHeadingFudge0, headingFudgeMax, -1 * headingFudgeMax);
       lockHeading0 = true;
-      double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(), lockedHeading + driverHeadingFudge0);
+      double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(),
+          lockedHeading + driverHeadingFudge0);
       return (Math.abs(assistedRotation) > 0.02) ? assistedRotation : 0.0;
     }
   }
@@ -466,19 +478,23 @@ public class Drivetrain extends SubsystemBase{
    * 
    * @param isAutonomous
    */
-  public void updateOutputs(boolean isAutonomous) {
+  public void updateOutputs(boolean isAutonomous, XboxController driverController) {
     boolean[] faults = getFaults();
-    boolean fLow = Robot.driverController.getLeftStickButton() && !(faults[0] || faults[1]);
+    boolean fLow = driverController.getLeftStickButton() && !(faults[0] || faults[1]);
     boolean homeWheels = Dashboard.homeWheels.get();
 
-    moduleStateOutputs[0] = new SwerveModuleState(driveManualAdjustments[0]*moduleStateOutputs[0].speedMetersPerSecond, 
-      moduleStateOutputs[0].angle);
-    moduleStateOutputs[1] = new SwerveModuleState(driveManualAdjustments[1]*moduleStateOutputs[1].speedMetersPerSecond, 
-      moduleStateOutputs[1].angle);
-    moduleStateOutputs[2] = new SwerveModuleState(driveManualAdjustments[2]*moduleStateOutputs[2].speedMetersPerSecond, 
-      moduleStateOutputs[2].angle);
-    moduleStateOutputs[3] = new SwerveModuleState(driveManualAdjustments[3]*moduleStateOutputs[3].speedMetersPerSecond, 
-      moduleStateOutputs[3].angle);
+    moduleStateOutputs[0] = new SwerveModuleState(
+        driveManualAdjustments[0] * moduleStateOutputs[0].speedMetersPerSecond,
+        moduleStateOutputs[0].angle);
+    moduleStateOutputs[1] = new SwerveModuleState(
+        driveManualAdjustments[1] * moduleStateOutputs[1].speedMetersPerSecond,
+        moduleStateOutputs[1].angle);
+    moduleStateOutputs[2] = new SwerveModuleState(
+        driveManualAdjustments[2] * moduleStateOutputs[2].speedMetersPerSecond,
+        moduleStateOutputs[2].angle);
+    moduleStateOutputs[3] = new SwerveModuleState(
+        driveManualAdjustments[3] * moduleStateOutputs[3].speedMetersPerSecond,
+        moduleStateOutputs[3].angle);
 
     module0.updateOutputs(moduleStateOutputs[0], isAutonomous, fLow, driveFaults[0] || azimuthFaults[0], homeWheels);
     module1.updateOutputs(moduleStateOutputs[1], isAutonomous, fLow, driveFaults[1] || azimuthFaults[1], homeWheels);
@@ -486,57 +502,59 @@ public class Drivetrain extends SubsystemBase{
     module3.updateOutputs(moduleStateOutputs[3], isAutonomous, fLow, driveFaults[3] || azimuthFaults[3], homeWheels);
 
     double[] loggingState = new double[] {
-      moduleStateOutputs[1].angle.getRadians(),
-      moduleStateOutputs[1].speedMetersPerSecond / maxGroundSpeed_mPs
-          * ((module1.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-      moduleStateOutputs[0].angle.getRadians(),
-      moduleStateOutputs[0].speedMetersPerSecond / maxGroundSpeed_mPs
-          * ((module0.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-      moduleStateOutputs[2].angle.getRadians(),
-      moduleStateOutputs[2].speedMetersPerSecond / maxGroundSpeed_mPs
-          * ((module2.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
-      moduleStateOutputs[3].angle.getRadians(),
-      moduleStateOutputs[3].speedMetersPerSecond / maxGroundSpeed_mPs
-          * ((module3.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs)
-  };
+        moduleStateOutputs[1].angle.getRadians(),
+        moduleStateOutputs[1].speedMetersPerSecond / maxGroundSpeed_mPs
+            * ((module1.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+        moduleStateOutputs[0].angle.getRadians(),
+        moduleStateOutputs[0].speedMetersPerSecond / maxGroundSpeed_mPs
+            * ((module0.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+        moduleStateOutputs[2].angle.getRadians(),
+        moduleStateOutputs[2].speedMetersPerSecond / maxGroundSpeed_mPs
+            * ((module2.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+        moduleStateOutputs[3].angle.getRadians(),
+        moduleStateOutputs[3].speedMetersPerSecond / maxGroundSpeed_mPs
+            * ((module3.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs)
+    };
 
-  SmartDashboard.putNumberArray("modulestates", loggingState);
+    SmartDashboard.putNumberArray("modulestates", loggingState);
 
-  // Report to the dashboard
-  Dashboard.swerve0Details.set(new double[] {
-      moduleStates[0].angle.getDegrees() % 360,
-      module0.getTemp(),
-      moduleStates[0].speedMetersPerSecond,
-      (module0.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-  });
-  Dashboard.swerve1Details.set(new double[] {
-      moduleStates[1].angle.getDegrees() % 360,
-      module1.getTemp(),
-      moduleStates[1].speedMetersPerSecond,
-      (module1.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-  });
-  Dashboard.swerve2Details.set(new double[] {
-      moduleStates[2].angle.getDegrees() % 360,
-      module2.getTemp(),
-      moduleStates[2].speedMetersPerSecond,
-      (module2.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-  });
-  Dashboard.swerve3Details.set(new double[] {
-      moduleStates[3].angle.getDegrees() % 360,
-      module3.getTemp(),
-      moduleStates[3].speedMetersPerSecond,
-      (module3.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
-  });
+    // Report to the dashboard
+    Dashboard.swerve0Details.set(new double[] {
+        moduleStates[0].angle.getDegrees() % 360,
+        module0.getTemp(),
+        moduleStates[0].speedMetersPerSecond,
+        (module0.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+    });
+    Dashboard.swerve1Details.set(new double[] {
+        moduleStates[1].angle.getDegrees() % 360,
+        module1.getTemp(),
+        moduleStates[1].speedMetersPerSecond,
+        (module1.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+    });
+    Dashboard.swerve2Details.set(new double[] {
+        moduleStates[2].angle.getDegrees() % 360,
+        module2.getTemp(),
+        moduleStates[2].speedMetersPerSecond,
+        (module2.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+    });
+    Dashboard.swerve3Details.set(new double[] {
+        moduleStates[3].angle.getDegrees() % 360,
+        module3.getTemp(),
+        moduleStates[3].speedMetersPerSecond,
+        (module3.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+    });
   }
 
   /**
-   * set module state outputs to target states that are contained within the given ChassisSpeeds.
+   * set module state outputs to target states that are contained within the given
+   * ChassisSpeeds.
    * Used for autoBuilder (pathplanner)
    * 
    * @param robotRelativeSpeeds chassis speeds to set desired to
    */
   public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds) {
-    moduleStateOutputs = kinematics.toSwerveModuleStates(ChassisSpeeds.discretize(robotRelativeSpeeds, 0.001*Robot.loopTime_ms));
+    moduleStateOutputs = kinematics
+        .toSwerveModuleStates(ChassisSpeeds.discretize(robotRelativeSpeeds, 0.001 * Robot.loopTime_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
   }
 }

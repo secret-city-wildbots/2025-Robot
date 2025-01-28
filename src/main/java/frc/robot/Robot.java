@@ -18,8 +18,16 @@ import edu.wpi.first.math.util.Units;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 
 public class Robot extends TimedRobot {
+  // Subsystems and major objects
+  private final Drivetrain drivetrain;
+  private final XboxController driverController;
+  private final XboxController manipController;
+  private final Compressor compressor;
+  private final LED led;
+  private Command autonomousCommand;
 
-  private final String codeVersion = "2025-Robot v1.1_dev";
+  @SuppressWarnings("unused")
+  private final Dashboard dashboard = new Dashboard();
 
   public static enum MasterStates {
     STOWED
@@ -27,41 +35,37 @@ public class Robot extends TimedRobot {
 
   public static MasterStates masterState = MasterStates.STOWED;
 
+  // Major constants
+  private final String codeVersion = "2025-Robot v1.1_dev";
   public static double robotLength_m;
   public static double robotWidth_m;
-
-  public static double loopTime_ms = 20;
-
-  private Command autonomousCommand;
-
-  private final Drivetrain drivetrain;
-  public static final XboxController driverController = new XboxController(0);
-  private final XboxController manipController = new XboxController(1);
-  private final Compressor compressor = new Compressor(2, PneumaticsModuleType.REVPH);
-  private final LED led = new LED();
-  private static double loopTime0 = System.currentTimeMillis();
-
   public static final String robotProfile = FileHelpers.readFile("/home/lvuser/calibrations/RobotProfile.txt");
-
-  @SuppressWarnings("unused")
-  private final Dashboard dashboard = new Dashboard();
-
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
       "Drive_3_(p)",
       "Azimuth_0_(p)", "Azimuth_1_(p)", "Azimuth_2_(p)", "Azimuth_3_(p)", "Swerve_0_Shifter_(b)",
-      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)", "Drivetrain_(p)"};
+      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)", "Drivetrain_(p)" };
   public static final String[] legalDrivers = { "Devin", "Reed", "Driver 3", "Driver 4", "Driver 5", "Programmers",
       "Kidz" };
 
+  // Looptime tracking
+  public static double loopTime_ms = 20;
+  private static double loopTime0 = System.currentTimeMillis();
+
+  // Dashboard variables
   private double selectedDriver0 = 0;
 
   /**
    * This is called when the robot is initalized
    */
   public Robot() {
-    // Initialize dashboard values
-    Dashboard.legalActuatorNames.set(actuatorNames);
-    Dashboard.legalDrivers.set(legalDrivers);
+    // Set up subsystems and major objects
+    drivetrain = new Drivetrain();
+    led = new LED();
+    driverController = new XboxController(0);
+    manipController = new XboxController(1);
+    compressor = new Compressor(2, PneumaticsModuleType.REVPH);
+
+    // Set major constants using profiles
     switch (Robot.robotProfile) {
       case "2025_Robot":
         robotLength_m = Units.inchesToMeters(23);
@@ -75,16 +79,19 @@ public class Robot extends TimedRobot {
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
     }
-    drivetrain = new Drivetrain();
+
+    // Send major constants to the Dashboard
     Dashboard.robotProfile.set(robotProfile);
     Dashboard.codeVersion.set(codeVersion);
     Dashboard.currentDriverProfileSetpoints
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
+    Dashboard.legalActuatorNames.set(actuatorNames);
+    Dashboard.legalDrivers.set(legalDrivers);
 
-    // Enable compressor
+    // Configure compressor
     compressor.enableAnalog(100, 120);
 
-    // Commands
+    // Configure CommandBased
     configureDefaultCommands();
 
     registerNamedCommands();
@@ -92,6 +99,7 @@ public class Robot extends TimedRobot {
     configureButtonBindings();
   }
 
+  // Get sensors to avoid faulty calls to null objects in periodic functions
   @Override
   public void robotInit() {
     getSensors();
@@ -102,7 +110,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-
     // Start by updating all sensor values
     getSensors();
 
@@ -123,7 +130,6 @@ public class Robot extends TimedRobot {
       SwerveUtils.updateDriverProfile(setpoints);
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
     }
-    
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
@@ -177,7 +183,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    drivetrain.updateSensors();
+    drivetrain.updateSensors(driverController);
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -185,7 +191,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    drivetrain.updateOutputs(isAutonomous());
+    drivetrain.updateOutputs(isAutonomous(), driverController);
     led.updateOutputs();
   }
 
