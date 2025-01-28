@@ -65,6 +65,13 @@ public class ActuatorInterlocks {
                 motor.set(
                         testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
             }
+        } else if ((actuatorName.contains("Drive_") || actuatorName.contains("Azimuth_")) && testingActuator.equals("Drivetrain_(p)")) {
+            if (testingPeriod < 0.001) {
+                motor.set(testingValue);
+            } else {
+                motor.set(
+                        testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
+            }
         } else {
             motor.set(0);
         }
@@ -113,6 +120,13 @@ public class ActuatorInterlocks {
                 motor.set(
                         testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
             }
+        } else if ((actuatorName.contains("Drive_") || actuatorName.contains("Azimuth_")) && testingActuator.equals("Drivetrain_(p)")) {
+            if (testingPeriod < 0.001) {
+                motor.set(testingValue);
+            } else {
+                motor.set(
+                        testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
+            }
         } else {
             motor.set(0);
         }
@@ -150,6 +164,13 @@ public class ActuatorInterlocks {
         if (testingActuator.equals("No_Test")) {
             motor.set(normalOutput);
         } else if (testingActuator.equals(actuatorName)) {
+            if (testingPeriod < 0.001) {
+                motor.set(testingValue);
+            } else {
+                motor.set(
+                        testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
+            }
+        } else if ((actuatorName.contains("Drive_") || actuatorName.contains("Azimuth_")) && testingActuator.equals("Drivetrain_(p)")) {
             if (testingPeriod < 0.001) {
                 motor.set(testingValue);
             } else {
@@ -201,6 +222,13 @@ public class ActuatorInterlocks {
                 motor.set(
                         testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
             }
+        } else if ((actuatorName.contains("Drive_") || actuatorName.contains("Azimuth_")) && testingActuator.equals("Drivetrain_(p)")) {
+            if (testingPeriod < 0.001) {
+                motor.set(testingValue);
+            } else {
+                motor.set(
+                        testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
+            }
         } else {
             motor.set(0);
         }
@@ -241,6 +269,8 @@ public class ActuatorInterlocks {
             } else {
                 solenoid.set(Value.kReverse);
             }
+        } else if (actuatorName.contains("Swerve_") && testingActuator.equals("Drivetrain_(p)")) {
+            solenoid.set(normalValue);
         } else {
             solenoid.set(Value.kForward);
         }

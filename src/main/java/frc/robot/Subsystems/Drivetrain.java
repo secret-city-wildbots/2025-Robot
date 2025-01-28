@@ -46,6 +46,7 @@ public class Drivetrain extends SubsystemBase{
   public static boolean invertDriveDirection = false;
   public static boolean invertAzimuthDirection = false;
   public static boolean azimuthSparkEnabled;
+  private double[] driveManualAdjustments = new double[]{1,1,1,1};
 
   private final TalonFXConfiguration[] driveConfigs;
   private final TalonFXConfiguration[] azimuthConfigs;
@@ -87,8 +88,8 @@ public class Drivetrain extends SubsystemBase{
   private StickyButton highSpeedSticky = new StickyButton();
   private boolean headingAssist = false;
   private Latch headingLatch = new Latch(0.0);
-  private PIDController antiDriftPID = new PIDController(0, 0, 0);
-  private PIDController headingAnglePID = new PIDController(0, 0, 0);
+  private PIDController antiDriftPID = new PIDController(0.0007, 0, 0);
+  private PIDController headingAnglePID = new PIDController(0.004, 0.001, 0.0002);
   private boolean headingLatchSignal0 = false;
   private double headingFudgeTime = System.currentTimeMillis();
   private double driverHeadingFudge0 = 0.0;
@@ -130,6 +131,7 @@ public class Drivetrain extends SubsystemBase{
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
+        driveManualAdjustments = new double[]{104.0/105.0, 104.0/107.7, 104.0/107.0, 104.0/106.0};
         break;
       case "COTS_Testbed":
         nominalWheelDiameter_m = Units.inchesToMeters(4);
@@ -147,6 +149,7 @@ public class Drivetrain extends SubsystemBase{
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
+        driveManualAdjustments = new double[]{1, 1, 1, 1};
         break;
       default:
         nominalWheelDiameter_m = Units.inchesToMeters(5);
@@ -164,6 +167,7 @@ public class Drivetrain extends SubsystemBase{
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
+        driveManualAdjustments = new double[]{1, 1, 1, 1};
     }
 
     // Defining all modules 
@@ -257,13 +261,14 @@ public class Drivetrain extends SubsystemBase{
       resetIMU0 = true;
     }
 
-    odometry.update(getIMURotation(), 
-    new SwerveModulePosition[] {
-      module0.getPosition(),
-      module1.getPosition(),
-      module2.getPosition(),
-      module3.getPosition()
-  });
+    odometry.update(
+      getIMURotation(), 
+      new SwerveModulePosition[] {
+        module0.getPosition(),
+        module1.getPosition(),
+        module2.getPosition(),
+        module3.getPosition()
+    });
 
     double[] loggingState = new double[] {
         moduleStates[1].angle.getRadians(),
@@ -340,7 +345,6 @@ public class Drivetrain extends SubsystemBase{
 
     // Adjust rotate outputs
     double rotateOutput = SwerveUtils.swerveScaleRotate(driverController, isAutonomous);
-
     double assistedRotation = swerveAssistHeading(modeDrivebase(driverController), rotateOutput, limitedStrafe,
         isAutonomous, driverController);
 
@@ -464,8 +468,18 @@ public class Drivetrain extends SubsystemBase{
    */
   public void updateOutputs(boolean isAutonomous) {
     boolean[] faults = getFaults();
-    boolean fLow = faults[0] || faults[1] || Robot.driverController.getRightStickButton();
+    boolean fLow = Robot.driverController.getLeftStickButton() && !(faults[0] || faults[1]);
     boolean homeWheels = Dashboard.homeWheels.get();
+
+    moduleStateOutputs[0] = new SwerveModuleState(driveManualAdjustments[0]*moduleStateOutputs[0].speedMetersPerSecond, 
+      moduleStateOutputs[0].angle);
+    moduleStateOutputs[1] = new SwerveModuleState(driveManualAdjustments[1]*moduleStateOutputs[1].speedMetersPerSecond, 
+      moduleStateOutputs[1].angle);
+    moduleStateOutputs[2] = new SwerveModuleState(driveManualAdjustments[2]*moduleStateOutputs[2].speedMetersPerSecond, 
+      moduleStateOutputs[2].angle);
+    moduleStateOutputs[3] = new SwerveModuleState(driveManualAdjustments[3]*moduleStateOutputs[3].speedMetersPerSecond, 
+      moduleStateOutputs[3].angle);
+
     module0.updateOutputs(moduleStateOutputs[0], isAutonomous, fLow, driveFaults[0] || azimuthFaults[0], homeWheels);
     module1.updateOutputs(moduleStateOutputs[1], isAutonomous, fLow, driveFaults[1] || azimuthFaults[1], homeWheels);
     module2.updateOutputs(moduleStateOutputs[2], isAutonomous, fLow, driveFaults[2] || azimuthFaults[2], homeWheels);
