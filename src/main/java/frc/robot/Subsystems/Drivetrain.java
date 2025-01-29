@@ -379,11 +379,13 @@ public class Drivetrain extends SubsystemBase {
       headingLocked = false;
     }
     switch (Robot.masterState) {
-
       case STOWED:
-        headingLocked = false;
         masterState0 = MasterStates.STOWED;
-        return Double.NaN;
+        if (headingLocked) {
+          return 0.0;
+        } else {
+          return Double.NaN;
+        }
       default:
         return Double.NaN;
     }
