@@ -20,10 +20,10 @@ import com.pathplanner.lib.commands.PathPlannerAuto;
 public class Robot extends TimedRobot {
   // Subsystems and major objects
   private final Drivetrain drivetrain;
-  private final XboxController driverController;
-  private final XboxController manipController;
-  private final Compressor compressor;
-  private final LED led;
+  public static XboxController driverController = new XboxController(0);
+  private final XboxController manipController = new XboxController(1);
+  private final Compressor compressor = new Compressor(2, PneumaticsModuleType.REVPH);
+  private final LED led = new LED();
   private Command autonomousCommand;
 
   @SuppressWarnings("unused")
@@ -58,12 +58,11 @@ public class Robot extends TimedRobot {
    * This is called when the robot is initalized
    */
   public Robot() {
+    Dashboard.legalActuatorNames.set(actuatorNames);
+    Dashboard.legalDrivers.set(legalDrivers);
+
     // Set up subsystems and major objects
     drivetrain = new Drivetrain();
-    led = new LED();
-    driverController = new XboxController(0);
-    manipController = new XboxController(1);
-    compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
     // Set major constants using profiles
     switch (Robot.robotProfile) {
@@ -85,8 +84,6 @@ public class Robot extends TimedRobot {
     Dashboard.codeVersion.set(codeVersion);
     Dashboard.currentDriverProfileSetpoints
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
-    Dashboard.legalActuatorNames.set(actuatorNames);
-    Dashboard.legalDrivers.set(legalDrivers);
 
     // Configure compressor
     compressor.enableAnalog(100, 120);
@@ -183,7 +180,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    drivetrain.updateSensors(driverController);
+    drivetrain.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -191,7 +188,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    drivetrain.updateOutputs(isAutonomous(), driverController);
+    drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
   }
 
@@ -206,7 +203,7 @@ public class Robot extends TimedRobot {
      * Right Trigger: SHOOTING
      * Left Trigger & Start Button: CLIMBING
      */
-    if (manipController.getLeftBumper()) {
+    if (manipController.getLeftBumperButton()) {
       masterState = MasterStates.STOWED;
     }
   }

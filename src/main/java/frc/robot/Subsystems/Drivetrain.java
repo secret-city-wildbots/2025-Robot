@@ -36,12 +36,12 @@ import edu.wpi.first.math.util.Units;
 
 public class Drivetrain extends SubsystemBase {
   // Constants
-  private final double driveHighGearRatio;
-  private final double driveLowGearRatio;
-  private final double azimuthGearRatio;
+  public static double driveHighGearRatio;
+  public static double driveLowGearRatio;
+  public static double azimuthGearRatio;
   public static double maxGroundSpeed_mPs;
-  private final double maxLowGearSpeed_mPs;
-  private final double maxRotateSpeed_radPs;
+  public static double maxLowGearSpeed_mPs;
+  public static double maxRotateSpeed_radPs;
   public static double actualWheelDiameter_m;
   public static double nominalWheelDiameter_m;
   public static boolean invertDriveDirection = false;
@@ -246,7 +246,7 @@ public class Drivetrain extends SubsystemBase {
   // Update all sensors on swerve modules including shifter sensors
   // Each module returns a ModuleState with current speed and position
   // Logs information to SmartDashboard
-  public void updateSensors(XboxController driverController) {
+  public void updateSensors() {
     moduleStates = new SwerveModuleState[] {
         module0.updateSensors(),
         module1.updateSensors(),
@@ -258,7 +258,7 @@ public class Drivetrain extends SubsystemBase {
     currentDriveSpeed_mPs = Math
         .sqrt(Math.pow(currentSpeeds.vxMetersPerSecond, 2) + Math.pow(currentSpeeds.vyMetersPerSecond, 2));
 
-    if (driverController.getPOV() > 225 || driverController.getPOV() < 135) {
+    if (Robot.driverController.getPOV() > 225 || Robot.driverController.getPOV() < 135) {
       resetIMUTimer.reset();
       resetIMU0 = false;
     } else if (resetIMUTimer.getTimeMillis() > 3000) {
@@ -480,9 +480,9 @@ public class Drivetrain extends SubsystemBase {
    * 
    * @param isAutonomous
    */
-  public void updateOutputs(boolean isAutonomous, XboxController driverController) {
+  public void updateOutputs(boolean isAutonomous) {
     boolean[] faults = getFaults();
-    boolean fLow = driverController.getLeftStickButton() && !(faults[0] || faults[1]);
+    boolean fLow = Robot.driverController.getLeftStickButton() && !(faults[0] || faults[1]);
     boolean homeWheels = Dashboard.homeWheels.get();
 
     moduleStateOutputs[0] = new SwerveModuleState(
