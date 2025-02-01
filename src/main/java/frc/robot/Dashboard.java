@@ -36,6 +36,7 @@ public class Dashboard {
     public static BooleanSubscriber applyProfileSetpoints;
 
     // Other Testing
+    public static DoubleArrayPublisher pidTuningGoalActual;
     public static StringArrayPublisher legalActuatorNames;
     public static BooleanArrayPublisher confirmedMasterStates;
 
@@ -78,6 +79,7 @@ public class Dashboard {
 
         
         // Other testing
+        pidTuningGoalActual = table.getDoubleArrayTopic("PID_Tuning_GoalActual").publish();
         legalActuatorNames = table.getStringArrayTopic("Legal_Actuator_Names").publish();
         confirmedMasterStates = table.getBooleanArrayTopic("Confirmed_States").publish();
 

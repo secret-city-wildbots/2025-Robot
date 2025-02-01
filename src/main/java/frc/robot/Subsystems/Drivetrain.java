@@ -7,6 +7,7 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -36,12 +37,12 @@ import edu.wpi.first.math.util.Units;
 
 public class Drivetrain extends SubsystemBase {
   // Constants
-  public static double driveHighGearRatio;
-  public static double driveLowGearRatio;
-  public static double azimuthGearRatio;
+  private final double driveHighGearRatio;
+  private final double driveLowGearRatio;
+  private final double azimuthGearRatio;
   public static double maxGroundSpeed_mPs;
-  public static double maxLowGearSpeed_mPs;
-  public static double maxRotateSpeed_radPs;
+  private final double maxLowGearSpeed_mPs;
+  private final double maxRotateSpeed_radPs;
   public static double actualWheelDiameter_m;
   public static double nominalWheelDiameter_m;
   public static boolean invertDriveDirection = false;
@@ -83,13 +84,15 @@ public class Drivetrain extends SubsystemBase {
   private boolean headingAssist = false;
   private Latch headingLatch = new Latch(0.0);
   private PIDController antiDriftPID = new PIDController(0.0007, 0, 0);
-  private PIDController headingAnglePID = new PIDController(0.004, 0.001, 0.0002);
+  private PIDController headingAnglePID = new PIDController(0.4, 0.0, 0.01);
+  // private double kp0 = 0.0;
+  // private double ki0 = 0.0;
+  // private double kd0 = 0.0;
   private boolean headingLatchSignal0 = false;
-  private double headingFudgeTime = System.currentTimeMillis();
-  private double driverHeadingFudge0 = 0.0;
+  private double driverHeadingFudge0_rad = 0.0;
   private StickyButton noRotationSticky = new StickyButton();
   private boolean lockHeading0 = false;
-  private final double headingFudgeMax = 10; // degrees
+  private final double headingFudgeMax_rad = Units.degreesToRadians(5); // degrees
 
   private Timer resetIMUTimer = new Timer();
   private boolean resetIMU0 = false;
@@ -246,7 +249,7 @@ public class Drivetrain extends SubsystemBase {
   // Update all sensors on swerve modules including shifter sensors
   // Each module returns a ModuleState with current speed and position
   // Logs information to SmartDashboard
-  public void updateSensors() {
+  public void updateSensors(XboxController driverController) {
     moduleStates = new SwerveModuleState[] {
         module0.updateSensors(),
         module1.updateSensors(),
@@ -258,7 +261,7 @@ public class Drivetrain extends SubsystemBase {
     currentDriveSpeed_mPs = Math
         .sqrt(Math.pow(currentSpeeds.vxMetersPerSecond, 2) + Math.pow(currentSpeeds.vyMetersPerSecond, 2));
 
-    if (Robot.driverController.getPOV() > 225 || Robot.driverController.getPOV() < 135) {
+    if (driverController.getPOV() > 225 || driverController.getPOV() < 135) {
       resetIMUTimer.reset();
       resetIMU0 = false;
     } else if (resetIMUTimer.getTimeMillis() > 3000) {
@@ -356,7 +359,9 @@ public class Drivetrain extends SubsystemBase {
     // Adjust rotate outputs
     double rotateOutput = SwerveUtils.swerveScaleRotate(driverController, isAutonomous);
     double assistedRotation = swerveAssistHeading(modeDrivebase(driverController), rotateOutput, limitedStrafe,
-        isAutonomous, driverController);
+        isAutonomous, driverController); 
+
+        System.out.println(assistedRotation);
 
     // Store information in modulestates
     moduleStateOutputs = kinematics.toSwerveModuleStates(
@@ -382,7 +387,7 @@ public class Drivetrain extends SubsystemBase {
       case STOWED:
         masterState0 = MasterStates.STOWED;
         if (headingLocked) {
-          return 0.0;
+          return Units.degreesToRadians(90);
         } else {
           return Double.NaN;
         }
@@ -394,17 +399,17 @@ public class Drivetrain extends SubsystemBase {
   /**
    * Adjusts joystick outputs to help with angle drift and heading locking
    * 
-   * @param lockedHeading    If the heading is locked
+   * @param lockedHeading_rad Angle to rotate to in radians (NaN if disabled)
    * @param joystickRotation
    * @param limitedStrafe
    * @param isAutonomous
    * @param driverController
    * @return Locked or assisted heading output
    */
-  private double swerveAssistHeading(double lockedHeading, double joystickRotation, double[] limitedStrafe,
+  private double swerveAssistHeading(double lockedHeading_rad, double joystickRotation, double[] limitedStrafe,
       boolean isAutonomous, XboxController driverController) {
     Rotation2d pigeonAngle = getIMURotation();
-    if (lockedHeading != lockedHeading) {
+    if (lockedHeading_rad != lockedHeading_rad) {
       lockHeading0 = false;
       boolean disableHeadingAssist = false;
       boolean lowSpeed = !highSpeedSticky.isStuck(currentDriveSpeed_mPs > 1, 250);
@@ -423,33 +428,51 @@ public class Drivetrain extends SubsystemBase {
       boolean headingLatchSignal = (noRotationSticky.isStuck(Math.abs(joystickRotation) <= 0.001, 100.0)
           && !(DriverStation.isDisabled() || isAutonomous || lowSpeed));
 
-      antiDriftPID.setP(currentDriveSpeed_mPs * antiDriftPID.getP()); // increase kp base on ground velocity
-      double assistedRotation = antiDriftPID.calculate(
+      PIDController antiDriftPID2 = new PIDController(currentDriveSpeed_mPs*antiDriftPID.getP(), antiDriftPID.getI(), antiDriftPID.getD());
+      double assistedRotation = antiDriftPID2.calculate(
           pigeonAngle.getRadians(),
           headingLatch.updateLatch(pigeonAngle.getRadians(), pigeonAngle.getRadians(),
               (!headingLatchSignal0) && headingLatchSignal,
               !headingLatchSignal));
       headingLatchSignal0 = headingLatchSignal;
+      antiDriftPID2.close();
       return assistedRotation;
     } else {
       headingAssist = true;
-      double headingFudgeDeltaT = System.currentTimeMillis() - headingFudgeTime;
-      headingFudgeTime = System.currentTimeMillis();
       String currentProfile = Robot.legalDrivers[(int) Dashboard.selectedDriver.get(0.0)];
-      double driverHeadingFudge;
+      double driverHeadingFudge_rad;
       if (driverController.getBButton() || driverController.getYButton() || lockHeading0 == false) {
-        driverHeadingFudge = 0.0;
-        driverHeadingFudge0 = 0.0;
+        driverHeadingFudge_rad = 0.0;
+        driverHeadingFudge0_rad = 0.0;
       } else {
-        driverHeadingFudge = headingFudgeDeltaT * Units.radiansToDegrees(maxRotateSpeed_radPs)
+        driverHeadingFudge_rad = Robot.loopTime_ms*0.001 * (maxRotateSpeed_radPs)
             * SwerveUtils.readDriverProfiles(currentProfile).rotateMax * joystickRotation;
-        driverHeadingFudge0 += driverHeadingFudge;
+        driverHeadingFudge0_rad += driverHeadingFudge_rad;
       }
-      driverHeadingFudge0 = Control.clamp(driverHeadingFudge0, headingFudgeMax, -1 * headingFudgeMax);
+
+      
+
+
+      driverHeadingFudge0_rad = MathUtil.clamp(driverHeadingFudge0_rad, -1 * headingFudgeMax_rad, headingFudgeMax_rad);
       lockHeading0 = true;
+
+      // PID Tuning
+      // double kp = Dashboard.freeTuningkP.get();
+      // double ki = Dashboard.freeTuningkI.get();
+      // double kd = Dashboard.freeTuningkD.get();
+      // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+      //   headingAnglePID.setP(kp);
+      //   headingAnglePID.setI(ki);
+      //   headingAnglePID.setD(kd);
+      //   kp0 = kp;
+      //   ki0 = ki;
+      //   kd0 = kd;
+      // }
+
       double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(),
-          lockedHeading + driverHeadingFudge0);
-      return (Math.abs(assistedRotation) > 0.02) ? assistedRotation : 0.0;
+          lockedHeading_rad + (driverHeadingFudge0_rad));
+          Dashboard.pidTuningGoalActual.set(new double[]{lockedHeading_rad, pigeonAngle.getRadians()});
+      return (Math.abs(assistedRotation) > 0.01) ? assistedRotation : 0.0;
     }
   }
 
@@ -480,9 +503,9 @@ public class Drivetrain extends SubsystemBase {
    * 
    * @param isAutonomous
    */
-  public void updateOutputs(boolean isAutonomous) {
+  public void updateOutputs(boolean isAutonomous, XboxController driverController) {
     boolean[] faults = getFaults();
-    boolean fLow = Robot.driverController.getLeftStickButton() && !(faults[0] || faults[1]);
+    boolean fLow = driverController.getLeftStickButton() && !(faults[0] || faults[1]);
     boolean homeWheels = Dashboard.homeWheels.get();
 
     moduleStateOutputs[0] = new SwerveModuleState(
