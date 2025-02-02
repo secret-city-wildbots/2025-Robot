@@ -26,6 +26,12 @@ public class Dashboard {
     public static DoubleArrayPublisher swerve3Details;
     public static DoubleArrayPublisher currentDriverProfileSetpoints;
     public static StringArrayPublisher legalDrivers;
+    
+    public static DoublePublisher robotX;
+    public static DoublePublisher robotY;
+    public static DoublePublisher robotLengthBumpers;
+    public static DoublePublisher robotWidthBumpers;
+    public static DoublePublisher robotHeading;    
 
     public static DoubleArraySubscriber newDriverProfileSetpoints;
     
@@ -34,6 +40,9 @@ public class Dashboard {
     public static BooleanSubscriber homeWheels;
     public static BooleanSubscriber calibrateWheels;
     public static BooleanSubscriber applyProfileSetpoints;
+
+    // Limelight
+
 
     // Other Testing
     public static DoubleArrayPublisher pidTuningGoalActual;
@@ -70,6 +79,12 @@ public class Dashboard {
         newDriverProfileSetpoints = table.getDoubleArrayTopic("New_Driver_Profile_Setpoints")
                 .subscribe(new double[] { 0.08, 1.8, 1, 0.15, 2.5, 1 });
         legalDrivers = table.getStringArrayTopic("Legal_Drivers").publish();
+
+        robotX = table.getDoubleTopic("Robot_X").publish();
+        robotY = table.getDoubleTopic("Robot_Y").publish();
+        robotHeading = table.getDoubleTopic("Robot_H").publish();
+        robotLengthBumpers = table.getDoubleTopic("Robot_Length_Bumpers").publish();
+        robotWidthBumpers = table.getDoubleTopic("Robot_Width_Bumpers").publish();
 
         selectedDriver = table.getDoubleTopic("Selected_Driver").subscribe(0.0);
         unlockAzimuth = table.getBooleanTopic("Unlock_Azimuth").subscribe(false);

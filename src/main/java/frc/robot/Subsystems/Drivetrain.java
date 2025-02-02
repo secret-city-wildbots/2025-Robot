@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Dashboard;
+import frc.robot.LimelightHelpers;
 import frc.robot.Robot;
 import frc.robot.Robot.MasterStates;
 import frc.robot.Subsystems.SwerveModule.ShiftedStates;
@@ -280,6 +281,22 @@ public class Drivetrain extends SubsystemBase {
             module3.getPosition()
         });
 
+    LimelightHelpers.SetRobotOrientation("", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+
+    if (LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(""))) {
+      odometry.resetPosition(
+          getIMURotation(),
+          new SwerveModulePosition[] {
+              module0.getPosition(),
+              module1.getPosition(),
+              module2.getPosition(),
+              module3.getPosition()
+          },
+          (DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red))
+              ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose
+              : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
+    }
+
     double[] loggingState = new double[] {
         moduleStates[1].angle.getRadians(),
         moduleStates[1].speedMetersPerSecond,
@@ -292,6 +309,7 @@ public class Drivetrain extends SubsystemBase {
     };
 
     SmartDashboard.putNumberArray("realModuleStates", loggingState);
+
   }
 
   /**
@@ -359,9 +377,7 @@ public class Drivetrain extends SubsystemBase {
     // Adjust rotate outputs
     double rotateOutput = SwerveUtils.swerveScaleRotate(driverController, isAutonomous);
     double assistedRotation = swerveAssistHeading(modeDrivebase(driverController), rotateOutput, limitedStrafe,
-        isAutonomous, driverController); 
-
-        System.out.println(assistedRotation);
+        isAutonomous, driverController);
 
     // Store information in modulestates
     moduleStateOutputs = kinematics.toSwerveModuleStates(
@@ -428,7 +444,8 @@ public class Drivetrain extends SubsystemBase {
       boolean headingLatchSignal = (noRotationSticky.isStuck(Math.abs(joystickRotation) <= 0.001, 100.0)
           && !(DriverStation.isDisabled() || isAutonomous || lowSpeed));
 
-      PIDController antiDriftPID2 = new PIDController(currentDriveSpeed_mPs*antiDriftPID.getP(), antiDriftPID.getI(), antiDriftPID.getD());
+      PIDController antiDriftPID2 = new PIDController(currentDriveSpeed_mPs * antiDriftPID.getP(), antiDriftPID.getI(),
+          antiDriftPID.getD());
       double assistedRotation = antiDriftPID2.calculate(
           pigeonAngle.getRadians(),
           headingLatch.updateLatch(pigeonAngle.getRadians(), pigeonAngle.getRadians(),
@@ -445,13 +462,10 @@ public class Drivetrain extends SubsystemBase {
         driverHeadingFudge_rad = 0.0;
         driverHeadingFudge0_rad = 0.0;
       } else {
-        driverHeadingFudge_rad = Robot.loopTime_ms*0.001 * (maxRotateSpeed_radPs)
+        driverHeadingFudge_rad = Robot.loopTime_ms * 0.001 * (maxRotateSpeed_radPs)
             * SwerveUtils.readDriverProfiles(currentProfile).rotateMax * joystickRotation;
         driverHeadingFudge0_rad += driverHeadingFudge_rad;
       }
-
-      
-
 
       driverHeadingFudge0_rad = MathUtil.clamp(driverHeadingFudge0_rad, -1 * headingFudgeMax_rad, headingFudgeMax_rad);
       lockHeading0 = true;
@@ -461,17 +475,17 @@ public class Drivetrain extends SubsystemBase {
       // double ki = Dashboard.freeTuningkI.get();
       // double kd = Dashboard.freeTuningkD.get();
       // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-      //   headingAnglePID.setP(kp);
-      //   headingAnglePID.setI(ki);
-      //   headingAnglePID.setD(kd);
-      //   kp0 = kp;
-      //   ki0 = ki;
-      //   kd0 = kd;
+      // headingAnglePID.setP(kp);
+      // headingAnglePID.setI(ki);
+      // headingAnglePID.setD(kd);
+      // kp0 = kp;
+      // ki0 = ki;
+      // kd0 = kd;
       // }
 
       double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(),
           lockedHeading_rad + (driverHeadingFudge0_rad));
-          Dashboard.pidTuningGoalActual.set(new double[]{lockedHeading_rad, pigeonAngle.getRadians()});
+      Dashboard.pidTuningGoalActual.set(new double[] { lockedHeading_rad, pigeonAngle.getRadians() });
       return (Math.abs(assistedRotation) > 0.01) ? assistedRotation : 0.0;
     }
   }

@@ -39,6 +39,8 @@ public class Robot extends TimedRobot {
   private final String codeVersion = "2025-Robot v1.1_dev";
   public static double robotLength_m;
   public static double robotWidth_m;
+  public static double robotLengthBumpers;
+  public static double robotWidthBumpers;
   public static final String robotProfile = FileHelpers.readFile("/home/lvuser/calibrations/RobotProfile.txt");
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
       "Drive_3_(p)",
@@ -63,6 +65,8 @@ public class Robot extends TimedRobot {
       case "2025_Robot":
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
+        robotLengthBumpers = Units.inchesToMeters(35);
+        robotWidthBumpers = Units.inchesToMeters(35);
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23);
@@ -87,6 +91,8 @@ public class Robot extends TimedRobot {
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
     Dashboard.legalActuatorNames.set(actuatorNames);
     Dashboard.legalDrivers.set(legalDrivers);
+    Dashboard.robotLengthBumpers.set(robotLengthBumpers);
+    Dashboard.robotWidthBumpers.set(robotWidthBumpers);
 
     // Configure compressor
     compressor.enableAnalog(100, 120);
