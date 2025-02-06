@@ -36,6 +36,10 @@ public class Dashboard {
     public static DoubleArraySubscriber newDriverProfileSetpoints;
     
     public static DoubleSubscriber selectedDriver;
+    public static DoubleSubscriber manualStartX;
+    public static DoubleSubscriber manualStartY;
+    public static DoubleSubscriber manualStartH;
+    public static BooleanSubscriber pushRobotStart;
     public static BooleanSubscriber unlockAzimuth;
     public static BooleanSubscriber homeWheels;
     public static BooleanSubscriber calibrateWheels;
@@ -51,6 +55,8 @@ public class Dashboard {
 
     public static DoublePublisher pressureTransducer;
     public static DoublePublisher loopTime;
+    public static DoublePublisher fieldWidth;
+    public static DoublePublisher fieldLength;
     public static StringPublisher robotProfile;
     public static StringPublisher codeVersion;
     public static BooleanPublisher isAutonomous;
@@ -87,6 +93,10 @@ public class Dashboard {
         robotWidthBumpers = table.getDoubleTopic("Robot_Width_Bumpers").publish();
 
         selectedDriver = table.getDoubleTopic("Selected_Driver").subscribe(0.0);
+        manualStartX = table.getDoubleTopic("Manual_Start_X").subscribe(0);
+        manualStartY = table.getDoubleTopic("Manual_Start_Y").subscribe(0);
+        manualStartH = table.getDoubleTopic("Manual_Start_H").subscribe(0);
+        pushRobotStart = table.getBooleanTopic("Push_Robot_Start").subscribe(false);
         unlockAzimuth = table.getBooleanTopic("Unlock_Azimuth").subscribe(false);
         homeWheels = table.getBooleanTopic("Home_Wheels").subscribe(false);
         calibrateWheels = table.getBooleanTopic("Calibrate_Wheels").subscribe(false);
@@ -100,6 +110,8 @@ public class Dashboard {
 
         pressureTransducer = table.getDoubleTopic("Pressure_Transducer").publish();
         loopTime = table.getDoubleTopic("Control_Loop_Time").publish();
+        fieldWidth = table.getDoubleTopic("Field_Width").publish();
+        fieldLength = table.getDoubleTopic("Field_Length").publish();
         robotProfile = table.getStringTopic("Robot_Profile").publish();
         codeVersion = table.getStringTopic("Robot_Code_Version").publish();
         isAutonomous = table.getBooleanTopic("Robot_is_Autonomous").publish();

@@ -1,11 +1,19 @@
 package frc.robot.Subsystems;
 
+import java.util.List;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import com.pathplanner.lib.path.GoalEndState;
+import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.Waypoint;
+import com.pathplanner.lib.util.DriveFeedforwards;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
@@ -21,6 +29,8 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Dashboard;
 import frc.robot.LimelightHelpers;
@@ -50,6 +60,8 @@ public class Drivetrain extends SubsystemBase {
   public static boolean invertAzimuthDirection = false;
   public static boolean azimuthSparkEnabled;
   private double[] driveManualAdjustments = new double[] { 1, 1, 1, 1 };
+  private final double reefPoseX_m = 4.84505;
+  private final double reefPoseY_m = 4.0259;
 
   // Modules
   private final SwerveModule module0;
@@ -234,11 +246,92 @@ public class Drivetrain extends SubsystemBase {
           },
           this // Reference to this subsystem to set requirements
       );
+
     } catch (Exception e) {
       // Handle exception as needed
       e.printStackTrace();
     }
   }
+
+  public Command getPathFindingCommand(Pose2d targetPose) {
+    PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 2, 3.0, maxRotateSpeed_radPs / 2,
+        4 * Math.PI); // The constraints for this path.
+    Command pathfinder = AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
+    return pathfinder;
+  }
+
+  // public Command followPathCommand(PathPlannerPath path) {
+  // RobotConfig config;
+  // try {
+  // config = RobotConfig.fromGUISettings();
+
+  // return new FollowPathCommand(
+  // path,
+  // this::getPose, // Robot pose supplier
+  // this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+  // this::driveRobotRelative, // Method that will drive the robot given ROBOT
+  // RELATIVE ChassisSpeeds, AND
+  // // feedforwards
+  // new PPHolonomicDriveController( // PPHolonomicController is the built in path
+  // following controller for
+  // // holonomic drive trains
+  // new PIDConstants(5.0, 0.0, 0.0), // Translation PID constants
+  // new PIDConstants(5.0, 0.0, 0.0) // Rotation PID constants
+  // ),
+  // config, // The robot configuration
+  // () -> {
+  // // Boolean supplier that controls when the path will be mirrored for the red
+  // // alliance
+  // // This will flip the path being followed to the red side of the field.
+  // // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+
+  // var alliance = DriverStation.getAlliance();
+  // if (alliance.isPresent()) {
+  // return alliance.get() == DriverStation.Alliance.Red;
+  // }
+  // return false;
+  // },
+  // this // Reference to this subsystem to set requirements
+  // );
+  // } catch (Exception e) {
+  // DriverStation.reportError("Big oops: " + e.getMessage(), e.getStackTrace());
+  // return Commands.none();
+  // }
+  // }
+
+  // public PathPlannerPath createPath(Pose2d[] waypoints) {
+  // // Create a list of waypoints from poses. Each pose represents one waypoint.
+  // // The rotation component of the pose should be the direction of travel. Do
+  // not
+  // // use holonomic rotation.
+  // List<Waypoint> waypointList = PathPlannerPath.waypointsFromPoses(waypoints);
+
+  // PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 2,
+  // 3.0, maxRotateSpeed_radPs / 2,
+  // 4 * Math.PI); // The constraints for this path.
+  // // PathConstraints constraints = PathConstraints.unlimitedConstraints(12.0);
+  // //
+  // // You can also use unlimited constraints, only limited by motor torque and
+  // // nominal battery voltage
+
+  // // Create the path using the waypoints created above
+  // PathPlannerPath path = new PathPlannerPath(
+  // waypointList,
+  // constraints,
+  // null, // The ideal starting state, this is only relevant for pre-planned
+  // paths, so can
+  // // be null for on-the-fly paths.
+  // new GoalEndState(0.0, Rotation2d.fromDegrees(-90)) // Goal end state. You can
+  // set a holonomic rotation here. If
+  // // using a differential drivetrain, the rotation will have no
+  // // effect.
+  // );
+
+  // // Prevent the path from being flipped if the coordinates are already correct
+  // path.preventFlipping = true;
+
+  // return path;
+  // }
 
   private static Rotation2d imuOffset = new Rotation2d();
 
@@ -265,21 +358,30 @@ public class Drivetrain extends SubsystemBase {
     if (driverController.getPOV() > 225 || driverController.getPOV() < 135) {
       resetIMUTimer.reset();
       resetIMU0 = false;
+      odometry.update(
+          getIMURotation(),
+          new SwerveModulePosition[] {
+              module0.getPosition(),
+              module1.getPosition(),
+              module2.getPosition(),
+              module3.getPosition()
+          });
     } else if (resetIMUTimer.getTimeMillis() > 3000) {
       if (!resetIMU0) {
         imuOffset = pigeon.getRotation2d();
+        odometry.resetRotation(getIMURotation());
       }
       resetIMU0 = true;
     }
 
-    odometry.update(
-        getIMURotation(),
-        new SwerveModulePosition[] {
-            module0.getPosition(),
-            module1.getPosition(),
-            module2.getPosition(),
-            module3.getPosition()
-        });
+    if (Dashboard.pushRobotStart.get()) {
+      double x = Units.inchesToMeters(Dashboard.manualStartX.get());
+      double y = Units.inchesToMeters(Dashboard.manualStartY.get());
+      Rotation2d h = new Rotation2d(Units.degreesToRadians(Dashboard.manualStartH.get()));
+      imuOffset = pigeon.getRotation2d().minus(h);
+      resetPose(new Pose2d(x, y, h));
+      odometry.resetRotation(getIMURotation());
+    }
 
     LimelightHelpers.SetRobotOrientation("", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
 
@@ -296,6 +398,10 @@ public class Drivetrain extends SubsystemBase {
               ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose
               : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
     }
+
+    Dashboard.robotX.set(Units.metersToInches(odometry.getPoseMeters().getX()));
+    Dashboard.robotY.set(Units.metersToInches(odometry.getPoseMeters().getY()));
+    Dashboard.robotHeading.set(odometry.getPoseMeters().getRotation().getDegrees());
 
     double[] loggingState = new double[] {
         moduleStates[1].angle.getRadians(),
@@ -399,11 +505,33 @@ public class Drivetrain extends SubsystemBase {
     } else if (driverController.getXButton()) {
       headingLocked = false;
     }
+
+    Pose2d pose_m = odometry.getPoseMeters();
+    double poseX_m = pose_m.getX();
+    double poseY_m = pose_m.getY();
+
+    double b = reefPoseY_m;
+    double a = reefPoseX_m;
+
     switch (Robot.masterState) {
       case STOWED:
         masterState0 = MasterStates.STOWED;
         if (headingLocked) {
-          return Units.degreesToRadians(90);
+          if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+            return 0.0;
+          } else if (poseX_m < a) {
+            if (poseY_m < b) {
+              return Units.degreesToRadians(60.0);
+            } else {
+              return Units.degreesToRadians(-60.0);
+            }
+          } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+            return Units.degreesToRadians(180.0);
+          } else if (poseY_m < b) {
+            return Units.degreesToRadians(120);
+          } else {
+            return Units.degreesToRadians(-120);
+          }
         } else {
           return Double.NaN;
         }
@@ -591,7 +719,7 @@ public class Drivetrain extends SubsystemBase {
    * 
    * @param robotRelativeSpeeds chassis speeds to set desired to
    */
-  public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds) {
+  public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds, DriveFeedforwards feedforwards) {
     moduleStateOutputs = kinematics
         .toSwerveModuleStates(ChassisSpeeds.discretize(robotRelativeSpeeds, 0.001 * Robot.loopTime_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);

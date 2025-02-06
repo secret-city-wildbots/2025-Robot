@@ -14,7 +14,12 @@ import frc.robot.Commands.DrivetrainCommands;
 import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.util.Units;
+
+import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 
 public class Robot extends TimedRobot {
@@ -41,6 +46,8 @@ public class Robot extends TimedRobot {
   public static double robotWidth_m;
   public static double robotLengthBumpers;
   public static double robotWidthBumpers;
+  public static double fieldWidth_m = 8.05;
+  public static double fieldLength_m = 17.55;
   public static final String robotProfile = FileHelpers.readFile("/home/lvuser/calibrations/RobotProfile.txt");
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
       "Drive_3_(p)",
@@ -91,9 +98,11 @@ public class Robot extends TimedRobot {
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
     Dashboard.legalActuatorNames.set(actuatorNames);
     Dashboard.legalDrivers.set(legalDrivers);
-    Dashboard.robotLengthBumpers.set(robotLengthBumpers);
-    Dashboard.robotWidthBumpers.set(robotWidthBumpers);
-
+    Dashboard.robotLengthBumpers.set(Units.metersToInches(robotLengthBumpers));
+    Dashboard.robotWidthBumpers.set(Units.metersToInches(robotWidthBumpers));
+    Dashboard.fieldWidth.set(Units.metersToInches(fieldWidth_m));
+    Dashboard.fieldLength.set(Units.metersToInches(fieldLength_m));
+    
     // Configure compressor
     compressor.enableAnalog(100, 120);
 
@@ -109,6 +118,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     getSensors();
+    FollowPathCommand.warmupCommand().schedule();
   }
 
   /**
@@ -171,8 +181,9 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-
-    drivetrain.driveTeleop(driverController, false, loopTime_ms);
+    if (driverController.getBButtonPressed()) {
+      drivetrain.getPathFindingCommand(new Pose2d(120, 120, new Rotation2d())).schedule();
+    }
 
     // Check for state updates based on manip inputs
     updateMasterState();
@@ -243,6 +254,5 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-
   }
 }
