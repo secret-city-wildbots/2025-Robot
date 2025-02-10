@@ -29,6 +29,7 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 
 public class SwerveModule {
@@ -146,39 +147,22 @@ public class SwerveModule {
         this.drive.getConfigurator().apply(driveConfig);
     }
 
-    public SwerveModuleState updateSensors() {
+    public SwerveModuleState updateSensors(XboxController drivercontroller) {
         if (azimuthSparkActive) {
             azimuthAngle_rad = Units.rotationsToRadians(azimuthEncoder.getPosition() / azimuthRatio);
             if (shiftingEnabled) {
-                if (azimuthForwardLimit.isPressed() && azimuthReverseLimit.isPressed()) {
-                    shiftedState = ShiftedStates.LOW;
-                    // System.out
-                    // .println("Error: High and low sensor are triggered at the same time on module
-                    // "
-                    // + moduleNumber);
-                } else if (azimuthForwardLimit.isPressed()) {
-                    shiftedState = ShiftedStates.HIGH;
-                } else if (azimuthReverseLimit.isPressed()) {
+                if (drivercontroller.getLeftStickButton()) {
                     shiftedState = ShiftedStates.LOW;
                 } else {
-                    shiftedState = ShiftedStates.TRANS;
+                    shiftedState = ShiftedStates.HIGH;
                 }
             }
         } else {
             if (shiftingEnabled) {
-                boolean forwardLimit = drive.getForwardLimit().getValue().equals(ForwardLimitValue.ClosedToGround);
-                boolean reverseLimit = drive.getReverseLimit().getValue().equals(ReverseLimitValue.ClosedToGround);
-                if (forwardLimit && reverseLimit) {
-                    shiftedState = ShiftedStates.LOW;
-                    // System.out.println(
-                    // "Error: High and low sensor are triggered at the same time on module " +
-                    // moduleNumber);
-                } else if (forwardLimit) {
-                    shiftedState = ShiftedStates.HIGH;
-                } else if (reverseLimit) {
+                if (drivercontroller.getLeftStickButton()) {
                     shiftedState = ShiftedStates.LOW;
                 } else {
-                    shiftedState = ShiftedStates.TRANS;
+                    shiftedState = ShiftedStates.HIGH;
                 }
             }
             azimuthAngle_rad = Units
@@ -188,6 +172,8 @@ public class SwerveModule {
         if (!shiftingEnabled) {
             shiftedState = ShiftedStates.LOW;
         }
+
+
 
         currentDriveSpeed_mPs = drive.getVelocity().getValueAsDouble()
                 / ((shiftedState.equals(ShiftedStates.HIGH)) ? driveHighGearRatio : driveLowGearRatio) * 2 * Math.PI

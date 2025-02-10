@@ -10,13 +10,13 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.DrivetrainCommands;
 import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.util.Units;
 
 import com.pathplanner.lib.commands.FollowPathCommand;
@@ -30,6 +30,9 @@ public class Robot extends TimedRobot {
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
+  private final CommandXboxController commanddriverController;
+  Command pathfinder;
+    
 
   @SuppressWarnings("unused")
   private final Dashboard dashboard = new Dashboard();
@@ -90,6 +93,7 @@ public class Robot extends TimedRobot {
      driverController = new XboxController(0);
      manipController = new XboxController(1);
      compressor = new Compressor(2, PneumaticsModuleType.REVPH);
+     commanddriverController = new CommandXboxController(0);
 
     // Send major constants to the Dashboard
     Dashboard.robotProfile.set(robotProfile);
@@ -181,9 +185,15 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    if (driverController.getBButtonPressed()) {
-      drivetrain.getPathFindingCommand(new Pose2d(120, 120, new Rotation2d())).schedule();
-    }
+    pathfinder = drivetrain.getPathFindingCommand(new Pose2d(6, 6, new Rotation2d()));
+    // if (driverController.getBButtonPressed()) {
+    //   pathfinder.schedule();
+    //   System.out.println(pathfinder);
+    // }
+
+
+    commanddriverController.b().onTrue(pathfinder);
+
 
     // Check for state updates based on manip inputs
     updateMasterState();
@@ -254,5 +264,6 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
+
   }
 }

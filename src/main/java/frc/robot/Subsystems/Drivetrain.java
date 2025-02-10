@@ -1,18 +1,13 @@
 package frc.robot.Subsystems;
 
-import java.util.List;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
-import com.pathplanner.lib.path.PathPlannerPath;
-import com.pathplanner.lib.path.Waypoint;
 import com.pathplanner.lib.util.DriveFeedforwards;
 
 import edu.wpi.first.math.MathUtil;
@@ -30,7 +25,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Dashboard;
 import frc.robot.LimelightHelpers;
@@ -98,9 +92,9 @@ public class Drivetrain extends SubsystemBase {
   private Latch headingLatch = new Latch(0.0);
   private PIDController antiDriftPID = new PIDController(0.0007, 0, 0);
   private PIDController headingAnglePID = new PIDController(0.4, 0.0, 0.01);
-  // private double kp0 = 0.0;
-  // private double ki0 = 0.0;
-  // private double kd0 = 0.0;
+  private double kp0 = 0.0;
+  private double ki0 = 0.0;
+  private double kd0 = 0.0;
   private boolean headingLatchSignal0 = false;
   private double driverHeadingFudge0_rad = 0.0;
   private StickyButton noRotationSticky = new StickyButton();
@@ -228,8 +222,8 @@ public class Drivetrain extends SubsystemBase {
                                     // optionally outputs individual module feedforwards
           new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
                                           // holonomic drive trains
-              new PIDConstants(5, 0.0, 0.0), // Translation PID constants
-              new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
+              new PIDConstants(0.1, 0.0, 0.01), // Translation PID constants
+              new PIDConstants(2, 0.0, 0.01) // Rotation PID constants
           ),
           config, // The robot configuration
           () -> {
@@ -254,9 +248,9 @@ public class Drivetrain extends SubsystemBase {
   }
 
   public Command getPathFindingCommand(Pose2d targetPose) {
-    PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 2, 3.0, maxRotateSpeed_radPs / 2,
+    PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 2, 3.0, maxRotateSpeed_radPs,
         4 * Math.PI); // The constraints for this path.
-    Command pathfinder = AutoBuilder.pathfindToPose(targetPose, constraints, 0.0);
+    Command pathfinder = AutoBuilder.pathfindToPose(targetPose, constraints, 0);
     return pathfinder;
   }
 
@@ -345,10 +339,10 @@ public class Drivetrain extends SubsystemBase {
   // Logs information to SmartDashboard
   public void updateSensors(XboxController driverController) {
     moduleStates = new SwerveModuleState[] {
-        module0.updateSensors(),
-        module1.updateSensors(),
-        module2.updateSensors(),
-        module3.updateSensors()
+        module0.updateSensors(driverController),
+        module1.updateSensors(driverController),
+        module2.updateSensors(driverController),
+        module3.updateSensors(driverController)
     };
 
     ChassisSpeeds currentSpeeds = kinematics.toChassisSpeeds(moduleStates);
@@ -416,7 +410,53 @@ public class Drivetrain extends SubsystemBase {
 
     SmartDashboard.putNumberArray("realModuleStates", loggingState);
 
-  }
+        // PID Tuning
+      double kp = Dashboard.freeTuningkP.get();
+      double ki = Dashboard.freeTuningkI.get();
+      double kd = Dashboard.freeTuningkD.get();
+      if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+        RobotConfig config;
+        try {
+
+          config = RobotConfig.fromGUISettings();
+
+          // Configure AutoBuilder last
+          AutoBuilder.configure(
+              this::getPose, // Robot pose supplier
+              this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
+              this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+              this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also
+                                        // optionally outputs individual module feedforwards
+              new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
+                                              // holonomic drive trains
+                  new PIDConstants(kp, ki, kd), // Translation PID constants
+                  new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
+              ),
+              config, // The robot configuration
+              () -> {
+                // Boolean supplier that controls when the path will be mirrored for the red
+                // alliance
+                // This will flip the path being followed to the red side of the field.
+                // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+
+                var alliance = DriverStation.getAlliance();
+                if (alliance.isPresent()) {
+                  return alliance.get() == DriverStation.Alliance.Red;
+                }
+                return false;
+              },
+              this // Reference to this subsystem to set requirements
+          );
+
+        } catch (Exception e) {
+          // Handle exception as needed
+          e.printStackTrace();
+        }
+      }
+          kp0 = kp;
+          ki0 = ki;
+          kd0 = kd;
+        }
 
   /**
    * gets the current pose from the swerve odometry.
@@ -613,7 +653,7 @@ public class Drivetrain extends SubsystemBase {
 
       double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(),
           lockedHeading_rad + (driverHeadingFudge0_rad));
-      Dashboard.pidTuningGoalActual.set(new double[] { lockedHeading_rad, pigeonAngle.getRadians() });
+      // Dashboard.pidTuningGoalActual.set(new double[] { lockedHeading_rad, pigeonAngle.getRadians() });
       return (Math.abs(assistedRotation) > 0.01) ? assistedRotation : 0.0;
     }
   }
@@ -720,6 +760,7 @@ public class Drivetrain extends SubsystemBase {
    * @param robotRelativeSpeeds chassis speeds to set desired to
    */
   public void driveRobotRelative(ChassisSpeeds robotRelativeSpeeds, DriveFeedforwards feedforwards) {
+    robotRelativeSpeeds = new ChassisSpeeds(robotRelativeSpeeds.vxMetersPerSecond, robotRelativeSpeeds.vyMetersPerSecond, -robotRelativeSpeeds.omegaRadiansPerSecond);
     moduleStateOutputs = kinematics
         .toSwerveModuleStates(ChassisSpeeds.discretize(robotRelativeSpeeds, 0.001 * Robot.loopTime_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
