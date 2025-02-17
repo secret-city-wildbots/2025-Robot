@@ -15,6 +15,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -377,9 +378,23 @@ public class Drivetrain extends SubsystemBase {
       odometry.resetRotation(getIMURotation());
     }
 
-    LimelightHelpers.SetRobotOrientation("", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+    LimelightHelpers.SetRobotOrientation("left", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+    LimelightHelpers.SetRobotOrientation("right", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
 
-    if (LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(""))) {
+    boolean leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("left"));
+    boolean rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("right"));
+
+    if (leftEstimateValid && rightEstimateValid) {
+      boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
+      Pose2d leftPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("left").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("left").pose;
+      Pose2d rightPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("right").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("right").pose;
+      Pose2d newPose = new Pose2d(
+        (leftPose.getX() + rightPose.getX()) / 2.0,
+        (leftPose.getY() + rightPose.getY()) / 2.0,
+        leftPose.getRotation()
+      );
       odometry.resetPosition(
           getIMURotation(),
           new SwerveModulePosition[] {
@@ -387,11 +402,32 @@ public class Drivetrain extends SubsystemBase {
               module1.getPosition(),
               module2.getPosition(),
               module3.getPosition()
-          },
-          (DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red))
-              ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose
-              : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
-    }
+          }, newPose);
+    } else if (leftEstimateValid) {
+      boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
+      Pose2d leftPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("left").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("left").pose;
+        odometry.resetPosition(
+          getIMURotation(),
+          new SwerveModulePosition[] {
+              module0.getPosition(),
+              module1.getPosition(),
+              module2.getPosition(),
+              module3.getPosition()
+          }, leftPose);
+      } else if (rightEstimateValid) {
+        boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
+        Pose2d rightPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("right").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("right").pose;
+          odometry.resetPosition(
+            getIMURotation(),
+            new SwerveModulePosition[] {
+                module0.getPosition(),
+                module1.getPosition(),
+                module2.getPosition(),
+                module3.getPosition()
+            }, rightPose);
+      }
 
     Dashboard.robotX.set(Units.metersToInches(odometry.getPoseMeters().getX()));
     Dashboard.robotY.set(Units.metersToInches(odometry.getPoseMeters().getY()));
@@ -409,54 +445,7 @@ public class Drivetrain extends SubsystemBase {
     };
 
     SmartDashboard.putNumberArray("realModuleStates", loggingState);
-
-        // PID Tuning
-      double kp = Dashboard.freeTuningkP.get();
-      double ki = Dashboard.freeTuningkI.get();
-      double kd = Dashboard.freeTuningkD.get();
-      if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-        RobotConfig config;
-        try {
-
-          config = RobotConfig.fromGUISettings();
-
-          // Configure AutoBuilder last
-          AutoBuilder.configure(
-              this::getPose, // Robot pose supplier
-              this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
-              this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-              this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also
-                                        // optionally outputs individual module feedforwards
-              new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
-                                              // holonomic drive trains
-                  new PIDConstants(kp, ki, kd), // Translation PID constants
-                  new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
-              ),
-              config, // The robot configuration
-              () -> {
-                // Boolean supplier that controls when the path will be mirrored for the red
-                // alliance
-                // This will flip the path being followed to the red side of the field.
-                // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
-
-                var alliance = DriverStation.getAlliance();
-                if (alliance.isPresent()) {
-                  return alliance.get() == DriverStation.Alliance.Red;
-                }
-                return false;
-              },
-              this // Reference to this subsystem to set requirements
-          );
-
-        } catch (Exception e) {
-          // Handle exception as needed
-          e.printStackTrace();
-        }
-      }
-          kp0 = kp;
-          ki0 = ki;
-          kd0 = kd;
-        }
+  }
 
   /**
    * gets the current pose from the swerve odometry.
