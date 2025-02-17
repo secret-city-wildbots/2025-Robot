@@ -10,11 +10,16 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.DrivetrainCommands;
 import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
+
+import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 
 public class Robot extends TimedRobot {
@@ -25,6 +30,9 @@ public class Robot extends TimedRobot {
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
+  private final CommandXboxController commanddriverController;
+  Command pathfinder;
+    
 
   @SuppressWarnings("unused")
   private final Dashboard dashboard = new Dashboard();
@@ -39,6 +47,10 @@ public class Robot extends TimedRobot {
   private final String codeVersion = "2025-Robot v1.1_dev";
   public static double robotLength_m;
   public static double robotWidth_m;
+  public static double robotLengthBumpers;
+  public static double robotWidthBumpers;
+  public static double fieldWidth_m = 8.05;
+  public static double fieldLength_m = 17.55;
   public static final String robotProfile = FileHelpers.readFile("/home/lvuser/calibrations/RobotProfile.txt");
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
       "Drive_3_(p)",
@@ -58,18 +70,13 @@ public class Robot extends TimedRobot {
    * This is called when the robot is initalized
    */
   public Robot() {
-    // Set up subsystems and major objects
-    drivetrain = new Drivetrain();
-    led = new LED();
-    driverController = new XboxController(0);
-    manipController = new XboxController(1);
-    compressor = new Compressor(2, PneumaticsModuleType.REVPH);
-
     // Set major constants using profiles
     switch (Robot.robotProfile) {
       case "2025_Robot":
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
+        robotLengthBumpers = Units.inchesToMeters(35);
+        robotWidthBumpers = Units.inchesToMeters(35);
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23);
@@ -79,6 +86,14 @@ public class Robot extends TimedRobot {
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
     }
+    
+     // Set up subsystems and major objects
+     drivetrain = new Drivetrain();
+     led = new LED();
+     driverController = new XboxController(0);
+     manipController = new XboxController(1);
+     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
+     commanddriverController = new CommandXboxController(0);
 
     // Send major constants to the Dashboard
     Dashboard.robotProfile.set(robotProfile);
@@ -87,7 +102,11 @@ public class Robot extends TimedRobot {
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
     Dashboard.legalActuatorNames.set(actuatorNames);
     Dashboard.legalDrivers.set(legalDrivers);
-
+    Dashboard.robotLengthBumpers.set(Units.metersToInches(robotLengthBumpers));
+    Dashboard.robotWidthBumpers.set(Units.metersToInches(robotWidthBumpers));
+    Dashboard.fieldWidth.set(Units.metersToInches(fieldWidth_m));
+    Dashboard.fieldLength.set(Units.metersToInches(fieldLength_m));
+    
     // Configure compressor
     compressor.enableAnalog(100, 120);
 
@@ -103,6 +122,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     getSensors();
+    FollowPathCommand.warmupCommand().schedule();
   }
 
   /**
@@ -165,8 +185,15 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
+    pathfinder = drivetrain.getPathFindingCommand(new Pose2d(6, 6, new Rotation2d()));
+    // if (driverController.getBButtonPressed()) {
+    //   pathfinder.schedule();
+    //   System.out.println(pathfinder);
+    // }
 
-    drivetrain.driveTeleop(driverController, false, loopTime_ms);
+
+    commanddriverController.b().onTrue(pathfinder);
+
 
     // Check for state updates based on manip inputs
     updateMasterState();
