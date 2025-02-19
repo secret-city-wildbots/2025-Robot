@@ -123,7 +123,7 @@ public class Drivetrain extends SubsystemBase {
     switch (Robot.robotProfile) {
       case "2025_Robot":
         nominalWheelDiameter_m = Units.inchesToMeters(3);
-        actualWheelDiameter_m = Units.inchesToMeters(3);
+        actualWheelDiameter_m = Units.inchesToMeters(2.876);
         maxGroundSpeed_mPs = Units.feetToMeters(18.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(9.2 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
@@ -141,7 +141,7 @@ public class Drivetrain extends SubsystemBase {
         break;
       case "COTS_Testbed":
         nominalWheelDiameter_m = Units.inchesToMeters(4);
-        actualWheelDiameter_m = Units.inchesToMeters(4);
+        actualWheelDiameter_m = Units.inchesToMeters(3.8);
         maxGroundSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
@@ -222,8 +222,8 @@ public class Drivetrain extends SubsystemBase {
                                     // optionally outputs individual module feedforwards
           new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
                                           // holonomic drive trains
-              new PIDConstants(0.1, 0.0, 0.01), // Translation PID constants
-              new PIDConstants(2, 0.0, 0.01) // Rotation PID constants
+              new PIDConstants(1.5, 0.0, 0.1), // Translation PID constants
+              new PIDConstants(3.0, 0.0, 0.0) // Rotation PID constants
           ),
           config, // The robot configuration
           () -> {
@@ -248,7 +248,7 @@ public class Drivetrain extends SubsystemBase {
   }
 
   public Command getPathFindingCommand(Pose2d targetPose) {
-    PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 2, 3.0, maxRotateSpeed_radPs,
+    PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 4, 3.0, maxRotateSpeed_radPs,
         4 * Math.PI); // The constraints for this path.
     Command pathfinder = AutoBuilder.pathfindToPose(targetPose, constraints, 0);
     return pathfinder;
@@ -418,35 +418,35 @@ public class Drivetrain extends SubsystemBase {
         RobotConfig config;
         try {
 
-          config = RobotConfig.fromGUISettings();
+          //config = RobotConfig.fromGUISettings();
 
-          // Configure AutoBuilder last
-          AutoBuilder.configure(
-              this::getPose, // Robot pose supplier
-              this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
-              this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-              this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also
-                                        // optionally outputs individual module feedforwards
-              new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
-                                              // holonomic drive trains
-                  new PIDConstants(kp, ki, kd), // Translation PID constants
-                  new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
-              ),
-              config, // The robot configuration
-              () -> {
-                // Boolean supplier that controls when the path will be mirrored for the red
-                // alliance
-                // This will flip the path being followed to the red side of the field.
-                // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+          // // Configure AutoBuilder last
+          // AutoBuilder.configure(
+          //     this::getPose, // Robot pose supplier
+          //     this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
+          //     this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+          //     this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also
+          //                               // optionally outputs individual module feedforwards
+          //     new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
+          //                                     // holonomic drive trains
+          //         new PIDConstants(kp, ki, kd), // Translation PID constants
+          //         new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
+          //     ),
+          //     config, // The robot configuration
+          //     () -> {
+          //       // Boolean supplier that controls when the path will be mirrored for the red
+          //       // alliance
+          //       // This will flip the path being followed to the red side of the field.
+          //       // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
 
-                var alliance = DriverStation.getAlliance();
-                if (alliance.isPresent()) {
-                  return alliance.get() == DriverStation.Alliance.Red;
-                }
-                return false;
-              },
-              this // Reference to this subsystem to set requirements
-          );
+          //       var alliance = DriverStation.getAlliance();
+          //       if (alliance.isPresent()) {
+          //         return alliance.get() == DriverStation.Alliance.Red;
+          //       }
+          //       return false;
+          //     },
+          //     this // Reference to this subsystem to set requirements
+          // );
 
         } catch (Exception e) {
           // Handle exception as needed

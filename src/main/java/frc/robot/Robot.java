@@ -185,14 +185,14 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    pathfinder = drivetrain.getPathFindingCommand(new Pose2d(6, 6, new Rotation2d()));
-    // if (driverController.getBButtonPressed()) {
-    //   pathfinder.schedule();
-    //   System.out.println(pathfinder);
-    // }
+    pathfinder = drivetrain.getPathFindingCommand(new Pose2d(Units.inchesToMeters(134), Units.inchesToMeters(50), new Rotation2d()));
+    if (driverController.getBButtonPressed()) {
+      pathfinder.schedule();
+      System.out.println(pathfinder);
+    }
 
 
-    commanddriverController.b().onTrue(pathfinder);
+    // commanddriverController.b().onTrue(pathfinder);
 
 
     // Check for state updates based on manip inputs
