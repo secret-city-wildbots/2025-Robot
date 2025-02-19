@@ -8,9 +8,9 @@ import frc.robot.Utility.ClassHelpers.Timer;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.ForwardLimitValue;
+// import com.ctre.phoenix6.signals.ForwardLimitValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.ctre.phoenix6.signals.ReverseLimitValue;
+// import com.ctre.phoenix6.signals.ReverseLimitValue;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -19,7 +19,7 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkClosedLoopController;
-import com.revrobotics.spark.SparkLimitSwitch;
+// import com.revrobotics.spark.SparkLimitSwitch;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -55,8 +55,8 @@ public class SwerveModule {
     private SparkMaxConfig azimuthSparkConfig;
     private RelativeEncoder azimuthEncoder;
     private SparkClosedLoopController azimuthPidController;
-    private SparkLimitSwitch azimuthForwardLimit;
-    private SparkLimitSwitch azimuthReverseLimit;
+    // private SparkLimitSwitch azimuthForwardLimit;
+    // private SparkLimitSwitch azimuthReverseLimit;
     public DoubleSolenoid shifter;
 
     public ShiftedStates shiftedState = ShiftedStates.LOW;
@@ -131,8 +131,8 @@ public class SwerveModule {
             this.azimuthEncoder = azimuthSpark.getEncoder();
             azimuthSparkActive = true;
             if (shiftingEnabled) {
-                this.azimuthForwardLimit = azimuthSpark.getForwardLimitSwitch();
-                this.azimuthReverseLimit = azimuthSpark.getReverseLimitSwitch();
+                // this.azimuthForwardLimit = azimuthSpark.getForwardLimitSwitch();
+                // this.azimuthReverseLimit = azimuthSpark.getReverseLimitSwitch();
             }
         } else {
             this.azimuthTalon.getConfigurator().apply(azimuthConfig);

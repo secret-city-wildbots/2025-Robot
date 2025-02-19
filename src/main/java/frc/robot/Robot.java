@@ -11,8 +11,10 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.Commands.ArmCommands;
 import frc.robot.Commands.DrivetrainCommands;
 import frc.robot.Subsystems.Drivetrain;
+import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -25,8 +27,10 @@ import com.pathplanner.lib.commands.PathPlannerAuto;
 public class Robot extends TimedRobot {
   // Subsystems and major objects
   private final Drivetrain drivetrain;
+  private final Arm arm;
   private final XboxController driverController;
   private final XboxController manipController;
+  private final CommandXboxController manipCommandController;
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
@@ -38,10 +42,15 @@ public class Robot extends TimedRobot {
   private final Dashboard dashboard = new Dashboard();
 
   public static enum MasterStates {
-    STOWED
+    STOW,
+    FEED,
+    SCOR,
+    CLMB
   }
 
-  public static MasterStates masterState = MasterStates.STOWED;
+  public static MasterStates masterState = MasterStates.STOW;
+  public static boolean scoreRight = false;
+  public static boolean scoreCoral = true;
 
   // Major constants
   private final String codeVersion = "2025-Robot v1.1_dev";
@@ -55,7 +64,7 @@ public class Robot extends TimedRobot {
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
       "Drive_3_(p)",
       "Azimuth_0_(p)", "Azimuth_1_(p)", "Azimuth_2_(p)", "Azimuth_3_(p)", "Swerve_0_Shifter_(b)",
-      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)", "Drivetrain_(p)" };
+      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)", "Drivetrain_(p)", "Wrist_(p)", "Pivot_(p)", "Extender_(p)", "Gripper_(p)"};
   public static final String[] legalDrivers = { "Devin", "Reed", "Driver 3", "Driver 4", "Driver 5", "Programmers",
       "Kidz" };
 
@@ -89,8 +98,10 @@ public class Robot extends TimedRobot {
     
      // Set up subsystems and major objects
      drivetrain = new Drivetrain();
+     arm = new Arm();
      led = new LED();
      driverController = new XboxController(0);
+     manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
      compressor = new Compressor(2, PneumaticsModuleType.REVPH);
      commanddriverController = new CommandXboxController(0);
@@ -134,6 +145,8 @@ public class Robot extends TimedRobot {
     getSensors();
 
     CommandScheduler.getInstance().run();
+
+    updateMasterState();
 
     boolean[] confirmedStates = new boolean[5];
     confirmedStates[masterState.ordinal()] = true;
@@ -211,6 +224,7 @@ public class Robot extends TimedRobot {
    */
   private void getSensors() {
     drivetrain.updateSensors(driverController);
+    arm.updateSensors(manipController);
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -229,12 +243,24 @@ public class Robot extends TimedRobot {
     /*
      * Change master states to match these manip inputs:
      * Left Bumper: STOW
-     * Right Bumper: AMP
-     * Right Trigger: SHOOTING
-     * Left Trigger & Start Button: CLIMBING
+     * Right Bumper: FEED
+     * Right Trigger: SCOR
+     * Up joysticks & Left Trigger: CLMB
      */
-    if (manipController.getLeftBumper()) {
-      masterState = MasterStates.STOWED;
+    if (manipController.getLeftBumperButtonPressed()) {
+      masterState = MasterStates.STOW;
+    } else if (manipController.getRightBumperButtonPressed()) {
+      masterState = MasterStates.FEED;
+    } else if (manipController.getRightTriggerAxis() > 0.7) {
+      masterState = MasterStates.SCOR;
+    } else if ((manipController.getRightY() > 0.7) && (manipController.getLeftY() > 0.7) && (manipController.getLeftTriggerAxis() > 0.7)) {
+      masterState = MasterStates.CLMB;
+    }
+
+    if (manipController.getRawButtonPressed(7)) {
+      scoreCoral = true;
+    } else if (manipController.getRawButtonPressed(8)) {
+      scoreCoral = false;
     }
   }
 
@@ -264,6 +290,7 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-
+    manipCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.score(arm));
+    manipCommandController.rightBumper().onTrue(ArmCommands.pickup(arm));
   }
 }
