@@ -1,7 +1,6 @@
 package frc.robot.Subsystems;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.PositionDutyCycle;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -10,11 +9,13 @@ import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.ClosedLoopConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot;
@@ -31,10 +32,12 @@ public class Arm extends SubsystemBase {
     private final double maxForwardWristAngle;
     private final double maxBackwardWristAngle;
 
+    private final double maxAcceptableAngleError_rad = 1;
+    private final double maxAcceptableExtensionError_m = Units.inchesToMeters(0.5);
+
     // Motors
     private final TalonFX pivot;
     private final TalonFX extender;
-    private final TalonFX gripper;
 
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
@@ -50,7 +53,6 @@ public class Arm extends SubsystemBase {
     private Rotation2d pivotOutput;
     private double extenderOutput_m;
     private Rotation2d wristOutput;
-    private double gripperOutput;
     private int scoreHeight = 1;
     private int pickupHeight = 1;
 
@@ -73,17 +75,12 @@ public class Arm extends SubsystemBase {
         extenderConfig.Slot0.kD = 0.0;
         extender.getConfigurator().apply(extenderConfig);
 
-        gripper = new TalonFX(17);
-        TalonFXConfiguration gripperConfig = new TalonFXConfiguration();
-        gripperConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        gripperConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        gripper.getConfigurator().apply(gripperConfig);
-
         wrist = new SparkMax(16, MotorType.kBrushless);
         wristEncoder = wrist.getAbsoluteEncoder();
         wristController = wrist.getClosedLoopController();
         wristConfig = new SparkMaxConfig();
         wristConfig.closedLoop.pid(0.0,0.0,0.0);
+        wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
             
 
@@ -148,8 +145,22 @@ public class Arm extends SubsystemBase {
         }
     }
 
+    public boolean hasArrived() {
+        boolean hasArrived = false;
+        if((Math.abs(pivotRotation.getRadians() - pivotOutput.getRadians())) < maxAcceptableAngleError_rad) {
+            if((Math.abs(extenderPosition_m - extenderOutput_m)) < maxAcceptableExtensionError_m) {
+                if ((Math.abs(wristRotation.getRadians() - wristOutput.getRadians())) < maxAcceptableAngleError_rad) {
+                    hasArrived = true;
+                }}}
+        return hasArrived;
+    }
+
     public void stow() {
         updateArm(0, 0, new Rotation2d());
+    }
+
+    public void autoStow(boolean interrupt) {
+        stow();
     }
 
     public void score() {
@@ -179,7 +190,7 @@ public class Arm extends SubsystemBase {
                 break;
 
             default:
-            new Exception("Score Height out of range :(").printStackTrace();
+            new Exception("Score type out of range :(").printStackTrace();
                 break;
         }
     }
@@ -221,7 +232,7 @@ public class Arm extends SubsystemBase {
                 break;
 
             default:
-                new Exception("Pickup Height out of range :(").printStackTrace();
+                new Exception("Pickup type out of range :(").printStackTrace();
                 break;
         }
     }
@@ -254,6 +265,5 @@ public class Arm extends SubsystemBase {
         ActuatorInterlocks.TAI_SparkMAX_Position(
             wrist, wristController, "Wrist_(p)", 
             wristOutput.getRotations() * wristRatio, 0.0);
-        ActuatorInterlocks.TAI_TalonFX_Power(gripper, "Gripper_(p)", gripperOutput);
     }
 }

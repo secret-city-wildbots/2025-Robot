@@ -11,13 +11,13 @@ public class ArmCommands {
      */
     public static Command score(
             Arm arm) {
-        return Commands.startEnd(
-                () -> arm.score(),
-                arm);
+        return Commands.runOnce(()->arm.score(), arm);
     }
 
     public static Command pickup(
         Arm arm) {
-            return new FunctionalCommand(() -> arm.pickup(), () -> {}, () -> arm.stow(), , arm);
+            return Commands.runOnce(()->arm.pickup(), arm);
         }
+
+    
 }
