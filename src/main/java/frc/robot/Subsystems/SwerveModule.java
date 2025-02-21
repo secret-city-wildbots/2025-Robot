@@ -8,9 +8,7 @@ import frc.robot.Utility.ClassHelpers.Timer;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
-// import com.ctre.phoenix6.signals.ForwardLimitValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-// import com.ctre.phoenix6.signals.ReverseLimitValue;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -19,7 +17,6 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkClosedLoopController;
-// import com.revrobotics.spark.SparkLimitSwitch;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -55,8 +52,6 @@ public class SwerveModule {
     private SparkMaxConfig azimuthSparkConfig;
     private RelativeEncoder azimuthEncoder;
     private SparkClosedLoopController azimuthPidController;
-    // private SparkLimitSwitch azimuthForwardLimit;
-    // private SparkLimitSwitch azimuthReverseLimit;
     public DoubleSolenoid shifter;
 
     public ShiftedStates shiftedState = ShiftedStates.LOW;
@@ -130,10 +125,6 @@ public class SwerveModule {
             azimuthSpark.configure(azimuthSparkConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
             this.azimuthEncoder = azimuthSpark.getEncoder();
             azimuthSparkActive = true;
-            if (shiftingEnabled) {
-                // this.azimuthForwardLimit = azimuthSpark.getForwardLimitSwitch();
-                // this.azimuthReverseLimit = azimuthSpark.getReverseLimitSwitch();
-            }
         } else {
             this.azimuthTalon.getConfigurator().apply(azimuthConfig);
             azimuthPIDConfigs.kP = 0.12;
@@ -283,6 +274,21 @@ public class SwerveModule {
         double normalAzimuthOutput_rot = Units.radiansToRotations(azimuthAngle_rad + minDistance) * azimuthRatio;
 
         if (azimuthSparkActive) {
+            /* PID tuning code START */
+            // double kp = Dashboard.freeTuningkP.get();
+            // double ki = Dashboard.freeTuningkI.get();
+            // double kd = Dashboard.freeTuningkD.get();
+            // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+            // azimuthSparkConfig.closedLoop.pid(kp, ki, kd);
+            // azimuthSpark.configure(azimuthSparkConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+            // kp0 = kp;
+            // ki0 = ki;
+            // kd0 = kd;
+            // }
+            // if (moduleNumber < 0.5) {
+            //     Dashboard.pidTuningGoalActual.set(new double[] {normalAzimuthOutput_rot, azimuthEncoder.getPosition()});
+            // }
+            /* PID tuning code END */
             ActuatorInterlocks.TAI_SparkMAX_Position(azimuthSpark, azimuthPidController,
                     "Azimuth_" + ((Integer) moduleNumber).toString() + "_(p)",
                     normalAzimuthOutput_rot, 0.0);
@@ -302,6 +308,9 @@ public class SwerveModule {
             // kp0 = kp;
             // ki0 = ki;
             // kd0 = kd;
+            // }
+            // if (moduleNumber < 0.5) {
+            //     Dashboard.pidTuningGoalActual.set(new double[] {normalAzimuthOutput_rot, azimuthTalon.getPosition().getValueAsDouble()});
             // }
             /* PID tuning code END */
 

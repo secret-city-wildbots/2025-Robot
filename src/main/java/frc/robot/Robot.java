@@ -18,8 +18,6 @@ import frc.robot.Subsystems.Gripper;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 
 import com.pathplanner.lib.commands.FollowPathCommand;
@@ -31,12 +29,12 @@ public class Robot extends TimedRobot {
   private final Arm arm;
   private final Gripper gripper;
   private final XboxController driverController;
+  private final CommandXboxController driverCommandController;
   private final XboxController manipController;
   private final CommandXboxController manipCommandController;
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
-  private final CommandXboxController driverCommandController;
   Command pathfinder;
     
 
@@ -56,11 +54,17 @@ public class Robot extends TimedRobot {
 
   // Major constants
   private final String codeVersion = "2025-Robot v1.1_dev";
+  /** The size of the robot in the X direction (distance between wheel centers) */
   public static double robotLength_m;
+  /** The size of the robot in the Y direction (distance between wheel centers) */
   public static double robotWidth_m;
-  public static double robotLengthBumpers;
-  public static double robotWidthBumpers;
+  /** The size of the robot in the X direction with bumpers */
+  public static double robotLengthBumpers_m;
+  /** The size of the robot in the Y direction with bumpers */
+  public static double robotWidthBumpers_m;
+  /** The size of the field in the Y direction */
   public static double fieldWidth_m = 8.05;
+  /** The size of the field in the X direction */
   public static double fieldLength_m = 17.55;
   public static final String robotProfile = FileHelpers.readFile("/home/lvuser/calibrations/RobotProfile.txt");
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
@@ -86,16 +90,20 @@ public class Robot extends TimedRobot {
       case "2025_Robot":
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
-        robotLengthBumpers = Units.inchesToMeters(35);
-        robotWidthBumpers = Units.inchesToMeters(35);
+        robotLengthBumpers_m = Units.inchesToMeters(35);
+        robotWidthBumpers_m = Units.inchesToMeters(35);
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
+        robotLengthBumpers_m = Units.inchesToMeters(35);
+        robotWidthBumpers_m = Units.inchesToMeters(35);
         break;
       default:
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
+        robotLengthBumpers_m = Units.inchesToMeters(35);
+        robotWidthBumpers_m = Units.inchesToMeters(35);
     }
     
      // Set up subsystems and major objects
@@ -104,10 +112,10 @@ public class Robot extends TimedRobot {
      gripper = new Gripper();
      led = new LED();
      driverController = new XboxController(0);
+     driverCommandController = new CommandXboxController(0);
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
      compressor = new Compressor(2, PneumaticsModuleType.REVPH);
-     driverCommandController = new CommandXboxController(0);
 
     // Send major constants to the Dashboard
     Dashboard.robotProfile.set(robotProfile);
@@ -116,8 +124,8 @@ public class Robot extends TimedRobot {
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
     Dashboard.legalActuatorNames.set(actuatorNames);
     Dashboard.legalDrivers.set(legalDrivers);
-    Dashboard.robotLengthBumpers.set(Units.metersToInches(robotLengthBumpers));
-    Dashboard.robotWidthBumpers.set(Units.metersToInches(robotWidthBumpers));
+    Dashboard.robotLengthBumpers.set(Units.metersToInches(robotLengthBumpers_m));
+    Dashboard.robotWidthBumpers.set(Units.metersToInches(robotWidthBumpers_m));
     Dashboard.fieldWidth.set(Units.metersToInches(fieldWidth_m));
     Dashboard.fieldLength.set(Units.metersToInches(fieldLength_m));
     
@@ -201,16 +209,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    pathfinder = drivetrain.getPathFindingCommand(new Pose2d(6, 6, new Rotation2d()));
-    // if (driverController.getBButtonPressed()) {
-    //   pathfinder.schedule();
-    //   System.out.println(pathfinder);
-    // }
-
-
-    driverCommandController.b().onTrue(pathfinder);
-
-
     // Check for state updates based on manip inputs
     updateMasterState();
 
@@ -280,6 +278,7 @@ public class Robot extends TimedRobot {
         DrivetrainCommands.drive(
             drivetrain,
             driverController,
+            manipController,
             isAutonomous(),
             loopTime_ms));
   }
@@ -301,5 +300,7 @@ public class Robot extends TimedRobot {
     driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(gripper, arm, driverController));
     driverCommandController.rightBumper().onTrue(ArmCommands.outtake(gripper, arm, driverController));
     driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(gripper, arm, driverController));
+    driverCommandController.b().onTrue(drivetrain.getFinalStrafeCorrectionCommand(drivetrain.determineGoalPose(), driverController));
+
   }
 }
