@@ -17,7 +17,9 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Robot;
 import frc.robot.Utility.ActuatorInterlocks;
 
@@ -57,6 +59,7 @@ public class Arm extends SubsystemBase {
     private double wristFFArbitraryScalar = 0.0;
     private int scoreHeight = 1;
     private int pickupHeight = 1;
+    private Trigger switchPieces = new Trigger(() -> Robot.scoreCoral);
 
     public Arm() {
         pivot = new TalonFX(14);
@@ -119,6 +122,8 @@ public class Arm extends SubsystemBase {
                 maxForwardWristAngle = Math.PI / 2.0;
                 maxBackwardWristAngle = -Math.PI / 2.0;
         }
+
+        switchPieces.onChange(Commands.runOnce(this::switchPiece, this));
     }
 
     public void updateSensors(XboxController manipController) {
@@ -150,6 +155,25 @@ public class Arm extends SubsystemBase {
 
         // wristFFArbitraryScalar = Dashboard.freeTuningVariable.get();
         wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
+    }
+
+    public void switchPiece() {
+        switch (scoreHeight) {
+            case 1, 2:
+                // Convert to low algae and processor
+                scoreHeight = 5;
+                pickupHeight = 2;
+                break;
+            case 3, 4:
+                // Convert to high algae and barge
+                scoreHeight = 6;
+                pickupHeight = 3;
+                break;
+            case 5, 6:
+                // Convert to low coral and feeder settings
+                scoreHeight = 2;
+                pickupHeight = 1;
+        }
     }
 
     public boolean hasArrived() {

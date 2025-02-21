@@ -517,7 +517,7 @@ public class Drivetrain extends SubsystemBase {
     return new double[] {assistedX, assistedY, assistedRotation};
   }
 
-  public boolean scoreRight = false;
+
   public boolean driveToPose = false;
 
   /**
@@ -540,12 +540,6 @@ public class Drivetrain extends SubsystemBase {
     double a = reefPoseX_m;
 
     double lockedHeading_rad;
-
-    if (manipController.getRightStickButton()) {
-      scoreRight = true;
-    } else if (manipController.getLeftStickButton()) {
-      scoreRight = false;
-    }
 
     switch (Robot.masterState) {
       case STOW:
@@ -589,8 +583,12 @@ public class Drivetrain extends SubsystemBase {
 
   public Pose2d determineGoalPose() {
     double reefApothem_m = Units.inchesToMeters(32.75);
-    double coralLocalYOffset_m = ((scoreRight) ? -1 : 1) * Units.inchesToMeters(12.94 / 2);
+    double coralLocalYOffset_m = ((Robot.scoreRight) ? -1 : 1) * Units.inchesToMeters(12.94 / 2);
     double robotSizeX_m = Robot.robotLengthBumpers_m / 2.0;
+
+    if (!Robot.scoreCoral) {
+      coralLocalYOffset_m = 0.0;
+    }
 
     Pose2d pose_m = odometry.getPoseMeters();
     double poseX_m = pose_m.getX();
