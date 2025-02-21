@@ -25,6 +25,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Dashboard;
 import frc.robot.LimelightHelpers;
@@ -84,17 +85,17 @@ public class Drivetrain extends SubsystemBase {
   public static boolean shiftingEnabled = false;
   @SuppressWarnings("unused")
   private boolean headingLocked = false;
-  private final PIDController strafePID = new PIDController(0, 0, 0);
+  public static final PIDController strafePID = new PIDController(0.4, 0, 0);
 
   // Variables stored for the assist heading function
   private StickyButton highSpeedSticky = new StickyButton();
   private boolean headingAssist = false;
   private Latch headingLatch = new Latch(0.0);
   private PIDController antiDriftPID = new PIDController(0.0007, 0, 0);
-  private PIDController headingAnglePID = new PIDController(0.4, 0.0, 0.01);
-  private double kp0 = 0.0;
-  private double ki0 = 0.0;
-  private double kd0 = 0.0;
+  private PIDController headingAnglePID = new PIDController(0.5, 0.0, 0.02);
+  // private double kp0 = 0.0;
+  // private double ki0 = 0.0;
+  // private double kd0 = 0.0;
   private boolean headingLatchSignal0 = false;
   private double driverHeadingFudge0_rad = 0.0;
   private StickyButton noRotationSticky = new StickyButton();
@@ -254,79 +255,6 @@ public class Drivetrain extends SubsystemBase {
     return pathfinder;
   }
 
-  // public Command followPathCommand(PathPlannerPath path) {
-  // RobotConfig config;
-  // try {
-  // config = RobotConfig.fromGUISettings();
-
-  // return new FollowPathCommand(
-  // path,
-  // this::getPose, // Robot pose supplier
-  // this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-  // this::driveRobotRelative, // Method that will drive the robot given ROBOT
-  // RELATIVE ChassisSpeeds, AND
-  // // feedforwards
-  // new PPHolonomicDriveController( // PPHolonomicController is the built in path
-  // following controller for
-  // // holonomic drive trains
-  // new PIDConstants(5.0, 0.0, 0.0), // Translation PID constants
-  // new PIDConstants(5.0, 0.0, 0.0) // Rotation PID constants
-  // ),
-  // config, // The robot configuration
-  // () -> {
-  // // Boolean supplier that controls when the path will be mirrored for the red
-  // // alliance
-  // // This will flip the path being followed to the red side of the field.
-  // // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
-
-  // var alliance = DriverStation.getAlliance();
-  // if (alliance.isPresent()) {
-  // return alliance.get() == DriverStation.Alliance.Red;
-  // }
-  // return false;
-  // },
-  // this // Reference to this subsystem to set requirements
-  // );
-  // } catch (Exception e) {
-  // DriverStation.reportError("Big oops: " + e.getMessage(), e.getStackTrace());
-  // return Commands.none();
-  // }
-  // }
-
-  // public PathPlannerPath createPath(Pose2d[] waypoints) {
-  // // Create a list of waypoints from poses. Each pose represents one waypoint.
-  // // The rotation component of the pose should be the direction of travel. Do
-  // not
-  // // use holonomic rotation.
-  // List<Waypoint> waypointList = PathPlannerPath.waypointsFromPoses(waypoints);
-
-  // PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 2,
-  // 3.0, maxRotateSpeed_radPs / 2,
-  // 4 * Math.PI); // The constraints for this path.
-  // // PathConstraints constraints = PathConstraints.unlimitedConstraints(12.0);
-  // //
-  // // You can also use unlimited constraints, only limited by motor torque and
-  // // nominal battery voltage
-
-  // // Create the path using the waypoints created above
-  // PathPlannerPath path = new PathPlannerPath(
-  // waypointList,
-  // constraints,
-  // null, // The ideal starting state, this is only relevant for pre-planned
-  // paths, so can
-  // // be null for on-the-fly paths.
-  // new GoalEndState(0.0, Rotation2d.fromDegrees(-90)) // Goal end state. You can
-  // set a holonomic rotation here. If
-  // // using a differential drivetrain, the rotation will have no
-  // // effect.
-  // );
-
-  // // Prevent the path from being flipped if the coordinates are already correct
-  // path.preventFlipping = true;
-
-  // return path;
-  // }
-
   private static Rotation2d imuOffset = new Rotation2d();
 
   public static Rotation2d getIMURotation() {
@@ -409,53 +337,6 @@ public class Drivetrain extends SubsystemBase {
     };
 
     SmartDashboard.putNumberArray("realModuleStates", loggingState);
-
-        // PID Tuning
-      double kp = Dashboard.freeTuningkP.get();
-      double ki = Dashboard.freeTuningkI.get();
-      double kd = Dashboard.freeTuningkD.get();
-      if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-        RobotConfig config;
-        try {
-
-          config = RobotConfig.fromGUISettings();
-
-          // Configure AutoBuilder last
-          AutoBuilder.configure(
-              this::getPose, // Robot pose supplier
-              this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
-              this::getCurrentSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-              this::driveRobotRelative, // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also
-                                        // optionally outputs individual module feedforwards
-              new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
-                                              // holonomic drive trains
-                  new PIDConstants(kp, ki, kd), // Translation PID constants
-                  new PIDConstants(5, 0.0, 0.0) // Rotation PID constants
-              ),
-              config, // The robot configuration
-              () -> {
-                // Boolean supplier that controls when the path will be mirrored for the red
-                // alliance
-                // This will flip the path being followed to the red side of the field.
-                // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
-
-                var alliance = DriverStation.getAlliance();
-                if (alliance.isPresent()) {
-                  return alliance.get() == DriverStation.Alliance.Red;
-                }
-                return false;
-              },
-              this // Reference to this subsystem to set requirements
-          );
-
-        } catch (Exception e) {
-          // Handle exception as needed
-          e.printStackTrace();
-        }
-      }
-          kp0 = kp;
-          ki0 = ki;
-          kd0 = kd;
         }
 
   /**
@@ -505,7 +386,7 @@ public class Drivetrain extends SubsystemBase {
    * @param isAutonomous
    * @param period_ms        How long it has been since the last loop cycle
    */
-  public void driveTeleop(XboxController driverController, boolean isAutonomous, double period_ms) {
+  public void driveTeleop(XboxController driverController, XboxController manipController, boolean isAutonomous, double period_ms) {
 
     // Adjust strafe outputs
     double[] strafeOutputs = SwerveUtils.swerveScaleStrafe(driverController, isAutonomous);
@@ -515,32 +396,102 @@ public class Drivetrain extends SubsystemBase {
         .clamp(Math.signum(strafeOutputs[1]) * yAccelerationLimiter.calculate(Math.abs(strafeOutputs[1])), -1, 1);
 
     double[] limitedStrafe = new double[] { limitedStrafeX, limitedStrafeY };
+    // PID Tuning
+      // double kp = Dashboard.freeTuningkP.get();
+      // double ki = Dashboard.freeTuningkI.get();
+      // double kd = Dashboard.freeTuningkD.get();
+      // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+      // strafePID.setP(kp);
+      // strafePID.setI(ki);
+      // strafePID.setD(kd);
+      // kp0 = kp;
+      // ki0 = ki;
+      // kd0 = kd;
+      // }
+      // double[] lockedPosition = new double[] { 1, 1 };
+      // Dashboard.pidTuningGoalActual.set(new double[] { lockedPosition[0], odometry.getPoseMeters().getX() });
+      // System.out.println(lockedPosition[1] + ", " + odometry.getPoseMeters().getY());
 
-    double[] assistedStrafe = SwerveUtils.assistStrafe(limitedStrafe, new double[] { Double.NaN, Double.NaN },
-        strafePID);
-    double[] orientedStrafe = assistedStrafe;
+    double lockedHeading = modeDrivebase(driverController, manipController);
 
     // Adjust rotate outputs
     double rotateOutput = SwerveUtils.swerveScaleRotate(driverController, isAutonomous);
-    double assistedRotation = swerveAssistHeading(modeDrivebase(driverController), rotateOutput, limitedStrafe,
+    double assistedRotation = swerveAssistHeading(lockedHeading, rotateOutput, limitedStrafe,
         isAutonomous, driverController);
 
     // Store information in modulestates
     moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
-            orientedStrafe[0] * maxGroundSpeed_mPs, orientedStrafe[1] * maxGroundSpeed_mPs,
+            limitedStrafe[0] * maxGroundSpeed_mPs, limitedStrafe[1] * maxGroundSpeed_mPs,
             -assistedRotation * maxRotateSpeed_radPs,
             getIMURotation()), 0.001 * period_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
   }
+
+
+  public Command getFinalStrafeCorrectionCommand(Pose2d finalPose, XboxController driverController) {
+    Command outputCommand = new FunctionalCommand(
+      null,
+      () -> {
+        double[] strafeCorrection = getStrafeCorrection(finalPose);
+        moduleStateOutputs = kinematics.toSwerveModuleStates(
+        ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
+            strafeCorrection[0] * maxGroundSpeed_mPs, strafeCorrection[1] * maxGroundSpeed_mPs,
+            -strafeCorrection[2] * maxRotateSpeed_radPs,
+            getIMURotation()), 0.001 * Robot.loopTime_ms));
+        SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
+        }, 
+      null, 
+      () -> (this.poseAccuracyGetter() || driverController.getXButton() || driverController.getYButton()), 
+      this);
+    return outputCommand;
+  }
+
+  Pose2d poseAccuracyFinal = new Pose2d();
+  double poseAccuracyAllowedError = 0.02; // Meters
+  double rotateAccuracyAllowedError = 1; // degree
+
+  public boolean poseAccuracyGetter() {
+    Pose2d pose = odometry.getPoseMeters();
+    boolean xValid = (Math.abs(pose.getX() - poseAccuracyFinal.getX())) < poseAccuracyAllowedError;
+    boolean yValid = (Math.abs(pose.getY() - poseAccuracyFinal.getY())) < poseAccuracyAllowedError;
+    boolean rotateValid = (Math.abs(pose.getRotation().getDegrees() - poseAccuracyFinal.getRotation().getDegrees())) < rotateAccuracyAllowedError;
+    return xValid && yValid && rotateValid;
+  }
+
+  public double[] getStrafeCorrection(Pose2d finalPose) {
+    Pose2d robotPose = odometry.getPoseMeters();
+    double robotXPose = robotPose.getX();
+    double robotYPose = robotPose.getY();
+    double finalXPose = finalPose.getX();
+    double finalYPose = finalPose.getY();
+    poseAccuracyFinal = finalPose;
+    PIDController strafePID = Drivetrain.strafePID;
+    // Assist in both x and y
+    double assistedX;
+    double assistedY;
+    double distance = Math.hypot(finalXPose - robotXPose, finalYPose - robotYPose);
+    double output = -strafePID.calculate(distance);
+    Rotation2d angle = new Rotation2d(finalXPose - robotXPose, finalYPose - robotYPose);
+    assistedX = Math.cos(angle.getRadians()) * output;
+    assistedY = Math.sin(angle.getRadians()) * output;
+
+    double assistedRotation = headingAnglePID.calculate(
+      getIMURotation().getRadians(), finalPose.getRotation().getRadians());
+    assistedRotation = (Math.abs(assistedRotation) > 0.01) ? assistedRotation : 0.0;
+    return new double[] {assistedX, assistedY, assistedRotation};
+  }
+
+  public boolean scoreRight = false;
+  public boolean driveToPose = false;
 
   /**
    * 
    * @param driverController
    * @return
    */
-  private double modeDrivebase(XboxController driverController) {
-    if ((masterState0 != Robot.masterState) || (driverController.getYButton())) {
+  private double modeDrivebase(XboxController driverController, XboxController manipController) {
+    if ((masterState0 != Robot.masterState) || (driverController.getYButton()) || (driverController.getBButton())) {
       headingLocked = true;
     } else if (driverController.getXButton()) {
       headingLocked = false;
@@ -553,31 +504,96 @@ public class Drivetrain extends SubsystemBase {
     double b = reefPoseY_m;
     double a = reefPoseX_m;
 
+    double lockedHeading_rad;
+
+    if (manipController.getRightStickButton()) {
+      scoreRight = true;
+    } else if (manipController.getLeftStickButton()) {
+      scoreRight = false;
+    }
+
     switch (Robot.masterState) {
       case STOWED:
         masterState0 = MasterStates.STOWED;
         if (headingLocked) {
-          if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
-            return 0.0;
-          } else if (poseX_m < a) {
-            if (poseY_m < b) {
-              return Units.degreesToRadians(60.0);
+          if (Math.hypot(reefPoseX_m-poseX_m, reefPoseY_m-poseY_m) < 2.75) {
+            if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+              // Bottom sextant
+              lockedHeading_rad = 0.0;
+            } else if (poseX_m < a) {
+              if (poseY_m < b) {
+                // Bottom right sextant
+                  lockedHeading_rad = Units.degreesToRadians(60.0);
+              } else {
+                // Bottom left sextant
+                  lockedHeading_rad = Units.degreesToRadians(-60.0);
+              }
+            } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+              // Top sextant
+              lockedHeading_rad = Units.degreesToRadians(180.0);
+            } else if (poseY_m < b) {
+              // Top right sextant
+              lockedHeading_rad = Units.degreesToRadians(120);
             } else {
-              return Units.degreesToRadians(-60.0);
+              // Top left sextant
+              lockedHeading_rad = Units.degreesToRadians(-120);
             }
-          } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
-            return Units.degreesToRadians(180.0);
-          } else if (poseY_m < b) {
-            return Units.degreesToRadians(120);
           } else {
-            return Units.degreesToRadians(-120);
+            lockedHeading_rad = Math.atan2(reefPoseY_m-poseY_m, reefPoseX_m-poseX_m);
           }
         } else {
-          return Double.NaN;
+        lockedHeading_rad = Double.NaN;
         }
+        break;
       default:
-        return Double.NaN;
+      lockedHeading_rad = Double.NaN;
     }
+    return lockedHeading_rad;
+
+  }
+
+  public Pose2d determineGoalPose() {
+    double reefApothem_m = Units.inchesToMeters(32.75);
+    double coralLocalYOffset_m = ((scoreRight) ? -1 : 1) * Units.inchesToMeters(12.94 / 2);
+    double robotSizeX_m = Robot.robotLengthBumpers_m / 2.0;
+
+    Pose2d pose_m = odometry.getPoseMeters();
+    double poseX_m = pose_m.getX();
+    double poseY_m = pose_m.getY();
+
+    double lockedX_m;
+    double lockedY_m;
+
+    double theta;
+    lockedX_m = reefPoseX_m;
+    lockedY_m = reefPoseY_m;
+    if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+      // Bottom sextant
+      theta = 180;
+    } else if (poseX_m < reefPoseX_m) {
+      if (poseY_m < reefPoseY_m) {
+        // Bottom right sextant
+        theta = 240;
+      } else {
+        // Bottom left sextant
+        theta = 120;
+      }
+    } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+      // Top sextant
+      theta = 0;
+    } else if (poseY_m < reefPoseY_m) {
+      // Top right sextant
+      theta = 300;
+    } else {
+      // Top left sextant
+      theta = 60;
+    }
+    theta = Units.degreesToRadians(theta);
+    lockedX_m += (reefApothem_m + robotSizeX_m)*Math.cos(theta); // X Position of the center of the face
+    lockedX_m += coralLocalYOffset_m * Math.sin(theta); // X Position of the scoring location
+    lockedY_m += (reefApothem_m + robotSizeX_m)*Math.sin(theta); // Y position of the center of the face
+    lockedY_m -= coralLocalYOffset_m * Math.cos(theta); // Y position of the scoring location
+    return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
   }
 
   /**
@@ -638,7 +654,7 @@ public class Drivetrain extends SubsystemBase {
       driverHeadingFudge0_rad = MathUtil.clamp(driverHeadingFudge0_rad, -1 * headingFudgeMax_rad, headingFudgeMax_rad);
       lockHeading0 = true;
 
-      // PID Tuning
+      // // PID Tuning
       // double kp = Dashboard.freeTuningkP.get();
       // double ki = Dashboard.freeTuningkI.get();
       // double kd = Dashboard.freeTuningkD.get();
@@ -653,7 +669,7 @@ public class Drivetrain extends SubsystemBase {
 
       double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(),
           lockedHeading_rad + (driverHeadingFudge0_rad));
-      // Dashboard.pidTuningGoalActual.set(new double[] { lockedHeading_rad, pigeonAngle.getRadians() });
+      // Dashboard.pidTuningGoalActual.set(new double[] { Units.radiansToDegrees(lockedHeading_rad), pigeonAngle.getDegrees() });
       return (Math.abs(assistedRotation) > 0.01) ? assistedRotation : 0.0;
     }
   }

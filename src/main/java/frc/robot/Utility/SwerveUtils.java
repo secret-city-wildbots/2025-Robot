@@ -5,6 +5,8 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Dashboard;
@@ -201,8 +203,36 @@ public class SwerveUtils {
    * This funciton is not complete and needs mto be made
    * but i cant be bothered to do it rn
    */
-  public static double[] assistStrafe(double[] joysticks, double[] lockedXY, PIDController strafePID) {
-    return joysticks;
+  public static double[] assistStrafe(double[] joysticks, double[] lockedXY, Pose2d robotPose) {
+    boolean xAssist = lockedXY[0] == lockedXY[0];
+    boolean yAssist = lockedXY[1] == lockedXY[1];
+    double robotXPose = robotPose.getX();
+    double robotYPose = robotPose.getY();
+    PIDController strafePID = Drivetrain.strafePID;
+    if (xAssist) {
+      if (yAssist) {
+        // Assist in both x and y
+        double assistedX;
+        double assistedY;
+        double distance = Math.hypot(lockedXY[0] - robotXPose, lockedXY[1] - robotYPose);
+        double output = -strafePID.calculate(distance);
+        Rotation2d angle = new Rotation2d(lockedXY[0] - robotXPose, lockedXY[1] - robotYPose);
+        assistedX = Math.cos(angle.getRadians()) * output;
+        assistedY = Math.sin(angle.getRadians()) * output;
+        return new double[] {assistedX, assistedY};
+      } else {
+        // Assist in only x
+        double assistedX = strafePID.calculate(lockedXY[0] - robotXPose);
+        return new double[]{assistedX, joysticks[1]};
+      }
+    } else if (yAssist) {
+      // Assist in only y
+      double assistedY = strafePID.calculate(lockedXY[1] - robotYPose);
+      return new double[]{joysticks[0], assistedY};
+    } else {
+      // No assist
+      return joysticks;
+    }
   }
 
   /**
