@@ -152,7 +152,7 @@ public class SwerveUtils {
     double rawY = -1 * driverController.getLeftX();
 
     // Disable joystick outputs while within deadband
-    double joystickSaturation = Math.sqrt((rawX * rawX) + (rawY * rawY));
+    double joystickSaturation = Math.hypot(rawX, rawY);
     if (joystickSaturation <= deadband) {
       return new double[] { 0.0, 0.0 };
     }

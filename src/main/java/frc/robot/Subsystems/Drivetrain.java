@@ -128,7 +128,7 @@ public class Drivetrain extends SubsystemBase {
         maxGroundSpeed_mPs = Units.feetToMeters(18.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(9.2 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
-            / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
+            / ((Math.hypot(Robot.robotLength_m, Robot.robotWidth_m)));
         driveHighGearRatio = 4.54;
         driveLowGearRatio = 10;
         azimuthGearRatio = 35.45;
@@ -146,7 +146,7 @@ public class Drivetrain extends SubsystemBase {
         maxGroundSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
-            / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
+            / ((Math.hypot(Robot.robotLength_m, Robot.robotWidth_m)));
         driveHighGearRatio = 0.0; // Bc no shifting
         driveLowGearRatio = 6.12;
         azimuthGearRatio = 150.0 / 7.0;
@@ -164,7 +164,7 @@ public class Drivetrain extends SubsystemBase {
         maxGroundSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(8.3 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
-            / ((Math.sqrt(Math.pow(Robot.robotLength_m / 2, 2) + Math.pow(Robot.robotWidth_m / 2, 2))));
+            / ((Math.hypot(Robot.robotLength_m, Robot.robotWidth_m)));
         driveHighGearRatio = 6.42;
         driveLowGearRatio = 14.12;
         azimuthGearRatio = 15.6;
@@ -305,9 +305,23 @@ public class Drivetrain extends SubsystemBase {
       odometry.resetRotation(getIMURotation());
     }
 
-    LimelightHelpers.SetRobotOrientation("", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+    LimelightHelpers.SetRobotOrientation("limelight-left", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+    LimelightHelpers.SetRobotOrientation("limelight-right", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
 
-    if (LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(""))) {
+    boolean leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
+    boolean rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
+
+    if (leftEstimateValid && rightEstimateValid) {
+      boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
+      Pose2d leftPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left").pose;
+      Pose2d rightPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right").pose;
+      Pose2d newPose = new Pose2d(
+        (leftPose.getX() + rightPose.getX()) / 2.0,
+        (leftPose.getY() + rightPose.getY()) / 2.0,
+        leftPose.getRotation()
+      );
       odometry.resetPosition(
           getIMURotation(),
           new SwerveModulePosition[] {
@@ -315,11 +329,32 @@ public class Drivetrain extends SubsystemBase {
               module1.getPosition(),
               module2.getPosition(),
               module3.getPosition()
-          },
-          (DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red))
-              ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose
-              : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
-    }
+          }, newPose);
+    } else if (leftEstimateValid) {
+      boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
+      Pose2d leftPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left").pose;
+        odometry.resetPosition(
+          getIMURotation(),
+          new SwerveModulePosition[] {
+              module0.getPosition(),
+              module1.getPosition(),
+              module2.getPosition(),
+              module3.getPosition()
+          }, leftPose);
+      } else if (rightEstimateValid) {
+        boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
+        Pose2d rightPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right").pose
+        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right").pose;
+          odometry.resetPosition(
+            getIMURotation(),
+            new SwerveModulePosition[] {
+                module0.getPosition(),
+                module1.getPosition(),
+                module2.getPosition(),
+                module3.getPosition()
+            }, rightPose);
+      }
 
     Dashboard.robotX.set(Units.metersToInches(odometry.getPoseMeters().getX()));
     Dashboard.robotY.set(Units.metersToInches(odometry.getPoseMeters().getY()));
@@ -337,7 +372,8 @@ public class Drivetrain extends SubsystemBase {
     };
 
     SmartDashboard.putNumberArray("realModuleStates", loggingState);
-        }
+  }
+
 
   /**
    * gets the current pose from the swerve odometry.
@@ -513,8 +549,8 @@ public class Drivetrain extends SubsystemBase {
     }
 
     switch (Robot.masterState) {
-      case STOWED:
-        masterState0 = MasterStates.STOWED;
+      case STOW:
+        masterState0 = MasterStates.STOW;
         if (headingLocked) {
           if (Math.hypot(reefPoseX_m-poseX_m, reefPoseY_m-poseY_m) < 2.75) {
             if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {

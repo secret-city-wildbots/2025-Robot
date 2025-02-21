@@ -82,7 +82,7 @@ public class LED {
                 // Normal
                 String rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
                 switch (Robot.masterState) {
-                    case STOWED:
+                    case STOW:
                         break;
                     default:
                         rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);

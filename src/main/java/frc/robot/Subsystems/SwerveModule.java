@@ -125,8 +125,6 @@ public class SwerveModule {
             azimuthSpark.configure(azimuthSparkConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
             this.azimuthEncoder = azimuthSpark.getEncoder();
             azimuthSparkActive = true;
-            if (shiftingEnabled) {
-            }
         } else {
             this.azimuthTalon.getConfigurator().apply(azimuthConfig);
             azimuthPIDConfigs.kP = 0.12;
