@@ -18,6 +18,8 @@ import frc.robot.Subsystems.Gripper;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 
 import com.pathplanner.lib.commands.FollowPathCommand;
@@ -216,7 +218,8 @@ public class Robot extends TimedRobot {
    * This is called every loop cycle while the robot is enabled in TeleOp mode
    */
   @Override
-  public void teleopPeriodic() {    
+  public void teleopPeriodic() {  
+    @SuppressWarnings("unused")
       double distance = tofSensor.getRange();
       // System.out.println("Distance: " + distance + " mm");
       tofSensor.identifySensor();
