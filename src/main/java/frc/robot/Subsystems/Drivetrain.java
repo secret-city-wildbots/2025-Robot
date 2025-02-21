@@ -124,7 +124,7 @@ public class Drivetrain extends SubsystemBase {
     switch (Robot.robotProfile) {
       case "2025_Robot":
         nominalWheelDiameter_m = Units.inchesToMeters(3);
-        actualWheelDiameter_m = Units.inchesToMeters(3);
+        actualWheelDiameter_m = Units.inchesToMeters(2.876);
         maxGroundSpeed_mPs = Units.feetToMeters(18.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(9.2 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
@@ -142,7 +142,7 @@ public class Drivetrain extends SubsystemBase {
         break;
       case "COTS_Testbed":
         nominalWheelDiameter_m = Units.inchesToMeters(4);
-        actualWheelDiameter_m = Units.inchesToMeters(4);
+        actualWheelDiameter_m = Units.inchesToMeters(3.8);
         maxGroundSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxLowGearSpeed_mPs = Units.feetToMeters(17.8 * (actualWheelDiameter_m / nominalWheelDiameter_m));
         maxRotateSpeed_radPs = maxGroundSpeed_mPs
@@ -223,8 +223,8 @@ public class Drivetrain extends SubsystemBase {
                                     // optionally outputs individual module feedforwards
           new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
                                           // holonomic drive trains
-              new PIDConstants(0.1, 0.0, 0.01), // Translation PID constants
-              new PIDConstants(2, 0.0, 0.01) // Rotation PID constants
+              new PIDConstants(7.0, 0.0, 0.005), // Translation PID constants
+              new PIDConstants(3.0, 0.0, 0.0) // Rotation PID constants
           ),
           config, // The robot configuration
           () -> {
@@ -249,7 +249,7 @@ public class Drivetrain extends SubsystemBase {
   }
 
   public Command getPathFindingCommand(Pose2d targetPose) {
-    PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 2, 3.0, maxRotateSpeed_radPs,
+    PathConstraints constraints = new PathConstraints(maxGroundSpeed_mPs / 4, 3.0, maxRotateSpeed_radPs,
         4 * Math.PI); // The constraints for this path.
     Command pathfinder = AutoBuilder.pathfindToPose(targetPose, constraints, 0);
     return pathfinder;
@@ -373,7 +373,6 @@ public class Drivetrain extends SubsystemBase {
 
     SmartDashboard.putNumberArray("realModuleStates", loggingState);
   }
-
 
   /**
    * gets the current pose from the swerve odometry.

@@ -23,6 +23,8 @@ import edu.wpi.first.math.util.Units;
 import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 
+import com.playingwithfusion.TimeOfFlight;
+
 public class Robot extends TimedRobot {
   // Subsystems and major objects
   private final Drivetrain drivetrain;
@@ -80,6 +82,10 @@ public class Robot extends TimedRobot {
 
   // Dashboard variables
   private double selectedDriver0 = 0;
+
+  // TOF Test
+  private TimeOfFlight tofSensor;
+  private final int tofSensorID = 7;
 
   /**
    * This is called when the robot is initalized
@@ -145,6 +151,8 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     getSensors();
     FollowPathCommand.warmupCommand().schedule();
+
+    tofSensor = new TimeOfFlight(tofSensorID);
   }
 
   /**
@@ -208,7 +216,20 @@ public class Robot extends TimedRobot {
    * This is called every loop cycle while the robot is enabled in TeleOp mode
    */
   @Override
-  public void teleopPeriodic() {
+  public void teleopPeriodic() {    
+      double distance = tofSensor.getRange();
+      // System.out.println("Distance: " + distance + " mm");
+      tofSensor.identifySensor();
+
+    pathfinder = drivetrain.getPathFindingCommand(new Pose2d(Units.inchesToMeters(134), Units.inchesToMeters(50), new Rotation2d()));
+    if (driverController.getBButtonPressed()) {
+      pathfinder.schedule();
+      System.out.println(pathfinder);
+    }
+
+
+    // commanddriverController.b().onTrue(pathfinder);
+
     // Check for state updates based on manip inputs
     updateMasterState();
 
