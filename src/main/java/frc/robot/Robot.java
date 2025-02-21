@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.ArmCommands;
 import frc.robot.Commands.DrivetrainCommands;
 import frc.robot.Subsystems.Drivetrain;
+import frc.robot.Subsystems.Gripper;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
@@ -28,13 +29,14 @@ public class Robot extends TimedRobot {
   // Subsystems and major objects
   private final Drivetrain drivetrain;
   private final Arm arm;
+  private final Gripper gripper;
   private final XboxController driverController;
   private final XboxController manipController;
   private final CommandXboxController manipCommandController;
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
-  private final CommandXboxController commanddriverController;
+  private final CommandXboxController driverCommandController;
   Command pathfinder;
     
 
@@ -99,12 +101,13 @@ public class Robot extends TimedRobot {
      // Set up subsystems and major objects
      drivetrain = new Drivetrain();
      arm = new Arm();
+     gripper = new Gripper();
      led = new LED();
      driverController = new XboxController(0);
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
      compressor = new Compressor(2, PneumaticsModuleType.REVPH);
-     commanddriverController = new CommandXboxController(0);
+     driverCommandController = new CommandXboxController(0);
 
     // Send major constants to the Dashboard
     Dashboard.robotProfile.set(robotProfile);
@@ -205,7 +208,7 @@ public class Robot extends TimedRobot {
     // }
 
 
-    commanddriverController.b().onTrue(pathfinder);
+    driverCommandController.b().onTrue(pathfinder);
 
 
     // Check for state updates based on manip inputs
@@ -225,6 +228,7 @@ public class Robot extends TimedRobot {
   private void getSensors() {
     drivetrain.updateSensors(driverController);
     arm.updateSensors(manipController);
+    gripper.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -234,6 +238,8 @@ public class Robot extends TimedRobot {
   private void updateOutputs() {
     drivetrain.updateOutputs(isAutonomous(), driverController);
     led.updateOutputs();
+    arm.updateOutputs();
+    gripper.updateOutputs();
   }
 
   /**
@@ -292,5 +298,8 @@ public class Robot extends TimedRobot {
   private void configureButtonBindings() {
     manipCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.score(arm));
     manipCommandController.rightBumper().onTrue(ArmCommands.pickup(arm));
+    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(gripper, arm, driverController));
+    driverCommandController.rightBumper().onTrue(ArmCommands.outtake(gripper, arm, driverController));
+    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(gripper, arm, driverController));
   }
 }

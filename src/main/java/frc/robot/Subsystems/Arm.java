@@ -53,6 +53,8 @@ public class Arm extends SubsystemBase {
     private Rotation2d pivotOutput;
     private double extenderOutput_m;
     private Rotation2d wristOutput;
+    private double wristFF = 0.0;
+    private double wristFFArbitraryScalar = 0.0;
     private int scoreHeight = 1;
     private int pickupHeight = 1;
 
@@ -79,7 +81,9 @@ public class Arm extends SubsystemBase {
         wristEncoder = wrist.getAbsoluteEncoder();
         wristController = wrist.getClosedLoopController();
         wristConfig = new SparkMaxConfig();
-        wristConfig.closedLoop.pid(0.0,0.0,0.0);
+        wristConfig.closedLoop.pid(0.5,0.0,0.0);
+        wristConfig.closedLoop.maxOutput(0.2);
+        wristConfig.closedLoop.minOutput(-0.2);
         wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
             
@@ -143,6 +147,9 @@ public class Arm extends SubsystemBase {
                 scoreHeight = 5; // Processor
             }
         }
+
+        // wristFFArbitraryScalar = Dashboard.freeTuningVariable.get();
+        wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
     }
 
     public boolean hasArrived() {
@@ -159,7 +166,7 @@ public class Arm extends SubsystemBase {
         updateArm(0, 0, new Rotation2d());
     }
 
-    public void autoStow(boolean interrupt) {
+    public void autoStow() {
         stow();
     }
 
@@ -264,6 +271,6 @@ public class Arm extends SubsystemBase {
             extenderOutput_m * extenderRatio, 0.0);
         ActuatorInterlocks.TAI_SparkMAX_Position(
             wrist, wristController, "Wrist_(p)", 
-            wristOutput.getRotations() * wristRatio, 0.0);
+            wristOutput.getRotations() * wristRatio, wristFF);
     }
 }
