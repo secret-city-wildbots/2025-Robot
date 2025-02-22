@@ -308,9 +308,7 @@ public class Robot extends TimedRobot {
         DrivetrainCommands.drive(
             drivetrain,
             driverController,
-            manipController,
-            isAutonomous(),
-            loopTime_ms));
+            manipController));
   }
 
   /**

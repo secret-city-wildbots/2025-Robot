@@ -15,16 +15,12 @@ public class DrivetrainCommands {
     public static Command drive(
             Drivetrain driveSystem,
             XboxController driveController,
-            XboxController manipController,
-            boolean isAutonomous,
-            double period_ms) {
+            XboxController manipController) {
         return Commands.run(
                 () -> {
                     driveSystem.driveTeleop(
                             driveController,
-                            manipController,
-                            isAutonomous,
-                            period_ms);
+                            manipController);
                 },
                 driveSystem);
     }

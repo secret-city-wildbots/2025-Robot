@@ -421,8 +421,8 @@ public class Drivetrain extends SubsystemBase {
    * @param isAutonomous
    * @param period_ms        How long it has been since the last loop cycle
    */
-  public void driveTeleop(XboxController driverController, XboxController manipController, boolean isAutonomous, double period_ms) {
-
+  public void driveTeleop(XboxController driverController, XboxController manipController) {
+    boolean isAutonomous = DriverStation.isAutonomous();
     // Adjust strafe outputs
     double[] strafeOutputs = SwerveUtils.swerveScaleStrafe(driverController, isAutonomous);
     double limitedStrafeX = Control
@@ -459,7 +459,7 @@ public class Drivetrain extends SubsystemBase {
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
             limitedStrafe[0] * maxGroundSpeed_mPs, limitedStrafe[1] * maxGroundSpeed_mPs,
             -assistedRotation * maxRotateSpeed_radPs,
-            getIMURotation()), 0.001 * period_ms));
+            getIMURotation()), 0.001 * Robot.loopTime_ms));
     SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
   }
 

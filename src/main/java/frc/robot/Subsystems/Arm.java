@@ -94,31 +94,37 @@ public class Arm extends SubsystemBase {
         switch (Robot.robotProfile) {
             case "2025_Robot":
                 pivotRatio = 1.0;
-                extenderRatio = 1.0;
-                wristRatio = 1.0;
-                maxExtensionDistance_m = 1.0;
                 maxForwardPivotAngle = Math.PI / 2.0;
                 maxBackwardPivotAngle = -Math.PI / 2.0;
+
+                extenderRatio = 1.0;
+                maxExtensionDistance_m = 1.0;
+
+                wristRatio = 1.0;
                 maxForwardWristAngle = Math.PI / 2.0;
                 maxBackwardWristAngle = -Math.PI / 2.0;
                 break;
             case "COTS_Testbed":
                 pivotRatio = 1.0;
-                extenderRatio = 1.0;
-                wristRatio = 1.0;
-                maxExtensionDistance_m = 1.0;
                 maxForwardPivotAngle = Math.PI / 2.0;
                 maxBackwardPivotAngle = -Math.PI / 2.0;
+
+                extenderRatio = 1.0;
+                maxExtensionDistance_m = 1.0;
+
+                wristRatio = 1.0;
                 maxForwardWristAngle = Math.PI / 2.0;
                 maxBackwardWristAngle = -Math.PI / 2.0;
                 break;
             default:
                 pivotRatio = 1.0;
-                extenderRatio = 1.0;
-                wristRatio = 1.0;
-                maxExtensionDistance_m = 1.0;
                 maxForwardPivotAngle = Math.PI / 2.0;
                 maxBackwardPivotAngle = -Math.PI / 2.0;
+
+                extenderRatio = 1.0;
+                maxExtensionDistance_m = 1.0;
+
+                wristRatio = 1.0;
                 maxForwardWristAngle = Math.PI / 2.0;
                 maxBackwardWristAngle = -Math.PI / 2.0;
         }
@@ -128,8 +134,13 @@ public class Arm extends SubsystemBase {
 
     public void updateSensors(XboxController manipController) {
         pivotRotation = Rotation2d.fromRotations(pivot.getRotorPosition().getValueAsDouble() / pivotRatio);
+        
         extenderPosition_m = extender.getPosition().getValueAsDouble() / extenderRatio;
+
         wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
+        // wristFFArbitraryScalar = Dashboard.freeTuningVariable.get();
+        wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
+
         if (Robot.scoreCoral) {
             pickupHeight = 1; // Feeder  
             if (manipController.getAButtonPressed()) {
@@ -152,9 +163,6 @@ public class Arm extends SubsystemBase {
                 scoreHeight = 5; // Processor
             }
         }
-
-        // wristFFArbitraryScalar = Dashboard.freeTuningVariable.get();
-        wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
     }
 
     public void switchPiece() {
@@ -280,9 +288,11 @@ public class Arm extends SubsystemBase {
 
     private void updateArm(double forwardDistance_m, double upwardDistance_m, Rotation2d wristAngle) {
         Rotation2d rotation = new Rotation2d(upwardDistance_m, forwardDistance_m);
+        pivotOutput = new Rotation2d(MathUtil.clamp(rotation.getRadians(), maxBackwardPivotAngle, maxForwardPivotAngle));
+        
         extenderOutput_m = MathUtil.clamp(Math.hypot(forwardDistance_m, upwardDistance_m), 0.0,
                 maxExtensionDistance_m);
-        pivotOutput = new Rotation2d(MathUtil.clamp(rotation.getRadians(), maxBackwardPivotAngle, maxForwardPivotAngle));
+        
         wristOutput = new Rotation2d(MathUtil.clamp(wristAngle.getRadians() - rotation.getRadians(), maxBackwardWristAngle, maxForwardWristAngle));
     }
 
@@ -290,9 +300,11 @@ public class Arm extends SubsystemBase {
         ActuatorInterlocks.TAI_TalonFX_Position(
             pivot, "Pivot_(p)", 
             pivotOutput.getRotations() * pivotRatio, 0.0);
+        
         ActuatorInterlocks.TAI_TalonFX_Position(
             extender, "Extender_(p)", 
             extenderOutput_m * extenderRatio, 0.0);
+        
         ActuatorInterlocks.TAI_SparkMAX_Position(
             wrist, wristController, "Wrist_(p)", 
             wristOutput.getRotations() * wristRatio, wristFF);
