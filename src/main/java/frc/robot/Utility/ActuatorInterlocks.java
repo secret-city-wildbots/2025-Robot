@@ -3,7 +3,6 @@ package frc.robot.Utility;
 import com.ctre.phoenix6.controls.PositionDutyCycle;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.revrobotics.spark.ClosedLoopSlot;
-import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkBase.ControlType;
 
@@ -48,7 +47,7 @@ public class ActuatorInterlocks {
      * @param normalOutput The output between -1 and 1 that would go to the motor
      *                     while not in testing mode
      */
-    public static void TAI_TalonFX_Power(TalonFX motor, String actuatorName, double normalOutput) {
+    public static void testActuatorInterlocks(TalonFX motor, String actuatorName, double normalOutput) {
         // Get Dashboard testing values
         testingActuator = Dashboard.testActuatorName.get();
         testingPeriod = Dashboard.testActuatorPeriod.get();
@@ -101,7 +100,7 @@ public class ActuatorInterlocks {
      * @param normalFF     The output for a feed forward (constant added power) that
      *                     would go to the motor while not in testing mode
      */
-    public static void TAI_TalonFX_Position(TalonFX motor, String actuatorName, double normalOutput, double normalFF) {
+    public static void testActuatorInterlocks(TalonFX motor, String actuatorName, double normalOutput, double normalFF) {
         // Get Dashboard testing values
         testingActuator = Dashboard.testActuatorName.get();
         testingPeriod = Dashboard.testActuatorPeriod.get();
@@ -153,7 +152,7 @@ public class ActuatorInterlocks {
      * @param normalOutput The output between -1 and 1 that would go to the motor
      *                     while not in testing mode
      */
-    public static void TAI_SparkMAX_Power(SparkMax motor, String actuatorName, double normalOutput) {
+    public static void testActuatorInterlocks(SparkMax motor, String actuatorName, double normalOutput) {
         // Get Dashboard testing values
         testingActuator = Dashboard.testActuatorName.get();
         testingPeriod = Dashboard.testActuatorPeriod.get();
@@ -204,7 +203,7 @@ public class ActuatorInterlocks {
      * @param normalOutput The output in rotations that would go to the motor while
      *                     not in testing mode
      */
-    public static void TAI_SparkMAX_Position(SparkMax motor, SparkClosedLoopController pidController, String actuatorName,
+    public static void testActuatorInterlocks(SparkMax motor, String actuatorName,
             double normalOutput, double normalFF) {
         // Get Dashboard testing values
         testingActuator = Dashboard.testActuatorName.get();
@@ -214,7 +213,7 @@ public class ActuatorInterlocks {
         // If nothing is being tested, return the normal output. Otherwise, uses
         // dashboard amplitude as double output or periodic sine output
         if (testingActuator.equals("No_Test")) {
-            pidController.setReference(normalOutput, ControlType.kPosition, ClosedLoopSlot.kSlot0, normalFF);
+            motor.getClosedLoopController().setReference(normalOutput, ControlType.kPosition, ClosedLoopSlot.kSlot0, normalFF);
         } else if (testingActuator.equals(actuatorName)) {
             if (testingPeriod < 0.001) {
                 motor.set(testingValue);
@@ -252,7 +251,7 @@ public class ActuatorInterlocks {
      * @param normalOutput The output (true or false) that would go to the solenoid
      *                     while not in testing mode
      */
-    public static void TAI_Solenoids(DoubleSolenoid solenoid, String actuatorName, boolean normalOutput) {
+    public static void testActuatorInterlocks(DoubleSolenoid solenoid, String actuatorName, boolean normalOutput) {
         // Get dashboard test values
         testingActuator = Dashboard.testActuatorName.get();
         testingValue = Dashboard.testActuatorValue.get();

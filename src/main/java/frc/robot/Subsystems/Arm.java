@@ -7,7 +7,6 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.revrobotics.spark.SparkAbsoluteEncoder;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
-import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.ClosedLoopConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -43,7 +42,6 @@ public class Arm extends SubsystemBase {
 
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
-    private final SparkClosedLoopController wristController;
     private final SparkMaxConfig wristConfig;
 
     // Sensor values
@@ -82,7 +80,6 @@ public class Arm extends SubsystemBase {
 
         wrist = new SparkMax(16, MotorType.kBrushless);
         wristEncoder = wrist.getAbsoluteEncoder();
-        wristController = wrist.getClosedLoopController();
         wristConfig = new SparkMaxConfig();
         wristConfig.closedLoop.pid(0.5,0.0,0.0);
         wristConfig.closedLoop.maxOutput(0.2);
@@ -297,16 +294,16 @@ public class Arm extends SubsystemBase {
     }
 
     public void updateOutputs() {
-        ActuatorInterlocks.TAI_TalonFX_Position(
+        ActuatorInterlocks.testActuatorInterlocks(
             pivot, "Pivot_(p)", 
             pivotOutput.getRotations() * pivotRatio, 0.0);
         
-        ActuatorInterlocks.TAI_TalonFX_Position(
+        ActuatorInterlocks.testActuatorInterlocks(
             extender, "Extender_(p)", 
             extenderOutput_m * extenderRatio, 0.0);
-        
-        ActuatorInterlocks.TAI_SparkMAX_Position(
-            wrist, wristController, "Wrist_(p)", 
+            
+        ActuatorInterlocks.testActuatorInterlocks(
+            wrist, "Wrist_(p)", 
             wristOutput.getRotations() * wristRatio, wristFF);
     }
 }

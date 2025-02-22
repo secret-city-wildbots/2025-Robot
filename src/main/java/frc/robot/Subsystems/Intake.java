@@ -68,6 +68,6 @@ public class Intake extends SubsystemBase {
     }
 
     public void updateOutputs() {
-        ActuatorInterlocks.TAI_TalonFX_Power(intake, "Intake_(p)", intakeOutput);
+        ActuatorInterlocks.testActuatorInterlocks(intake, "Intake_(p)", intakeOutput);
     }
 }
