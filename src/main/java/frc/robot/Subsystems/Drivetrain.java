@@ -265,19 +265,19 @@ public class Drivetrain extends SubsystemBase {
   // Update all sensors on swerve modules including shifter sensors
   // Each module returns a ModuleState with current speed and position
   // Logs information to SmartDashboard
-  public void updateSensors(XboxController driverController) {
+  public void updateSensors() {
     moduleStates = new SwerveModuleState[] {
-        module0.updateSensors(driverController),
-        module1.updateSensors(driverController),
-        module2.updateSensors(driverController),
-        module3.updateSensors(driverController)
+        module0.updateSensors(Robot.driverController),
+        module1.updateSensors(Robot.driverController),
+        module2.updateSensors(Robot.driverController),
+        module3.updateSensors(Robot.driverController)
     };
 
     ChassisSpeeds currentSpeeds = kinematics.toChassisSpeeds(moduleStates);
     currentDriveSpeed_mPs = Math
         .sqrt(Math.pow(currentSpeeds.vxMetersPerSecond, 2) + Math.pow(currentSpeeds.vyMetersPerSecond, 2));
 
-    if (driverController.getPOV() > 225 || driverController.getPOV() < 135) {
+    if (Robot.driverController.getPOV() > 225 || Robot.driverController.getPOV() < 135) {
       resetIMUTimer.reset();
       resetIMU0 = false;
       odometry.update(
@@ -417,14 +417,13 @@ public class Drivetrain extends SubsystemBase {
    * assisted and locked headings, and driving orientation
    * and stores them in the modulestates[] object
    * 
-   * @param driverController
    * @param isAutonomous
    * @param period_ms        How long it has been since the last loop cycle
    */
-  public void driveTeleop(XboxController driverController, XboxController manipController) {
+  public void driveTeleop(XboxController manipController) {
     boolean isAutonomous = DriverStation.isAutonomous();
     // Adjust strafe outputs
-    double[] strafeOutputs = SwerveUtils.swerveScaleStrafe(driverController, isAutonomous);
+    double[] strafeOutputs = SwerveUtils.swerveScaleStrafe(isAutonomous);
     double limitedStrafeX = Control
         .clamp(Math.signum(strafeOutputs[0]) * xAccelerationLimiter.calculate(Math.abs(strafeOutputs[0])), -1, 1);
     double limitedStrafeY = Control
@@ -447,12 +446,12 @@ public class Drivetrain extends SubsystemBase {
       // Dashboard.pidTuningGoalActual.set(new double[] { lockedPosition[0], odometry.getPoseMeters().getX() });
       // System.out.println(lockedPosition[1] + ", " + odometry.getPoseMeters().getY());
 
-    double lockedHeading = modeDrivebase(driverController, manipController);
+    double lockedHeading = modeDrivebase(manipController);
 
     // Adjust rotate outputs
-    double rotateOutput = SwerveUtils.swerveScaleRotate(driverController, isAutonomous);
+    double rotateOutput = SwerveUtils.swerveScaleRotate(isAutonomous);
     double assistedRotation = swerveAssistHeading(lockedHeading, rotateOutput, limitedStrafe,
-        isAutonomous, driverController);
+        isAutonomous);
 
     // Store information in modulestates
     moduleStateOutputs = kinematics.toSwerveModuleStates(
@@ -464,7 +463,7 @@ public class Drivetrain extends SubsystemBase {
   }
 
 
-  public Command getFinalStrafeCorrectionCommand(Pose2d finalPose, XboxController driverController) {
+  public Command getFinalStrafeCorrectionCommand(Pose2d finalPose) {
     Command outputCommand = new FunctionalCommand(
       null,
       () -> {
@@ -477,7 +476,7 @@ public class Drivetrain extends SubsystemBase {
         SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
         }, 
       null, 
-      () -> (this.poseAccuracyGetter() || driverController.getXButton() || driverController.getYButton()), 
+      () -> (this.poseAccuracyGetter() || Robot.driverController.getXButton() || Robot.driverController.getYButton()), 
       this);
     return outputCommand;
   }
@@ -522,13 +521,12 @@ public class Drivetrain extends SubsystemBase {
 
   /**
    * 
-   * @param driverController
    * @return
    */
-  private double modeDrivebase(XboxController driverController, XboxController manipController) {
-    if ((masterState0 != Robot.masterState) || (driverController.getYButton()) || (driverController.getBButton())) {
+  private double modeDrivebase(XboxController manipController) {
+    if ((masterState0 != Robot.masterState) || (Robot.driverController.getYButton()) || (Robot.driverController.getBButton())) {
       headingLocked = true;
-    } else if (driverController.getXButton()) {
+    } else if (Robot.driverController.getXButton()) {
       headingLocked = false;
     }
 
@@ -636,11 +634,10 @@ public class Drivetrain extends SubsystemBase {
    * @param joystickRotation
    * @param limitedStrafe
    * @param isAutonomous
-   * @param driverController
    * @return Locked or assisted heading output
    */
   private double swerveAssistHeading(double lockedHeading_rad, double joystickRotation, double[] limitedStrafe,
-      boolean isAutonomous, XboxController driverController) {
+      boolean isAutonomous) {
     Rotation2d pigeonAngle = getIMURotation();
     if (lockedHeading_rad != lockedHeading_rad) {
       lockHeading0 = false;
@@ -675,7 +672,7 @@ public class Drivetrain extends SubsystemBase {
       headingAssist = true;
       String currentProfile = Robot.legalDrivers[(int) Dashboard.selectedDriver.get(0.0)];
       double driverHeadingFudge_rad;
-      if (driverController.getBButton() || driverController.getYButton() || lockHeading0 == false) {
+      if (Robot.driverController.getBButton() || Robot.driverController.getYButton() || lockHeading0 == false) {
         driverHeadingFudge_rad = 0.0;
         driverHeadingFudge0_rad = 0.0;
       } else {
@@ -734,9 +731,9 @@ public class Drivetrain extends SubsystemBase {
    * 
    * @param isAutonomous
    */
-  public void updateOutputs(boolean isAutonomous, XboxController driverController) {
+  public void updateOutputs(boolean isAutonomous) {
     boolean[] faults = getFaults();
-    boolean fLow = driverController.getLeftStickButton() && !(faults[0] || faults[1]);
+    boolean fLow = Robot.driverController.getLeftStickButton() && !(faults[0] || faults[1]);
     boolean homeWheels = Dashboard.homeWheels.get();
 
     moduleStateOutputs[0] = new SwerveModuleState(

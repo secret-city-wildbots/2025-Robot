@@ -1,7 +1,7 @@
 package frc.robot.Commands;
 
-import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.*;
+import frc.robot.Robot;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Subsystems.Intake;
 
@@ -28,6 +28,15 @@ public class ArmCommands {
             return Commands.runOnce(()->arm.pickup(), arm);
         }
 
+    public static Command climb(
+        Arm arm) {
+            return Commands.sequence(
+                Commands.runOnce(arm::climbInit, arm),
+                Commands.waitUntil(() -> Robot.driverController.getAButtonPressed()),
+                Commands.runOnce(arm::climbLift, arm)
+            );
+        }
+
     /**
      * Commands the intake to pull constantly to hold pieces
      * @param intake
@@ -43,7 +52,7 @@ public class ArmCommands {
      * @param intake
      * @return
      */
-    private static Command stop(
+    public static Command stop(
             Intake intake) {
         return Commands.runOnce(intake::stop, intake);
     }
@@ -54,26 +63,23 @@ public class ArmCommands {
      * Only holds piece in with constant intake if intake has a piece
      * @param intake
      * @param arm
-     * @param driverController
      * @return
      */
     public static Command intake(
             Intake intake,
-            Arm arm, 
-        XboxController driverController) {
+            Arm arm) {
         return Commands.either(
                 Commands.sequence(
                     Commands.runOnce(() -> intake.intake(), intake),
                     Commands.waitSeconds(0.5),
-                    Commands.waitUntil(() -> (intake.hasPiece() || (driverController.getLeftTriggerAxis() < 0.7))),
+                    Commands.waitUntil(intake::stopIntaking),
                     Commands.either(hold(intake), stop(intake), intake::hasPiece),
                     Commands.runOnce(() -> arm.stow(), arm)
                 ),
 
                 Commands.sequence(
                     Commands.runOnce(() -> intake.intake(), intake),
-                    Commands.waitSeconds(0.5),
-                    Commands.waitUntil(() -> driverController.getLeftTriggerAxis() < 0.7),
+                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7),
                     Commands.either(hold(intake), stop(intake), intake::hasPiece)
                 ),
 
@@ -85,19 +91,17 @@ public class ArmCommands {
      * 
      * @param intake
      * @param arm
-     * @param driverController
      * @return
      */
     public static Command outtake(
             Intake intake,
-            Arm arm,
-        XboxController driverController) {
+            Arm arm) {
             return Commands.sequence(
                         Commands.runOnce(() -> intake.outtake(), intake),
                         Commands.waitSeconds(0.5),
                         Commands.waitUntil(() -> 
-                            (!driverController.getRightBumperButton() && 
-                            (driverController.getRightTriggerAxis() < 0.7))),
+                            (!Robot.driverController.getRightBumperButton() && 
+                            (Robot.driverController.getRightTriggerAxis() < 0.7))),
                         stop(intake),
                         Commands.runOnce(() -> arm.autoStow(), arm)
                     );

@@ -2,7 +2,6 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
-import edu.wpi.first.wpilibj.XboxController;
 
 import frc.robot.Utility.LEDHelpers;
 import frc.robot.Utility.ClassHelpers.BlinkLight;
@@ -63,11 +62,11 @@ public class LED {
     /**
      * Updates the LED state based on driver inputs and robot states
      * 
-     * @param driverController)
+     * @param isAutonomous
      */
-    public void updateLED(XboxController driverController, boolean isAutonomous) {
+    public void updateLED(boolean isAutonomous) {
         // If driver presses up d-pad, increment LED state
-        if (driverController.getPOV() < 45 || driverController.getPOV() > 315) {
+        if (Robot.driverController.getPOV() < 45 || Robot.driverController.getPOV() > 315) {
             ledState = (ledState.equals(LEDStates.CHOOSEHUE)) ? LEDStates.values()[ledState.ordinal() + 1] : LEDStates.NORMAL;
         }
 

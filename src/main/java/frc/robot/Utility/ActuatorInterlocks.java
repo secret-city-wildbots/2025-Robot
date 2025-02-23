@@ -91,7 +91,7 @@ public class ActuatorInterlocks {
      * command of 0
      * </ul>
      * 
-     * This sets DutyCycleOut commands for TalonFX motors in actuator testing
+     * This sets PositionDutyCycle commands for TalonFX motors in actuator testing
      * 
      * @param motor        The TalonFX motor object to output to
      * @param actuatorName The name of the actuator matching the list in Robot.java
@@ -185,7 +185,7 @@ public class ActuatorInterlocks {
      * Actuator testing:
      * <ul>
      * <li>If the Dashboard is not testing anything, set normal output as a
-     * PositionDutyCycle command
+     * position command
      * <li>If the Dashboard is testing this actuator:
      * <ul>
      * <li>Output the amplitude from the Dashboard as a DutyCycleOut command
@@ -196,7 +196,7 @@ public class ActuatorInterlocks {
      * command of 0
      * </ul>
      * 
-     * This sets DutyCycleOut commands for TalonFX motors in actuator testing
+     * This sets position commands for SparmMax motors in actuator testing
      * 
      * @param motor        The TalonFX motor object to output to
      * @param actuatorName The name of the actuator matching the list in Robot.java

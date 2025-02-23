@@ -8,7 +8,6 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Dashboard;
 import frc.robot.Robot;
 import frc.robot.Subsystems.Drivetrain;
@@ -133,12 +132,11 @@ public class SwerveUtils {
    * Scales and caps raw joystick outputs based on current selected driver profile
    * settings
    * 
-   * @param driverController
    * @param isAutonomous
    * 
    * @return Scaled joystick outputs
    */
-  public static double[] swerveScaleStrafe(XboxController driverController, boolean isAutonomous) {
+  public static double[] swerveScaleStrafe (boolean isAutonomous) {
 
     // Getting driver profile settings
     String profile = Robot.legalDrivers[(int) Dashboard.selectedDriver.get(0.0)];
@@ -148,8 +146,8 @@ public class SwerveUtils {
     double strafeMax = ((isAutonomous) ? 1 : currentProfile.strafeMax);
 
     // Negate and swap raw joystick outputs to work with FRC field orientation
-    double rawX = -1 * driverController.getLeftY();
-    double rawY = -1 * driverController.getLeftX();
+    double rawX = -1 * Robot.driverController.getLeftY();
+    double rawY = -1 * Robot.driverController.getLeftX();
 
     // Disable joystick outputs while within deadband
     double joystickSaturation = Math.hypot(rawX, rawY);
@@ -181,15 +179,14 @@ public class SwerveUtils {
    * profile
    * settings
    * 
-   * @param driverController
    * @param isAutonomous
    * @return Scaled rotate joystick command
    */
-  public static double swerveScaleRotate(XboxController driverController, boolean isAutonomous) {
+  public static double swerveScaleRotate(boolean isAutonomous) {
     String profile = Robot.legalDrivers[(int) Dashboard.selectedDriver.get(0.0)];
     DriverProfile currentProfile = SwerveUtils.readDriverProfiles(profile);
     double deadband = (isAutonomous) ? 0.01 : currentProfile.rotateDeadband;
-    double rawY = -driverController.getRightX();
+    double rawY = -Robot.driverController.getRightX();
     double joystickSaturation = Math.abs(rawY);
     if (joystickSaturation <= deadband) {
       return 0.0;

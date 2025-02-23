@@ -29,13 +29,13 @@ import com.playingwithfusion.TimeOfFlight;
 
 public class Robot extends TimedRobot {
   // Subsystems and major objects
+  public static XboxController driverController;
+  public static CommandXboxController driverCommandController;
+  private final XboxController manipController;
+  public static CommandXboxController manipCommandController;
   private final Drivetrain drivetrain;
   private final Arm arm;
   private final Intake intake;
-  private final XboxController driverController;
-  private final CommandXboxController driverCommandController;
-  private final XboxController manipController;
-  private final CommandXboxController manipCommandController;
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
@@ -115,14 +115,14 @@ public class Robot extends TimedRobot {
     }
     
      // Set up subsystems and major objects
-     drivetrain = new Drivetrain();
-     arm = new Arm();
-     intake = new Intake();
      led = new LED();
      driverController = new XboxController(0);
      driverCommandController = new CommandXboxController(0);
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
+      drivetrain = new Drivetrain();
+    arm = new Arm();
+    intake = new Intake();
      compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
     // Send major constants to the Dashboard
@@ -231,13 +231,13 @@ public class Robot extends TimedRobot {
     }
 
 
-    // commanddriverController.b().onTrue(pathfinder);
+    driverCommandController.b().onTrue(pathfinder);
 
     // Check for state updates based on manip inputs
     updateMasterState();
 
     // Adjust LED color settings based on mode using driver controller
-    led.updateLED(driverController, false);
+    led.updateLED(false);
 
     // Update outputs for everything
     // This includes all motors, pistons, and other things
@@ -248,7 +248,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    drivetrain.updateSensors(driverController);
+    drivetrain.updateSensors();
     arm.updateSensors(manipController);
     intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
@@ -258,7 +258,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    drivetrain.updateOutputs(isAutonomous(), driverController);
+    drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
     arm.updateOutputs();
     intake.updateOutputs();
@@ -323,12 +323,9 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-    manipCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.score(arm));
-    manipCommandController.rightBumper().onTrue(ArmCommands.pickup(arm));
-    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm, driverController));
-    driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm, driverController));
-    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm, driverController));
-    driverCommandController.b().onTrue(drivetrain.getFinalStrafeCorrectionCommand(drivetrain.determineGoalPose(), driverController));
-
+    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
+    driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
+    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
+    driverCommandController.b().onTrue(drivetrain.getFinalStrafeCorrectionCommand(drivetrain.determineGoalPose()));
   }
 }

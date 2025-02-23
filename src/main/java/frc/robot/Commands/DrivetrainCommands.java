@@ -19,7 +19,6 @@ public class DrivetrainCommands {
         return Commands.run(
                 () -> {
                     driveSystem.driveTeleop(
-                            driveController,
                             manipController);
                 },
                 driveSystem);
