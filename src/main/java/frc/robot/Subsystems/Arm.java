@@ -92,7 +92,7 @@ public class Arm extends SubsystemBase {
                     Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
                     * 2.0 // Two stages moving together doubles movement
                 );
-                maxExtensionDistance_m = Units.inchesToMeters(12);
+                maxExtensionDistance_m = Units.inchesToMeters(45.75);
 
                 wristRatio = 
                     70.0 * // Neo reduction
@@ -113,7 +113,7 @@ public class Arm extends SubsystemBase {
                     Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
                     * 2.0 // Two stages moving together doubles movement
                 );
-                maxExtensionDistance_m = Units.inchesToMeters(12);
+                maxExtensionDistance_m = Units.inchesToMeters(45.75);
 
                 wristRatio = 
                     70.0 * // Neo reduction
@@ -134,7 +134,7 @@ public class Arm extends SubsystemBase {
                     Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
                     * 2.0 // Two stages moving together doubles movement
                 );
-                maxExtensionDistance_m = Units.inchesToMeters(12);
+                maxExtensionDistance_m = Units.inchesToMeters(45.75);
 
                 wristRatio = 
                     70.0 * // Neo reduction
