@@ -68,6 +68,7 @@ public class Dashboard {
     public static DoubleSubscriber freeTuningkI;
     public static DoubleSubscriber freeTuningkD;
     public static StringSubscriber testActuatorName;
+    public static BooleanSubscriber unlockExtender;
 
     /**
      * Creates an object for storing dashboard publishers and subscribers
@@ -123,5 +124,6 @@ public class Dashboard {
         freeTuningkI = table.getDoubleTopic("Free_Tuning_PID_I").subscribe(0);
         freeTuningkD = table.getDoubleTopic("Free_Tuning_PID_D").subscribe(0);
         testActuatorName = table.getStringTopic("Test_Actuator_Name").subscribe("");
+        unlockExtender = table.getBooleanTopic("Super_Test_Mode").subscribe(false);
     }
 }

@@ -32,7 +32,10 @@ public class ArmCommands {
         Arm arm) {
             return Commands.sequence(
                 Commands.runOnce(arm::climbInit, arm),
-                Commands.waitUntil(() -> Robot.driverController.getAButtonPressed()),
+                Commands.parallel(
+                    Commands.waitUntil(() -> Robot.driverController.getAButtonPressed()),
+                    Commands.waitUntil(arm::hasArrived)
+                ),
                 Commands.runOnce(arm::climbLift, arm)
             );
         }
@@ -97,6 +100,7 @@ public class ArmCommands {
             Intake intake,
             Arm arm) {
             return Commands.sequence(
+                        Commands.waitUntil(() -> arm.hasArrived() || Robot.driverController.getRightBumperButton()),
                         Commands.runOnce(() -> intake.outtake(), intake),
                         Commands.waitSeconds(0.5),
                         Commands.waitUntil(() -> 

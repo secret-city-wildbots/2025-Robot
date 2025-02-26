@@ -11,14 +11,15 @@ import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.util.DriveFeedforwards;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -30,6 +31,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Dashboard;
 import frc.robot.LimelightHelpers;
 import frc.robot.Robot;
+import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.Robot.MasterStates;
 import frc.robot.Subsystems.SwerveModule.ShiftedStates;
 import frc.robot.Utility.Control;
@@ -75,7 +77,6 @@ public class Drivetrain extends SubsystemBase {
   private final SwerveDriveKinematics kinematics = new SwerveDriveKinematics(module0Location_m, module1Location_m,
       module2Location_m, module3Location_m);
   private static final Pigeon2 pigeon = new Pigeon2(6);
-  public final SwerveDriveOdometry odometry;
   SlewRateLimiter xAccelerationLimiter = new SlewRateLimiter(4.4, -1000, 0.0);
   SlewRateLimiter yAccelerationLimiter = new SlewRateLimiter(4.4, -1000, 0.0);
   private SwerveModuleState[] moduleStateOutputs = new SwerveModuleState[4];
@@ -107,8 +108,8 @@ public class Drivetrain extends SubsystemBase {
 
   private double currentDriveSpeed_mPs;
 
-  public SwerveDriveOdometry updateOdometry() {
-    odometry.update(
+  public SwerveDrivePoseEstimator updateOdometry() {
+    poseEstimator.update(
         getIMURotation(),
         new SwerveModulePosition[] {
             module0.getPosition(),
@@ -116,8 +117,10 @@ public class Drivetrain extends SubsystemBase {
             module2.getPosition(),
             module3.getPosition()
         });
-    return odometry;
+    return poseEstimator;
   }
+
+  public SwerveDrivePoseEstimator poseEstimator;
 
   public Drivetrain() {
     // Check for driver profile and set constants
@@ -187,15 +190,17 @@ public class Drivetrain extends SubsystemBase {
     module3 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 3, driveConfigs[3],
         azimuthConfigs[3]);
 
-    // Odometry object for tracking robot position using kinematics
-    odometry = new SwerveDriveOdometry(
-        kinematics, getIMURotation(),
+    poseEstimator = 
+      new SwerveDrivePoseEstimator(
+        kinematics, 
+        getIMURotation(), 
         new SwerveModulePosition[] {
-            module0.getPosition(),
-            module1.getPosition(),
-            module2.getPosition(),
-            module3.getPosition()
-        });
+          module0.getPosition(),
+          module1.getPosition(),
+          module2.getPosition(),
+          module3.getPosition()
+        }, 
+        new Pose2d());
 
     /*
      * Setting up angle wrapping for control PIDs
@@ -280,7 +285,7 @@ public class Drivetrain extends SubsystemBase {
     if (Robot.driverController.getPOV() > 225 || Robot.driverController.getPOV() < 135) {
       resetIMUTimer.reset();
       resetIMU0 = false;
-      odometry.update(
+      poseEstimator.update(
           getIMURotation(),
           new SwerveModulePosition[] {
               module0.getPosition(),
@@ -291,7 +296,7 @@ public class Drivetrain extends SubsystemBase {
     } else if (resetIMUTimer.getTimeMillis() > 3000) {
       if (!resetIMU0) {
         imuOffset = pigeon.getRotation2d();
-        odometry.resetRotation(getIMURotation());
+        poseEstimator.resetRotation(getIMURotation());
       }
       resetIMU0 = true;
     }
@@ -302,7 +307,7 @@ public class Drivetrain extends SubsystemBase {
       Rotation2d h = new Rotation2d(Units.degreesToRadians(Dashboard.manualStartH.get()));
       imuOffset = pigeon.getRotation2d().minus(h);
       resetPose(new Pose2d(x, y, h));
-      odometry.resetRotation(getIMURotation());
+      poseEstimator.resetRotation(getIMURotation());
     }
 
     LimelightHelpers.SetRobotOrientation("limelight-left", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
@@ -311,54 +316,28 @@ public class Drivetrain extends SubsystemBase {
     boolean leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
     boolean rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
 
-    if (leftEstimateValid && rightEstimateValid) {
-      boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
-      Pose2d leftPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left").pose
-        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left").pose;
-      Pose2d rightPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right").pose
-        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right").pose;
-      Pose2d newPose = new Pose2d(
-        (leftPose.getX() + rightPose.getX()) / 2.0,
-        (leftPose.getY() + rightPose.getY()) / 2.0,
-        leftPose.getRotation()
-      );
-      odometry.resetPosition(
-          getIMURotation(),
-          new SwerveModulePosition[] {
-              module0.getPosition(),
-              module1.getPosition(),
-              module2.getPosition(),
-              module3.getPosition()
-          }, newPose);
-    } else if (leftEstimateValid) {
-      boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
-      Pose2d leftPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left").pose
-        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left").pose;
-        odometry.resetPosition(
-          getIMURotation(),
-          new SwerveModulePosition[] {
-              module0.getPosition(),
-              module1.getPosition(),
-              module2.getPosition(),
-              module3.getPosition()
-          }, leftPose);
-      } else if (rightEstimateValid) {
-        boolean redSide = DriverStation.getAlliance().get().equals(DriverStation.Alliance.Red);
-        Pose2d rightPose = (redSide) ? LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right").pose
-        : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right").pose;
-          odometry.resetPosition(
-            getIMURotation(),
-            new SwerveModulePosition[] {
-                module0.getPosition(),
-                module1.getPosition(),
-                module2.getPosition(),
-                module3.getPosition()
-            }, rightPose);
-      }
+    
 
-    Dashboard.robotX.set(Units.metersToInches(odometry.getPoseMeters().getX()));
-    Dashboard.robotY.set(Units.metersToInches(odometry.getPoseMeters().getY()));
-    Dashboard.robotHeading.set(odometry.getPoseMeters().getRotation().getDegrees());
+    if (leftEstimateValid && rightEstimateValid) {
+      PoseEstimate leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
+      PoseEstimate rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
+
+      if (leftPose.avgTagDist < rightPose.avgTagDist) {
+        poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+      } else {
+        poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+      }
+    } else if (leftEstimateValid) {
+      PoseEstimate leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
+      poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+    } else if (rightEstimateValid) {
+      PoseEstimate rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
+      poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+    }
+
+    Dashboard.robotX.set(Units.metersToInches(poseEstimator.getEstimatedPosition().getX()));
+    Dashboard.robotY.set(Units.metersToInches(poseEstimator.getEstimatedPosition().getY()));
+    Dashboard.robotHeading.set(poseEstimator.getEstimatedPosition().getRotation().getDegrees());
 
     double[] loggingState = new double[] {
         moduleStates[1].angle.getRadians(),
@@ -381,7 +360,7 @@ public class Drivetrain extends SubsystemBase {
    * @return Pose2d
    */
   public Pose2d getPose() {
-    return odometry.getPoseMeters();
+    return poseEstimator.getEstimatedPosition();
   }
 
   /**
@@ -391,7 +370,7 @@ public class Drivetrain extends SubsystemBase {
    * @param pose The pose to which to set the odometry.
    */
   public void resetPose(Pose2d pose) {
-    odometry.resetPosition(
+    poseEstimator.resetPosition(
         getIMURotation(),
         new SwerveModulePosition[] {
             module0.getPosition(),
@@ -443,8 +422,8 @@ public class Drivetrain extends SubsystemBase {
       // kd0 = kd;
       // }
       // double[] lockedPosition = new double[] { 1, 1 };
-      // Dashboard.pidTuningGoalActual.set(new double[] { lockedPosition[0], odometry.getPoseMeters().getX() });
-      // System.out.println(lockedPosition[1] + ", " + odometry.getPoseMeters().getY());
+      // Dashboard.pidTuningGoalActual.set(new double[] { lockedPosition[0], poseEstimator.getEstimatedPosition().getX() });
+      // System.out.println(lockedPosition[1] + ", " + poseEstimator.getEstimatedPosition().getY());
 
     double lockedHeading = modeDrivebase(manipController);
 
@@ -465,7 +444,7 @@ public class Drivetrain extends SubsystemBase {
 
   public Command getFinalStrafeCorrectionCommand(Pose2d finalPose) {
     Command outputCommand = new FunctionalCommand(
-      null,
+      () -> {},
       () -> {
         double[] strafeCorrection = getStrafeCorrection(finalPose);
         moduleStateOutputs = kinematics.toSwerveModuleStates(
@@ -475,7 +454,7 @@ public class Drivetrain extends SubsystemBase {
             getIMURotation()), 0.001 * Robot.loopTime_ms));
         SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
         }, 
-      null, 
+      (interrupt) -> {}, 
       () -> (this.poseAccuracyGetter() || Robot.driverController.getXButton() || Robot.driverController.getYButton()), 
       this);
     return outputCommand;
@@ -486,7 +465,7 @@ public class Drivetrain extends SubsystemBase {
   double rotateAccuracyAllowedError = 1; // degree
 
   public boolean poseAccuracyGetter() {
-    Pose2d pose = odometry.getPoseMeters();
+    Pose2d pose = poseEstimator.getEstimatedPosition();
     boolean xValid = (Math.abs(pose.getX() - poseAccuracyFinal.getX())) < poseAccuracyAllowedError;
     boolean yValid = (Math.abs(pose.getY() - poseAccuracyFinal.getY())) < poseAccuracyAllowedError;
     boolean rotateValid = (Math.abs(pose.getRotation().getDegrees() - poseAccuracyFinal.getRotation().getDegrees())) < rotateAccuracyAllowedError;
@@ -494,7 +473,7 @@ public class Drivetrain extends SubsystemBase {
   }
 
   public double[] getStrafeCorrection(Pose2d finalPose) {
-    Pose2d robotPose = odometry.getPoseMeters();
+    Pose2d robotPose = poseEstimator.getEstimatedPosition();
     double robotXPose = robotPose.getX();
     double robotYPose = robotPose.getY();
     double finalXPose = finalPose.getX();
@@ -530,7 +509,7 @@ public class Drivetrain extends SubsystemBase {
       headingLocked = false;
     }
 
-    Pose2d pose_m = odometry.getPoseMeters();
+    Pose2d pose_m = poseEstimator.getEstimatedPosition();
     double poseX_m = pose_m.getX();
     double poseY_m = pose_m.getY();
 
@@ -588,7 +567,7 @@ public class Drivetrain extends SubsystemBase {
       coralLocalYOffset_m = 0.0;
     }
 
-    Pose2d pose_m = odometry.getPoseMeters();
+    Pose2d pose_m = poseEstimator.getEstimatedPosition();
     double poseX_m = pose_m.getX();
     double poseY_m = pose_m.getY();
 

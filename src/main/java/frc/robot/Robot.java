@@ -33,7 +33,7 @@ public class Robot extends TimedRobot {
   public static CommandXboxController driverCommandController;
   private final XboxController manipController;
   public static CommandXboxController manipCommandController;
-  private final Drivetrain drivetrain;
+  // private final Drivetrain drivetrain;
   private final Arm arm;
   private final Intake intake;
   private final Compressor compressor;
@@ -120,7 +120,7 @@ public class Robot extends TimedRobot {
      driverCommandController = new CommandXboxController(0);
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
-      drivetrain = new Drivetrain();
+      // drivetrain = new Drivetrain();
     arm = new Arm();
     intake = new Intake();
      compressor = new Compressor(2, PneumaticsModuleType.REVPH);
@@ -224,14 +224,11 @@ public class Robot extends TimedRobot {
       // System.out.println("Distance: " + distance + " mm");
       tofSensor.identifySensor();
 
-    pathfinder = drivetrain.getPathFindingCommand(new Pose2d(Units.inchesToMeters(134), Units.inchesToMeters(50), new Rotation2d()));
+    // pathfinder = drivetrain.getPathFindingCommand(new Pose2d(Units.inchesToMeters(134), Units.inchesToMeters(50), new Rotation2d()));
     if (driverController.getBButtonPressed()) {
       pathfinder.schedule();
-      System.out.println(pathfinder);
+      // System.out.println(pathfinder);
     }
-
-
-    driverCommandController.b().onTrue(pathfinder);
 
     // Check for state updates based on manip inputs
     updateMasterState();
@@ -248,7 +245,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    drivetrain.updateSensors();
+    // drivetrain.updateSensors();
     arm.updateSensors(manipController);
     intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
@@ -258,7 +255,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    drivetrain.updateOutputs(isAutonomous());
+    // drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
     arm.updateOutputs();
     intake.updateOutputs();
@@ -304,11 +301,11 @@ public class Robot extends TimedRobot {
   }
 
   private void configureDefaultCommands() {
-    drivetrain.setDefaultCommand(
-        DrivetrainCommands.drive(
-            drivetrain,
-            driverController,
-            manipController));
+    // drivetrain.setDefaultCommand(
+    //     DrivetrainCommands.drive(
+    //         drivetrain,
+    //         driverController,
+    //         manipController));
   }
 
   /**
@@ -326,6 +323,6 @@ public class Robot extends TimedRobot {
     driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
     driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
     driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
-    driverCommandController.b().onTrue(drivetrain.getFinalStrafeCorrectionCommand(drivetrain.determineGoalPose()));
+    // driverCommandController.b().onTrue(drivetrain.getFinalStrafeCorrectionCommand(drivetrain.determineGoalPose()));
   }
 }

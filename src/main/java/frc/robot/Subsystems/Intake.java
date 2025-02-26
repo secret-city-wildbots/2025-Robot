@@ -28,7 +28,7 @@ public class Intake extends SubsystemBase {
     public double intakeOutput;
 
     public Intake() {
-        intake = new TalonFX(25);
+        intake = new TalonFX(37);
         TalonFXConfiguration intakeConfig = new TalonFXConfiguration();
         intakeConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         intakeConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -36,14 +36,13 @@ public class Intake extends SubsystemBase {
     }
 
     public void updateSensors() {
-        if (intakeOutput > 0.1) {
-            if (intake.getVelocity().getValueAsDouble() < 1 && stallTimer.getTimeMillis() > 500) {
-                hasPiece = true;
-            }
-        } else {
-            stallTimer.reset();
-        }
-        System.out.println(hasPiece);
+        // if (intakeOutput > 0.1) {
+        //     if (intake.getVelocity().getValueAsDouble() < 1 && stallTimer.getTimeMillis() > 500) {
+        //         hasPiece = true;
+        //     }
+        // } else {
+        //     stallTimer.reset();
+        // }
     }
 
     public void intake() {
@@ -76,6 +75,6 @@ public class Intake extends SubsystemBase {
     }
 
     public void updateOutputs() {
-        ActuatorInterlocks.testActuatorInterlocks(intake, "Intake_(p)", intakeOutput);
+        // ActuatorInterlocks.testActuatorInterlocks(intake, "Intake_(p)", intakeOutput);
     }
 }
