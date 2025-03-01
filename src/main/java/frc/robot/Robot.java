@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.ArmCommands;
 import frc.robot.Commands.DrivetrainCommands;
@@ -33,9 +34,9 @@ public class Robot extends TimedRobot {
   public static CommandXboxController driverCommandController;
   private final XboxController manipController;
   public static CommandXboxController manipCommandController;
-  // private final Drivetrain drivetrain;
-  private final Arm arm;
-  private final Intake intake;
+  private final Drivetrain drivetrain;
+  // private final Arm arm;
+  // private final Intake intake;
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
@@ -120,9 +121,9 @@ public class Robot extends TimedRobot {
      driverCommandController = new CommandXboxController(0);
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
-      // drivetrain = new Drivetrain();
-    arm = new Arm();
-    intake = new Intake();
+      drivetrain = new Drivetrain();
+    // arm = new Arm();
+    // intake = new Intake();
      compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
     // Send major constants to the Dashboard
@@ -185,6 +186,8 @@ public class Robot extends TimedRobot {
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
     }
 
+    drivetrain.determineGoalPose();
+
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
   }
@@ -224,10 +227,11 @@ public class Robot extends TimedRobot {
       // System.out.println("Distance: " + distance + " mm");
       tofSensor.identifySensor();
 
-    // pathfinder = drivetrain.getPathFindingCommand(new Pose2d(Units.inchesToMeters(134), Units.inchesToMeters(50), new Rotation2d()));
     if (driverController.getBButtonPressed()) {
+      Pose2d goalPose = drivetrain.determineGoalPose();
+      pathfinder = drivetrain.getPathFindingCommand(goalPose);
       pathfinder.schedule();
-      // System.out.println(pathfinder);
+      drivetrain.getFinalStrafeCorrectionCommand(goalPose).schedule();
     }
 
     // Check for state updates based on manip inputs
@@ -245,9 +249,9 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    // drivetrain.updateSensors();
-    arm.updateSensors(manipController);
-    intake.updateSensors();
+    drivetrain.updateSensors();
+    // arm.updateSensors(manipController);
+    // intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -255,10 +259,10 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    // drivetrain.updateOutputs(isAutonomous());
+    drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
-    arm.updateOutputs();
-    intake.updateOutputs();
+    // arm.updateOutputs();
+    // intake.updateOutputs();
   }
 
   /**
@@ -301,11 +305,11 @@ public class Robot extends TimedRobot {
   }
 
   private void configureDefaultCommands() {
-    // drivetrain.setDefaultCommand(
-    //     DrivetrainCommands.drive(
-    //         drivetrain,
-    //         driverController,
-    //         manipController));
+    drivetrain.setDefaultCommand(
+        DrivetrainCommands.drive(
+            drivetrain,
+            driverController,
+            manipController));
   }
 
   /**
@@ -320,9 +324,8 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
-    driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
-    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
-    // driverCommandController.b().onTrue(drivetrain.getFinalStrafeCorrectionCommand(drivetrain.determineGoalPose()));
+    // driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
+    // driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
+    // driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
   }
 }

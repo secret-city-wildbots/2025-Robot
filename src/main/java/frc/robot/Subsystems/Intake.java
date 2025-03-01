@@ -36,13 +36,13 @@ public class Intake extends SubsystemBase {
     }
 
     public void updateSensors() {
-        // if (intakeOutput > 0.1) {
-        //     if (intake.getVelocity().getValueAsDouble() < 1 && stallTimer.getTimeMillis() > 500) {
-        //         hasPiece = true;
-        //     }
-        // } else {
-        //     stallTimer.reset();
-        // }
+        if (intakeOutput > 0.1) {
+            if (intake.getVelocity().getValueAsDouble() < 1 && stallTimer.getTimeMillis() > 500) {
+                hasPiece = true;
+            }
+        } else {
+            stallTimer.reset();
+        }
     }
 
     public void intake() {
@@ -75,6 +75,6 @@ public class Intake extends SubsystemBase {
     }
 
     public void updateOutputs() {
-        // ActuatorInterlocks.testActuatorInterlocks(intake, "Intake_(p)", intakeOutput);
+        ActuatorInterlocks.testActuatorInterlocks(intake, "Intake_(p)", intakeOutput);
     }
 }

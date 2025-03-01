@@ -57,8 +57,8 @@ public class Drivetrain extends SubsystemBase {
   public static boolean invertAzimuthDirection = false;
   public static boolean azimuthSparkEnabled;
   private double[] driveManualAdjustments = new double[] { 1, 1, 1, 1 };
-  private final double reefPoseX_m = 4.84505;
-  private final double reefPoseY_m = 4.0259;
+  private final double reefPoseX_m = 4.49;
+  private final double reefPoseY_m = Robot.fieldWidth_m / 2;
 
   // Modules
   private final SwerveModule module0;
@@ -86,14 +86,14 @@ public class Drivetrain extends SubsystemBase {
   public static boolean shiftingEnabled = false;
   @SuppressWarnings("unused")
   private boolean headingLocked = false;
-  public static final PIDController strafePID = new PIDController(0.4, 0, 0);
+  public static final PIDController strafePID = new PIDController(0.4, 0.002, 0);
 
   // Variables stored for the assist heading function
   private StickyButton highSpeedSticky = new StickyButton();
   private boolean headingAssist = false;
   private Latch headingLatch = new Latch(0.0);
   private PIDController antiDriftPID = new PIDController(0.0007, 0, 0);
-  private PIDController headingAnglePID = new PIDController(0.5, 0.0, 0.02);
+  private PIDController headingAnglePID = new PIDController(1.2, 0.0, 0.02);
   // private double kp0 = 0.0;
   // private double ki0 = 0.0;
   // private double kd0 = 0.0;
@@ -297,6 +297,19 @@ public class Drivetrain extends SubsystemBase {
       if (!resetIMU0) {
         imuOffset = pigeon.getRotation2d();
         poseEstimator.resetRotation(getIMURotation());
+        poseEstimator.update(getIMURotation(), new SwerveModulePosition[] {
+          module0.getPosition(),
+          module1.getPosition(),
+          module2.getPosition(),
+          module3.getPosition()
+        });
+        poseEstimator.resetRotation(getIMURotation());
+        poseEstimator.update(getIMURotation(), new SwerveModulePosition[] {
+          module0.getPosition(),
+          module1.getPosition(),
+          module2.getPosition(),
+          module3.getPosition()
+        });
       }
       resetIMU0 = true;
     }
@@ -315,9 +328,29 @@ public class Drivetrain extends SubsystemBase {
 
     boolean leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
     boolean rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
-
+    System.out.println(leftEstimateValid);
     
 
+    // if (leftEstimateValid && rightEstimateValid) {
+    //   PoseEstimate leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
+    //   PoseEstimate rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
+
+    //   if (leftPose.avgTagDist < rightPose.avgTagDist && leftPose.avgTagDist < 3) {
+    //     poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+    //   } else if (rightPose.avgTagDist < 3) {
+    //     poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+    //   }
+    // } else if (leftEstimateValid) {
+    //   PoseEstimate leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
+    //   if (leftPose.avgTagDist < 3) {
+    //     poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+    //   }
+    // } else if (rightEstimateValid) {
+    //   PoseEstimate rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
+    //   if (rightPose.avgTagDist < 3) {
+    //     poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+    //   }
+    // }
     if (leftEstimateValid && rightEstimateValid) {
       PoseEstimate leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
       PoseEstimate rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
@@ -444,9 +477,9 @@ public class Drivetrain extends SubsystemBase {
 
   public Command getFinalStrafeCorrectionCommand(Pose2d finalPose) {
     Command outputCommand = new FunctionalCommand(
-      () -> {},
+      () -> poseAccuracyFinal = finalPose,
       () -> {
-        double[] strafeCorrection = getStrafeCorrection(finalPose);
+        double[] strafeCorrection = getStrafeCorrection(determineGoalPose());
         moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
             strafeCorrection[0] * maxGroundSpeed_mPs, strafeCorrection[1] * maxGroundSpeed_mPs,
@@ -465,6 +498,7 @@ public class Drivetrain extends SubsystemBase {
   double rotateAccuracyAllowedError = 1; // degree
 
   public boolean poseAccuracyGetter() {
+    // System.out.println(poseAccuracyFinal);
     Pose2d pose = poseEstimator.getEstimatedPosition();
     boolean xValid = (Math.abs(pose.getX() - poseAccuracyFinal.getX())) < poseAccuracyAllowedError;
     boolean yValid = (Math.abs(pose.getY() - poseAccuracyFinal.getY())) < poseAccuracyAllowedError;
@@ -478,16 +512,31 @@ public class Drivetrain extends SubsystemBase {
     double robotYPose = robotPose.getY();
     double finalXPose = finalPose.getX();
     double finalYPose = finalPose.getY();
-    poseAccuracyFinal = finalPose;
     PIDController strafePID = Drivetrain.strafePID;
     // Assist in both x and y
     double assistedX;
     double assistedY;
     double distance = Math.hypot(finalXPose - robotXPose, finalYPose - robotYPose);
+    // PID Tuning
+      // double kp = Dashboard.freeTuningkP.get();
+      // double ki = Dashboard.freeTuningkI.get();
+      // double kd = Dashboard.freeTuningkD.get();
+      // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+      // strafePID.setP(kp);
+      // strafePID.setI(ki);
+      // strafePID.setD(kd);
+      // kp0 = kp;
+      // ki0 = ki;
+      // kd0 = kd;
+      // }
+      // Dashboard.pidTuningGoalActual.set(new double[] { Units.metersToInches(finalXPose), Units.metersToInches(robotXPose) });
+      // System.out.println(Units.metersToInches(finalYPose) + ", " + Units.metersToInches(robotYPose));
     double output = -strafePID.calculate(distance);
     Rotation2d angle = new Rotation2d(finalXPose - robotXPose, finalYPose - robotYPose);
     assistedX = Math.cos(angle.getRadians()) * output;
+    assistedX = (Math.abs(assistedX) > 0.01) ? assistedX : 0.0;
     assistedY = Math.sin(angle.getRadians()) * output;
+    assistedY = (Math.abs(assistedY) > 0.01) ? assistedY : 0.0;
 
     double assistedRotation = headingAnglePID.calculate(
       getIMURotation().getRadians(), finalPose.getRotation().getRadians());
@@ -558,10 +607,12 @@ public class Drivetrain extends SubsystemBase {
 
   }
 
+  double maxStrafeFudge = Units.inchesToMeters(1);
+
   public Pose2d determineGoalPose() {
     double reefApothem_m = Units.inchesToMeters(32.75);
     double coralLocalYOffset_m = ((Robot.scoreRight) ? -1 : 1) * Units.inchesToMeters(12.94 / 2);
-    double robotSizeX_m = Robot.robotLengthBumpers_m / 2.0;
+    double robotSizeX_m = Robot.robotLengthBumpers_m / 2.0 + (0.0254 * 2);
 
     if (!Robot.scoreCoral) {
       coralLocalYOffset_m = 0.0;
@@ -577,33 +628,72 @@ public class Drivetrain extends SubsystemBase {
     double theta;
     lockedX_m = reefPoseX_m;
     lockedY_m = reefPoseY_m;
-    if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
-      // Bottom sextant
-      theta = 180;
-    } else if (poseX_m < reefPoseX_m) {
+    if (Robot.masterState.equals(Robot.MasterStates.FEED) && Arm.pickupHeight == 1) {
       if (poseY_m < reefPoseY_m) {
-        // Bottom right sextant
-        theta = 240;
+        lockedX_m = Units.inchesToMeters(33.51);
+        lockedY_m = Units.inchesToMeters(25.8);
+        theta = Units.degreesToRadians(54);
+        lockedX_m += (robotSizeX_m - (0.0254 * 4)) * Math.sin(theta);
+        lockedY_m += (robotSizeX_m - (0.0254 * 4)) * Math.cos(theta);
+        lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+        lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+        // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+        return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
       } else {
-        // Bottom left sextant
-        theta = 120;
+        lockedX_m = Units.inchesToMeters(33.51);
+        lockedY_m = Units.inchesToMeters(291.2);
+        theta = Units.degreesToRadians(306);
+        lockedX_m += (robotSizeX_m - (0.0254 * 4)) * Math.cos(theta);
+        lockedY_m += (robotSizeX_m - (0.0254 * 4)) * Math.sin(theta);
+        lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+        lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+        // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+        return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
       }
-    } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
-      // Top sextant
-      theta = 0;
-    } else if (poseY_m < reefPoseY_m) {
-      // Top right sextant
-      theta = 300;
     } else {
-      // Top left sextant
-      theta = 60;
+      if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+        // Bottom sextant
+        theta = 180;
+        // lockedX_m = 3.13;
+        // lockedY_m = 4.02;
+      } else if (poseX_m < reefPoseX_m) {
+        if (poseY_m < reefPoseY_m) {
+          // Bottom right sextant
+          theta = 240;
+          // lockedX_m = 3.788;
+          // lockedY_m = 2.82;
+        } else {
+          // Bottom left sextant
+          theta = 120;
+          // lockedX_m = 3.788;
+          // lockedY_m = 5.218;
+        }
+      } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+        // Top sextant
+        theta = 0;
+        // lockedX_m = 5.862;
+        // lockedY_m = 4.02;
+      } else if (poseY_m < reefPoseY_m) {
+        // Top right sextant
+        theta = 300;
+        // lockedX_m = 5.191;
+        // lockedY_m = 2.832;
+      } else {
+        // Top left sextant
+        theta = 60;
+        // lockedX_m = 5.203;
+        // lockedY_m = 5.206;
+      }
+      theta = Units.degreesToRadians(theta);
+      lockedX_m += (reefApothem_m + robotSizeX_m)*Math.cos(theta); // X Position of the center of the face
+      lockedX_m += coralLocalYOffset_m * Math.sin(theta); // X Position of the scoring location
+      lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+      lockedY_m += (reefApothem_m + robotSizeX_m)*Math.sin(theta); // Y position of the center of the face
+      lockedY_m -= coralLocalYOffset_m * Math.cos(theta); // Y position of the scoring location
+      lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+      // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+      return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(Math.PI + theta));
     }
-    theta = Units.degreesToRadians(theta);
-    lockedX_m += (reefApothem_m + robotSizeX_m)*Math.cos(theta); // X Position of the center of the face
-    lockedX_m += coralLocalYOffset_m * Math.sin(theta); // X Position of the scoring location
-    lockedY_m += (reefApothem_m + robotSizeX_m)*Math.sin(theta); // Y position of the center of the face
-    lockedY_m -= coralLocalYOffset_m * Math.cos(theta); // Y position of the scoring location
-    return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
   }
 
   /**

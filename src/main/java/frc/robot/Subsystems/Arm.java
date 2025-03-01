@@ -1,6 +1,6 @@
 package frc.robot.Subsystems;
 
-import com.ctre.phoenix6.configs.Slot0Configs;
+// import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -54,9 +54,9 @@ public class Arm extends SubsystemBase {
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
     SparkMaxConfig wristConfig = new SparkMaxConfig();
-    private double kp0 = 0.0;
-    private double ki0 = 0.0;
-    private double kd0 = 0.0;
+    // private double kp0 = 0.0;
+    // private double ki0 = 0.0;
+    // private double kd0 = 0.0;
 
     // Sensor values
     private Rotation2d pivotRotation = new Rotation2d();
@@ -69,8 +69,8 @@ public class Arm extends SubsystemBase {
     private Rotation2d wristOutput = new Rotation2d();
     private double wristFF = 0.0;
     private final double wristFFArbitraryScalar = 0.2;
-    private int scoreHeight = 1;
-    private int pickupHeight = 1;
+    public static int scoreHeight = 1;
+    public static int pickupHeight = 1;
     private final Trigger switchPieces = new Trigger(() -> Robot.scoreCoral);
     private final Trigger stowTrigger = new Trigger(() -> Robot.masterState.equals(MasterStates.STOW));
     private final Trigger scoreTrigger = new Trigger(() -> Robot.masterState.equals(MasterStates.SCOR));
@@ -181,10 +181,12 @@ public class Arm extends SubsystemBase {
         extender = new TalonFX(34);
         extender.setPosition(Units.inchesToMeters(-1) * extenderRatio_m_to_rot);
         extenderConfig = new TalonFXConfiguration();
+        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.3;
+        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
         extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         // Temp values
-        extenderConfig.Slot0.kP = 0.1;
+        extenderConfig.Slot0.kP = 0.17;
         extenderConfig.Slot0.kI = 0.0;
         extenderConfig.Slot0.kD = 0.0;
         extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
@@ -207,14 +209,14 @@ public class Arm extends SubsystemBase {
         wrist.getEncoder().setPosition(wristEncoder.getPosition() - 198.333);
         wristConfig.idleMode(IdleMode.kBrake);
         wristConfig.inverted(true);
-        wristConfig.closedLoop.pid(0.1,0.0,0.0);
+        wristConfig.closedLoop.pid(0.05,0.0,0.0);
         wristConfig.closedLoop.maxOutput(0.4);
         wristConfig.closedLoop.minOutput(-0.4);
         wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wristConfig.closedLoop.positionWrappingEnabled(true);
         wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
         wristConfig.absoluteEncoder.inverted(true);
-        wristConfig.absoluteEncoder.zeroOffset(0.1502170);
+        wristConfig.absoluteEncoder.zeroOffset(0.8068750);
         wristConfig.absoluteEncoder.positionConversionFactor(198.333);
         // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
@@ -260,7 +262,7 @@ public class Arm extends SubsystemBase {
             if (Robot.masterState.equals(MasterStates.SCOR)) {ArmCommands.score(this).schedule();};
         }, this));
 
-
+        stow();
     }
 
     public void updateSensors(XboxController manipController) {
@@ -270,8 +272,8 @@ public class Arm extends SubsystemBase {
         // extenderPosition_m = 0.0;
         extenderPosition_m = extender.getPosition().getValueAsDouble() / extenderRatio_m_to_rot;
         
-        // wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
-        // wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
+        wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
+        wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
 
         // PID Tuning
         // double kp = Dashboard.freeTuningkP.get();
@@ -301,7 +303,7 @@ public class Arm extends SubsystemBase {
         //     ki0 = ki;
         //     kd0 = kd;
         // }
-        Dashboard.pidTuningGoalActual.set(new double[] { Units.metersToInches(extenderOutput_m), Units.metersToInches(extenderPosition_m) });
+        // Dashboard.pidTuningGoalActual.set(new double[] { Dashboard.freeTuningVariable.get(), Units.metersToInches(extenderPosition_m) });
     }
 
     public void switchPiece() {
@@ -334,7 +336,7 @@ public class Arm extends SubsystemBase {
     }
 
     public void stow() {
-        updateArm(0, 0, new Rotation2d());
+        updateArm(0, 0, Rotation2d.fromDegrees(40));
     }
 
     public void autoStow() {
@@ -374,32 +376,38 @@ public class Arm extends SubsystemBase {
     }
 
     private void scoreL4() {
-        // Temp values
-        updateArm(0.0, 1, Rotation2d.fromDegrees(10));
+        updateArm(
+            Units.inchesToMeters(37.1), 
+            Rotation2d.fromDegrees(-5), 
+            Rotation2d.fromDegrees(68));
     }
-
     private void scoreL3() {
-        // Temp values
-        updateArm(0.0, 0.8, Rotation2d.fromDegrees(20));
-    }
+        updateArm(
+            Units.inchesToMeters(0), 
+            Rotation2d.fromDegrees(-11), 
+            Rotation2d.fromDegrees(38));}
 
     private void scoreL2() {
-        // Temp values
-        updateArm(0.0, 0.5, Rotation2d.fromDegrees(30));
-    }
+        updateArm(
+            Units.inchesToMeters(0), 
+            Rotation2d.fromDegrees(-10), 
+            Rotation2d.fromDegrees(83));}
     
     private void scoreL1() {
         // Temp values
         updateArm(0.0, 0.0, Rotation2d.fromDegrees(40));
     }
     private void scoreProcessor() {
-        // Temp values
-        updateArm(0.0, 0.0, Rotation2d.fromDegrees(45));
+        updateArm(
+            Units.inchesToMeters(0), 
+            Rotation2d.fromDegrees(-62), 
+            Rotation2d.fromDegrees(-125));
     }
     private void scoreBarge() {
-        // Temp values
-        updateArm(0.0, 0.0, Rotation2d.fromDegrees(-75));
-    }
+        updateArm(
+            Units.inchesToMeters(42), 
+            Rotation2d.fromDegrees(0), 
+            Rotation2d.fromDegrees(-10));}
 
     public void pickup() {
         switch (pickupHeight) {
@@ -422,27 +430,37 @@ public class Arm extends SubsystemBase {
     }
 
     private void pickupFeeder() {
-        // Temp values
-        updateArm(-0.3, 0, Rotation2d.fromDegrees(-100));
-    }
+        updateArm(
+            Units.inchesToMeters(0), 
+            Rotation2d.fromDegrees(-5.5), 
+            Rotation2d.fromDegrees(-125));
+        }
     private void pickupLowAlgae() {
-        // Temp values
-        updateArm(0.0, 0, Rotation2d.fromDegrees(-20));
-    }
+        updateArm(
+            Units.inchesToMeters(0), 
+            Rotation2d.fromDegrees(-4.7), 
+            Rotation2d.fromDegrees(60));
+        }
     private void pickupHighAlgae() {
-        // Temp values
-        updateArm(0.0, 0, Rotation2d.fromDegrees(-30));
-    }
+        updateArm(
+            Units.inchesToMeters(9.64), 
+            Rotation2d.fromDegrees(-3), 
+            Rotation2d.fromDegrees(35));
+        }
 
     public void climbInit() {
-        // Temp values
-        updateArm(0.0, 0.0, Rotation2d.fromDegrees(0.0));
-    }
+        updateArm(
+            Units.inchesToMeters(0), 
+            Rotation2d.fromDegrees(-19), 
+            Rotation2d.fromDegrees(40));
+        }
 
     public void climbLift() {
-        // Temp values
-        updateArm(0.0, 0.0, Rotation2d.fromDegrees(5));
-    }
+        updateArm(
+            Units.inchesToMeters(37.1), 
+            Rotation2d.fromDegrees(-5), 
+            Rotation2d.fromDegrees(10));
+        }
 
     /**
      * Takes in a forward and upward distance along with a wrist angle and calculates the correct outputs
@@ -490,7 +508,7 @@ public class Arm extends SubsystemBase {
 
         ActuatorInterlocks.testActuatorInterlocks(
             extender, "Extender_(p)", 
-            extenderOutput_m * extenderRatio_m_to_rot, 0.014);
+            extenderOutput_m * extenderRatio_m_to_rot, 0.03);
 
         boolean unlockExtender = Dashboard.unlockExtender.get();
         if (unlockExtender && (!unlockExtender0)) {
@@ -506,8 +524,8 @@ public class Arm extends SubsystemBase {
         }
         unlockExtender0 = unlockExtender;
             
-        // ActuatorInterlocks.testActuatorInterlocks(
-        //     wrist, "Wrist_(p)", 
-        //     wristOutput.getRotations() * wristRatio, -wristFF);
+        ActuatorInterlocks.testActuatorInterlocks(
+            wrist, "Wrist_(p)", 
+            wristOutput.getRotations() * wristRatio, -wristFF);
     }
 }
