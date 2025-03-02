@@ -17,25 +17,28 @@ public class LED {
     public final int numberOfLEDs;
     public final int id;
 
-    private final float ocean = 198;
+    private final double[] oceanHSV = {190, 1, 0.85};
     private final double[] darkSkyHSV = {239, 0.94, 0.19};
-    private final float stowBackground = ocean;
-    private final float nominalChaser = 120;
-    private final float humanControl = 120;
-    private final float robotControl = 14;
+    private final double[] stowBackgroundHSV = oceanHSV;
+    private final double[] scoreBackgroundHSV = {93, 0.99, 1};
+    private final double[] nominalChaserHSV = {120, 1, 1};
+    private final double[] warningChaserHSV = {60, 1, 1};
+    private final double[] criticalChaserHSV = {10, 1, 1};
 
-    private final double[] nominalChaserGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(nominalChaser, 1, 1));
-    private final double[] humanControlGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(humanControl, 1, 1));
-    private final double[] robotControlGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(robotControl, 1, 1));
-
-    enum LEDStates {
+    public static enum LEDStates {
         NORMAL,
         PARTY,
         LOCATE,
         CHOOSEHUE
     };
 
-    enum LEDGripperGameStates { //TODO
+    public static enum ChaserStates {
+        NOMINAL,
+        WARNING,
+        CRITICAL
+    };
+
+    public static enum LEDGripperGameStates { //TODO
         NORMAL, //all four team colors slowly sliding
         INTAKING, //alternating magenta and green chaser with trail going inward
         OUTTAKING, //alternating magenta and green chaser with trail going outward
@@ -46,12 +49,18 @@ public class LED {
         CLIMB //slowly go from black to ocean color over course of endgame
     };
 
-    enum LEDArmGameStates { //TODO
-        NORMAL, //solid blue with 3 indicator LEDs at top. Green if nothings wrong, yellow warnings (yellow master alarms), red for critical errors (master alarms)
+    public static enum LEDArmGameStates {
+        NORMAL, //solid blue with 3 indicator LEDs at top and upward chaser. Green if nothings wrong, yellow warnings (yellow master alarms), red for critical errors (master alarms)
         CLIMB //same as gripper
     }
 
-    private double chaserStatus = 0;
+    public LEDGripperGameStates LEDGripperGameState = LEDGripperGameStates.NORMAL;
+
+    public LEDArmGameStates LEDArmGameState = LEDArmGameStates.NORMAL;
+
+    public ChaserStates chaserState = ChaserStates.NOMINAL;
+
+    private double animationIndex = 0;
 
     private LEDStates ledState = LEDStates.NORMAL; // default to normal
 
@@ -88,11 +97,10 @@ public class LED {
         if (id == 1) {
             switch (Robot.masterState) {
                 case CLMB:
-                    for (var i = 0; i < ledBuffer.getLength(); i++) {
-                        double[] hsv = darkSkyHSV;
-                        double[] rgb = LEDHelpers.hsvToRgb(hsv);
-                        ledBuffer.setRGB(0, (int) rgb[0], (int) rgb[1], (int) rgb[2]); //time until end of competition
-                    }
+                    LEDArmGameState = LEDArmGameStates.CLIMB;
+                    break;
+                default:
+                    LEDArmGameState = LEDArmGameStates.NORMAL;
             }
         }
 
@@ -100,32 +108,82 @@ public class LED {
         switch (ledState) {
             case NORMAL:
                 // Normal
-                double[] rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 0.63);
-                switch (Robot.masterState) {
-                    case CLMB:
-                        break;
-                    case SCOR:
-                        break;
-                    case FEED:
-                        break;
-                    case STOW:
-                        break;
+                if (id == 1) {
+                    switch (LEDArmGameState) {
+                        case NORMAL:
+                            double[] bgRGB;
+                            switch (Robot.masterState) {
+                                case SCOR:
+                                    bgRGB = LEDHelpers.hsvToRgb(scoreBackgroundHSV);
+                                    break;
+                                case FEED:
+                                    bgRGB = LEDHelpers.hsvToRgb(scoreBackgroundHSV);
+                                    break;
+                                default:
+                                    bgRGB = LEDHelpers.hsvToRgb(stowBackgroundHSV);
+                            }
+
+                            //update chaser state
+                            //TODO
+                            if (Robot.loopTime_ms > 50) { //critical conditions
+                                chaserState = ChaserStates.CRITICAL;
+                            } else if (Robot.loopTime_ms > 30) { //warning conditions
+                                chaserState = ChaserStates.WARNING;
+                            } else { //if none are met, chaser is nominal
+                                chaserState = ChaserStates.NOMINAL;
+                            }
+
+                            //update chaser color based on chaser state
+                            double[] chaserRGB;
+                            switch (chaserState) {
+                                case CRITICAL:
+                                    chaserRGB = LEDHelpers.hsvToRgb(criticalChaserHSV);
+                                    break;
+                                case WARNING:
+                                    chaserRGB = LEDHelpers.hsvToRgb(warningChaserHSV);
+                                    break;
+                                default:
+                                    chaserRGB = LEDHelpers.hsvToRgb(nominalChaserHSV);
+                                    break;
+                            }
+
+                            // set all LED's to the bg color, except the chaser which is chaserRGB
+                            for (int i = 0; i < ledBuffer.getLength(); i++) {
+                                if (i == animationIndex || i < 2) {
+                                    ledBuffer.setRGB(i, (int) chaserRGB[0], (int) chaserRGB[1], (int) chaserRGB[2]);
+                                } else {
+                                    ledBuffer.setRGB(i, (int) bgRGB[0], (int) bgRGB[1], (int) bgRGB[2]);
+                                }
+                            }
+
+                            animationIndex += 1;
+                            animationIndex %= numberOfLEDs - 3;
+                            break;
+                        case CLIMB:
+                            for (int i = 0; i < ledBuffer.getLength(); i++) {
+                                double t = time - (160 * 1000);
+                                double[] hsv = (i > ((4*Math.sin(Math.PI*t/2000))+(t/1000))/20*ledBuffer.getLength()) ? darkSkyHSV:oceanHSV; //makes a nice wave effect
+                                double[] rgb = LEDHelpers.hsvToRgb(hsv);
+                                ledBuffer.setRGB(0, (int) rgb[0], (int) rgb[1], (int) rgb[2]);
+                            }
+                    }
+                } else if (id == 2) {
+
                 }
-                chaserStatus += 1;
-                chaserStatus %= numberOfLEDs - 3;
                 break;
             case PARTY:
                 // Party mode
                 
                 break;
             case LOCATE:
-                ledBuffer.setRGB(locateLED, (int) nominalChaserGRB[0], (int) nominalChaserGRB[1], (int) nominalChaserGRB[2]);
+                double[] rgb = LEDHelpers.hsvToRgb(nominalChaserHSV);
+                ledBuffer.setRGB(locateLED, (int) rgb[0], (int) rgb[1], (int) rgb[2]);
                 break;
             case CHOOSEHUE:
-                double[] chooseGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(chosenHue, 1, 1));
+                double[] chooseRGB = LEDHelpers.hsvToRgb(chosenHue, 1, 1);
                 for (var i = 0; i < ledBuffer.getLength(); i++) {
                     // Sets the specified LED to the HSV values
-                    ledBuffer.setRGB(i, (int) chooseGRB[0], (int) chooseGRB[1], (int) chooseGRB[2]);
+                    ledBuffer.setRGB(i, (int) chooseRGB[0], (int) chooseRGB[1], (int) chooseRGB[2]);
                 }
                 break;
         }
