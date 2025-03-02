@@ -60,6 +60,7 @@ public class Dashboard {
     public static StringPublisher robotProfile;
     public static StringPublisher codeVersion;
     public static BooleanPublisher isAutonomous;
+    public static BooleanPublisher cameraEnabled;
     
     public static DoubleSubscriber testActuatorValue;
     public static DoubleSubscriber testActuatorPeriod;
@@ -116,6 +117,7 @@ public class Dashboard {
         robotProfile = table.getStringTopic("Robot_Profile").publish();
         codeVersion = table.getStringTopic("Robot_Code_Version").publish();
         isAutonomous = table.getBooleanTopic("Robot_is_Autonomous").publish();
+        cameraEnabled = table.getBooleanTopic("Camera_Enabled").publish();
 
         testActuatorValue = table.getDoubleTopic("Test_Actuator_Value").subscribe(0.0);
         testActuatorPeriod = table.getDoubleTopic("Test_Actuator_Period").subscribe(0.0);

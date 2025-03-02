@@ -56,6 +56,9 @@ public class Robot extends TimedRobot {
   public static boolean scoreRight = false;
   public static boolean scoreCoral = true;
 
+  public boolean cameraEnabled = true;
+  private int driverPOV0 = -1;
+
   // Major constants
   private final String codeVersion = "2025-Robot v1.1_dev";
   /** The size of the robot in the X direction (distance between wheel centers) */
@@ -184,6 +187,13 @@ public class Robot extends TimedRobot {
       SwerveUtils.updateDriverProfile(setpoints);
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
     }
+
+    if (driverController.getPOV() == 180 && driverPOV0 != 180) {
+      cameraEnabled = !cameraEnabled;
+      System.out.println("sigma");
+      Dashboard.cameraEnabled.set(cameraEnabled);
+    }
+    driverPOV0 = driverController.getPOV();
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
