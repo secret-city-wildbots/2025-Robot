@@ -46,7 +46,7 @@ public class Robot extends TimedRobot {
   // private final Arm arm;
   // private final Intake intake;
   private final Compressor compressor;
-  private final LED led;
+  private LED[] ledStrips = null;
   private Command autonomousCommand;
   Command pathfinder;
     
@@ -91,6 +91,8 @@ public class Robot extends TimedRobot {
   // Looptime tracking
   public static double loopTime_ms = 20;
   private static double loopTime0 = System.currentTimeMillis();
+  public double startTime = 0;
+  public double elapsedTime = 0;
 
   // Dashboard variables
   private double selectedDriver0 = 0;
@@ -110,6 +112,7 @@ public class Robot extends TimedRobot {
         robotWidth_m = Units.inchesToMeters(23);
         robotLengthBumpers_m = Units.inchesToMeters(35);
         robotWidthBumpers_m = Units.inchesToMeters(35);
+        ledStrips = new LED[] {new LED(5,1),new LED(8,2)};
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23);
@@ -117,6 +120,8 @@ public class Robot extends TimedRobot {
         robotLengthBumpers_m = Units.inchesToMeters(35);
         robotWidthBumpers_m = Units.inchesToMeters(35);
         break;
+      case "Linguini":
+        ledStrips = new LED[] {new LED(5,1),new LED(8,2)};
       default:
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
@@ -124,13 +129,13 @@ public class Robot extends TimedRobot {
         robotWidthBumpers_m = Units.inchesToMeters(35);
     }
     
-    // Set up subsystems and major objects
-    led = new LED();
-    driverController = new XboxController(0);
-    driverCommandController = new CommandXboxController(0);
-    manipCommandController = new CommandXboxController(1);
-    manipController = new XboxController(1);
-    drivetrain = new Drivetrain();
+     // Set up subsystems and major objects
+
+     driverController = new XboxController(0);
+     driverCommandController = new CommandXboxController(0);
+     manipCommandController = new CommandXboxController(1);
+     manipController = new XboxController(1);
+      drivetrain = new Drivetrain();
     // arm = new Arm();
     // intake = new Intake();
     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
@@ -207,6 +212,14 @@ public class Robot extends TimedRobot {
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
     }
 
+    drivetrain.determineGoalPose();
+
+    if (ledStrips.length > 0) {
+      for (int i = 0; i < ledStrips.length; i++) {
+        ledStrips[i].updateLED(driverController, false, elapsedTime);
+      }
+    }
+
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
   }
@@ -223,6 +236,9 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     System.out.println(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
     autonomousCommand = new PathPlannerAuto(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
+    if (startTime == 0) {
+      startTime = System.currentTimeMillis();
+    }
 
     if (autonomousCommand != null) {
       autonomousCommand.schedule();
@@ -235,6 +251,13 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     updateOutputs();
+  }
+
+  @Override 
+  public void teleopInit() {
+    if (startTime == 0) {
+      startTime = System.currentTimeMillis();
+    }
   }
 
   /**
@@ -254,11 +277,10 @@ public class Robot extends TimedRobot {
       drivetrain.getFinalStrafeCorrectionCommand().schedule();
     }
 
+    elapsedTime = System.currentTimeMillis() - startTime;
+
     // Check for state updates based on manip inputs
     updateMasterState();
-
-    // Adjust LED color settings based on mode using driver controller
-    led.updateLED(false);
 
     // Update outputs for everything
     // This includes all motors, pistons, and other things
@@ -280,7 +302,11 @@ public class Robot extends TimedRobot {
    */
   private void updateOutputs() {
     drivetrain.updateOutputs(isAutonomous());
-    led.updateOutputs();
+    if (ledStrips.length > 0) {
+      for (int i = 0; i < ledStrips.length; i++) {
+        ledStrips[i].updateOutputs();
+      }
+    }
     // arm.updateOutputs();
     // intake.updateOutputs();
   }
