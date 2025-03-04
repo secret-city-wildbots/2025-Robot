@@ -35,7 +35,7 @@ public class Robot extends TimedRobot {
   private final XboxController manipController;
   public static CommandXboxController manipCommandController;
   private final Drivetrain drivetrain;
-  // private final Arm arm;
+  private final Arm arm;
   // private final Intake intake;
   private final Compressor compressor;
   private final LED led;
@@ -115,16 +115,16 @@ public class Robot extends TimedRobot {
         robotWidthBumpers_m = Units.inchesToMeters(35);
     }
     
-     // Set up subsystems and major objects
-     led = new LED();
-     driverController = new XboxController(0);
-     driverCommandController = new CommandXboxController(0);
-     manipCommandController = new CommandXboxController(1);
-     manipController = new XboxController(1);
-      drivetrain = new Drivetrain();
-    // arm = new Arm();
+    // Set up subsystems and major objects
+    led = new LED();
+    driverController = new XboxController(0);
+    driverCommandController = new CommandXboxController(0);
+    manipCommandController = new CommandXboxController(1);
+    manipController = new XboxController(1);
+    drivetrain = new Drivetrain();
+    arm = new Arm();
     // intake = new Intake();
-     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
+    compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
     // Send major constants to the Dashboard
     Dashboard.robotProfile.set(robotProfile);
@@ -250,7 +250,7 @@ public class Robot extends TimedRobot {
    */
   private void getSensors() {
     drivetrain.updateSensors();
-    // arm.updateSensors(manipController);
+    arm.updateSensors(manipController);
     // intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
@@ -261,7 +261,7 @@ public class Robot extends TimedRobot {
   private void updateOutputs() {
     drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
-    // arm.updateOutputs();
+    arm.updateOutputs();
     // intake.updateOutputs();
   }
 

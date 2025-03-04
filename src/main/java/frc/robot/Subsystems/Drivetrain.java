@@ -328,7 +328,6 @@ public class Drivetrain extends SubsystemBase {
 
     boolean leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
     boolean rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
-    System.out.println(leftEstimateValid);
     
 
     // if (leftEstimateValid && rightEstimateValid) {

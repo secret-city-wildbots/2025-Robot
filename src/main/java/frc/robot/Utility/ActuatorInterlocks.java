@@ -116,15 +116,13 @@ public class ActuatorInterlocks {
             if (testingPeriod < 0.001) {
                 motor.set(testingValue);
             } else {
-                motor.set(
-                        testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
+                motor.set(testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
             }
         } else if ((actuatorName.contains("Drive_") || actuatorName.contains("Azimuth_")) && testingActuator.equals("Drivetrain_(p)")) {
             if (testingPeriod < 0.001) {
                 motor.set(testingValue);
             } else {
-                motor.set(
-                        testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
+                motor.set(testingValue * Math.sin((double) System.currentTimeMillis() * 0.001 * Math.PI / testingPeriod));
             }
         } else {
             motor.set(0);

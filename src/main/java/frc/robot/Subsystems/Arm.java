@@ -1,9 +1,11 @@
 package frc.robot.Subsystems;
 
+import com.ctre.phoenix6.configs.HardwareLimitSwitchConfigs;
 // import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.ForwardLimitSourceValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.revrobotics.spark.SparkAbsoluteEncoder;
@@ -18,6 +20,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -63,6 +66,9 @@ public class Arm extends SubsystemBase {
     private double extenderPosition_m = 0.0;
     private Rotation2d wristRotation = new Rotation2d();
 
+    // Encoder values
+    private final DutyCycleEncoder encoder = new DutyCycleEncoder(0, 1, 0);
+
     // Outputs
     private Rotation2d pivotOutput = new Rotation2d();
     private double extenderOutput_m = 0.0;
@@ -87,7 +93,7 @@ public class Arm extends SubsystemBase {
             // Temp values
                 pivotRatio = 
                     (84.0 / 8.0) * // First gear reduction
-                    (18.0 / 1.55); // Capstan reduction, Total reduction: 121.935:1
+                    (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
                 maxForwardPivotAngle = Units.degreesToRadians(90);
                 maxBackwardPivotAngle = Units.degreesToRadians(-90);
 
@@ -166,7 +172,7 @@ public class Arm extends SubsystemBase {
             Units.radiansToRotations(maxBackwardPivotAngle) * pivotRatio;
         pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
         pivotConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        pivot.getConfigurator().apply(pivotConfig);
+        pivot.getConfigurator().apply(pivotConfig);        
         
         TalonFXConfiguration[] pivotFollowerConfigs = new TalonFXConfiguration[3];
         for (int i = 0; i<3; i++) {
@@ -174,55 +180,64 @@ public class Arm extends SubsystemBase {
             pivotFollowerConfigs[i] = new TalonFXConfiguration();
             pivotFollowerConfigs[i].MotorOutput.NeutralMode = NeutralModeValue.Brake;
             pivotFollowers[i].getConfigurator().apply(pivotFollowerConfigs[i]);
-            pivotFollowers[i].setControl(new Follower(14, false));
+            // Check if motor is on the same side as the master (30). If so, follow master with same configuration
+            if (i==0) {
+                // motor 31 will be on the same side as the master motor.
+                pivotFollowers[i].setControl(new Follower(30, false));
+            } else {
+                // motors 32 and 33 will be on the opposite side as the master motor requiring the follower to oppose the
+                // master direction
+                pivotFollowers[i].setControl(new Follower(30, true));
+            }
+            
         }
 
-        // Extender configurations
+        // // Extender configurations
         extender = new TalonFX(34);
-        extender.setPosition(Units.inchesToMeters(-1) * extenderRatio_m_to_rot);
-        extenderConfig = new TalonFXConfiguration();
-        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.3;
-        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
-        extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        // Temp values
-        extenderConfig.Slot0.kP = 0.17;
-        extenderConfig.Slot0.kI = 0.0;
-        extenderConfig.Slot0.kD = 0.0;
-        extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
-            maxExtensionDistance_m * extenderRatio_m_to_rot;
-        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 
-            0.0;
-        extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        extender.getConfigurator().apply(extenderConfig);
+        // extender.setPosition(Units.inchesToMeters(-1) * extenderRatio_m_to_rot);
+        // extenderConfig = new TalonFXConfiguration();
+        // extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.3;
+        // extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
+        // extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        // extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        // // Temp values
+        // extenderConfig.Slot0.kP = 0.17;
+        // extenderConfig.Slot0.kI = 0.0;
+        // extenderConfig.Slot0.kD = 0.0;
+        // extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
+        //     maxExtensionDistance_m * extenderRatio_m_to_rot;
+        // extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 
+        //     0.0;
+        // extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+        // extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+        // extender.getConfigurator().apply(extenderConfig);
 
         extenderFollower = new TalonFX(35);
-        extenderFollowerConfig = new TalonFXConfiguration();
-        extenderFollowerConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        extenderFollower.getConfigurator().apply(extenderFollowerConfig);
-        extenderFollower.setControl(new Follower(34, false));
+        // extenderFollowerConfig = new TalonFXConfiguration();
+        // extenderFollowerConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        // extenderFollower.getConfigurator().apply(extenderFollowerConfig);
+        // extenderFollower.setControl(new Follower(34, false));
 
-        // Wrist configurations
+        // // Wrist configurations
         wrist = new SparkMax(36, MotorType.kBrushless);
         wristEncoder = wrist.getAbsoluteEncoder();
-        wrist.getEncoder().setPosition(wristEncoder.getPosition() - 198.333);
-        wristConfig.idleMode(IdleMode.kBrake);
-        wristConfig.inverted(true);
-        wristConfig.closedLoop.pid(0.05,0.0,0.0);
-        wristConfig.closedLoop.maxOutput(0.4);
-        wristConfig.closedLoop.minOutput(-0.4);
-        wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
-        wristConfig.closedLoop.positionWrappingEnabled(true);
-        wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
-        wristConfig.absoluteEncoder.inverted(true);
-        wristConfig.absoluteEncoder.zeroOffset(0.8068750);
-        wristConfig.absoluteEncoder.positionConversionFactor(198.333);
-        // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
-        // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
-        // wristConfig.softLimit.reverseSoftLimitEnabled(true);
-        // wristConfig.softLimit.forwardSoftLimitEnabled(true);
-        wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        // wrist.getEncoder().setPosition(wristEncoder.getPosition() - 198.333);
+        // wristConfig.idleMode(IdleMode.kBrake);
+        // wristConfig.inverted(true);
+        // wristConfig.closedLoop.pid(0.05,0.0,0.0);
+        // wristConfig.closedLoop.maxOutput(0.4);
+        // wristConfig.closedLoop.minOutput(-0.4);
+        // wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
+        // wristConfig.closedLoop.positionWrappingEnabled(true);
+        // wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
+        // wristConfig.absoluteEncoder.inverted(true);
+        // wristConfig.absoluteEncoder.zeroOffset(0.8068750);
+        // wristConfig.absoluteEncoder.positionConversionFactor(198.333);
+        // // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
+        // // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
+        // // wristConfig.softLimit.reverseSoftLimitEnabled(true);
+        // // wristConfig.softLimit.forwardSoftLimitEnabled(true);
+        // wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
         
 
         // Trigger configurations
@@ -502,9 +517,10 @@ public class Arm extends SubsystemBase {
 
     boolean unlockExtender0 = false;
     public void updateOutputs() {
-        // ActuatorInterlocks.testActuatorInterlocks(
-        //     pivot, "Pivot_(p)", 
-        //     pivotOutput.getRotations() * pivotRatio, 0.0);
+        System.out.println(encoder.get());
+        ActuatorInterlocks.testActuatorInterlocks(
+            pivot, "Pivot_(p)", 
+            pivotOutput.getRotations() * pivotRatio, 0.0);
 
         ActuatorInterlocks.testActuatorInterlocks(
             extender, "Extender_(p)", 
