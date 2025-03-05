@@ -1,0 +1,73 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Climb2RToReef3"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreLeft"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Reef3ToFeederR"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistFeeder"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "FeederRToReef2"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreLeft"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Reef2ToFeederR"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistFeeder"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "FeederRToReef2"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreLeft"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "3Piece Red",
+  "choreoAuto": false
+}

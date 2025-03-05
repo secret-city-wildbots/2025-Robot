@@ -18,6 +18,7 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
@@ -38,8 +39,8 @@ public class Arm extends SubsystemBase {
     private final double extenderRatio_m_to_rot;
     private final double wristRatio;
     private final double maxExtensionDistance_m;
-    private final double maxForwardPivotAngle;
-    private final double maxBackwardPivotAngle;
+    private final double maxForwardPivotAngle_rad;
+    private final double maxBackwardPivotAngle_rad;
     private final double maxForwardWristAngle_rad;
     private final double maxBackwardWristAngle_rad;
 
@@ -49,6 +50,10 @@ public class Arm extends SubsystemBase {
     // Motors
     private final TalonFX pivot;
     private final TalonFX[] pivotFollowers = new TalonFX[3];
+    private final DutyCycleEncoder pivotEncoder = new DutyCycleEncoder(0, 1, 0);
+    private final double pivotEncoderOffset_rot = 0.676;
+    private final PIDController pivotPID = new PIDController(8.0, 0.0, 0.0);
+
     private final TalonFX extender;
     TalonFXConfiguration extenderConfig;
     private final TalonFX extenderFollower;
@@ -57,17 +62,14 @@ public class Arm extends SubsystemBase {
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
     SparkMaxConfig wristConfig = new SparkMaxConfig();
-    // private double kp0 = 0.0;
-    // private double ki0 = 0.0;
-    // private double kd0 = 0.0;
+    private double kp0 = 0.0;
+    private double ki0 = 0.0;
+    private double kd0 = 0.0;
 
     // Sensor values
     private Rotation2d pivotRotation = new Rotation2d();
     private double extenderPosition_m = 0.0;
     private Rotation2d wristRotation = new Rotation2d();
-
-    // Encoder values
-    private final DutyCycleEncoder encoder = new DutyCycleEncoder(0, 1, 0);
 
     // Outputs
     private Rotation2d pivotOutput = new Rotation2d();
@@ -94,8 +96,8 @@ public class Arm extends SubsystemBase {
                 pivotRatio = 
                     (84.0 / 8.0) * // First gear reduction
                     (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
-                maxForwardPivotAngle = Units.degreesToRadians(90);
-                maxBackwardPivotAngle = Units.degreesToRadians(-90);
+                maxForwardPivotAngle_rad = Units.degreesToRadians(23.5);
+                maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
                     (1.0 / 5.25) *  // ratio of motor rotations to spool rotations
@@ -114,9 +116,9 @@ public class Arm extends SubsystemBase {
             // Temp values
                 pivotRatio = 
                     (84.0 / 8.0) * // First gear reduction
-                    (18.0 / 1.55); // Capstan reduction, Total reduction: 121.935:1
-                maxForwardPivotAngle = Units.degreesToRadians(90);
-                maxBackwardPivotAngle = Units.degreesToRadians(-90);
+                    (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
+                    maxForwardPivotAngle_rad = Units.degreesToRadians(23.5);
+                    maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
                     (1.0 / 5.25) *  // ratio of motor rotations to spool rotations
@@ -135,9 +137,9 @@ public class Arm extends SubsystemBase {
             // Temp values
                 pivotRatio = 
                     (84.0 / 8.0) * // First gear reduction
-                    (18.0 / 1.55); // Capstan reduction, Total reduction: 121.935:1
-                maxForwardPivotAngle = Units.degreesToRadians(90);
-                maxBackwardPivotAngle = Units.degreesToRadians(-90);
+                    (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
+                    maxForwardPivotAngle_rad = Units.degreesToRadians(23.5);
+                    maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
                     (1.0 / 5.25) *  // ratio of motor rotations to spool rotations
@@ -156,6 +158,7 @@ public class Arm extends SubsystemBase {
 
         // Pivot and pivot follower configurations
         pivot = new TalonFX(30);
+        pivot.setPosition(getEncoderPosition().getRotations());
         pivot.getDutyCycle().setUpdateFrequency(50);
         pivot.getMotorVoltage().setUpdateFrequency(50);
         pivot.getTorqueCurrent().setUpdateFrequency(50);
@@ -167,9 +170,9 @@ public class Arm extends SubsystemBase {
         pivotConfig.Slot0.kI = 0.0;
         pivotConfig.Slot0.kD = 0.0;
         pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
-            Units.radiansToRotations(maxForwardPivotAngle) * pivotRatio;
+            Units.radiansToRotations(maxForwardPivotAngle_rad) * pivotRatio;
         pivotConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 
-            Units.radiansToRotations(maxBackwardPivotAngle) * pivotRatio;
+            Units.radiansToRotations(maxBackwardPivotAngle_rad) * pivotRatio;
         pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
         pivotConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
         pivot.getConfigurator().apply(pivotConfig);        
@@ -194,50 +197,50 @@ public class Arm extends SubsystemBase {
 
         // // Extender configurations
         extender = new TalonFX(34);
-        // extender.setPosition(Units.inchesToMeters(-1) * extenderRatio_m_to_rot);
-        // extenderConfig = new TalonFXConfiguration();
-        // extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.3;
-        // extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
-        // extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        // extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        // // Temp values
-        // extenderConfig.Slot0.kP = 0.17;
-        // extenderConfig.Slot0.kI = 0.0;
-        // extenderConfig.Slot0.kD = 0.0;
-        // extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
-        //     maxExtensionDistance_m * extenderRatio_m_to_rot;
-        // extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 
-        //     0.0;
-        // extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        // extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        // extender.getConfigurator().apply(extenderConfig);
+        extender.setPosition(Units.inchesToMeters(-1) * extenderRatio_m_to_rot);
+        extenderConfig = new TalonFXConfiguration();
+        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.3;
+        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
+        extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        // Temp values
+        extenderConfig.Slot0.kP = 0.17;
+        extenderConfig.Slot0.kI = 0.0;
+        extenderConfig.Slot0.kD = 0.0;
+        extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
+            maxExtensionDistance_m * extenderRatio_m_to_rot;
+        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 
+            0.0;
+        extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+        extender.getConfigurator().apply(extenderConfig);
 
         extenderFollower = new TalonFX(35);
-        // extenderFollowerConfig = new TalonFXConfiguration();
-        // extenderFollowerConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        // extenderFollower.getConfigurator().apply(extenderFollowerConfig);
-        // extenderFollower.setControl(new Follower(34, false));
+        extenderFollowerConfig = new TalonFXConfiguration();
+        extenderFollowerConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        extenderFollower.getConfigurator().apply(extenderFollowerConfig);
+        extenderFollower.setControl(new Follower(34, false));
 
         // // Wrist configurations
         wrist = new SparkMax(36, MotorType.kBrushless);
         wristEncoder = wrist.getAbsoluteEncoder();
-        // wrist.getEncoder().setPosition(wristEncoder.getPosition() - 198.333);
-        // wristConfig.idleMode(IdleMode.kBrake);
-        // wristConfig.inverted(true);
-        // wristConfig.closedLoop.pid(0.05,0.0,0.0);
-        // wristConfig.closedLoop.maxOutput(0.4);
-        // wristConfig.closedLoop.minOutput(-0.4);
-        // wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
-        // wristConfig.closedLoop.positionWrappingEnabled(true);
-        // wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
-        // wristConfig.absoluteEncoder.inverted(true);
-        // wristConfig.absoluteEncoder.zeroOffset(0.8068750);
-        // wristConfig.absoluteEncoder.positionConversionFactor(198.333);
-        // // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
-        // // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
-        // // wristConfig.softLimit.reverseSoftLimitEnabled(true);
-        // // wristConfig.softLimit.forwardSoftLimitEnabled(true);
-        // wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        wrist.getEncoder().setPosition(wristEncoder.getPosition() - 198.333);
+        wristConfig.idleMode(IdleMode.kBrake);
+        wristConfig.inverted(true);
+        wristConfig.closedLoop.pid(0.05,0.0,0.0);
+        wristConfig.closedLoop.maxOutput(0.4);
+        wristConfig.closedLoop.minOutput(-0.4);
+        wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
+        wristConfig.closedLoop.positionWrappingEnabled(true);
+        wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
+        wristConfig.absoluteEncoder.inverted(true);
+        wristConfig.absoluteEncoder.zeroOffset(0.8068750);
+        wristConfig.absoluteEncoder.positionConversionFactor(198.333);
+        // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
+        // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
+        // wristConfig.softLimit.reverseSoftLimitEnabled(true);
+        // wristConfig.softLimit.forwardSoftLimitEnabled(true);
+        wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
         
 
         // Trigger configurations
@@ -280,15 +283,16 @@ public class Arm extends SubsystemBase {
         stow();
     }
 
-    public void updateSensors(XboxController manipController) {
-        pivotRotation = new Rotation2d();
-        // pivotRotation = Rotation2d.fromRotations(pivot.getRotorPosition().getValueAsDouble() / pivotRatio);
-        
+    public Rotation2d getEncoderPosition() {
+        return Rotation2d.fromRotations(pivotEncoderOffset_rot - pivotEncoder.get());
+    }
+
+    public void updateSensors(XboxController manipController) {        
         // extenderPosition_m = 0.0;
-        extenderPosition_m = extender.getPosition().getValueAsDouble() / extenderRatio_m_to_rot;
+        // extenderPosition_m = extender.getPosition().getValueAsDouble() / extenderRatio_m_to_rot;
         
-        wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
-        wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
+        // wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
+        // wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
 
         // PID Tuning
         // double kp = Dashboard.freeTuningkP.get();
@@ -319,6 +323,20 @@ public class Arm extends SubsystemBase {
         //     kd0 = kd;
         // }
         // Dashboard.pidTuningGoalActual.set(new double[] { Dashboard.freeTuningVariable.get(), Units.metersToInches(extenderPosition_m) });
+        
+        // PID Tuning
+        // double kp = Dashboard.freeTuningkP.get();
+        // double ki = Dashboard.freeTuningkI.get();
+        // double kd = Dashboard.freeTuningkD.get();
+        // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+        //     pivotPID.setP(kp);
+        //     pivotPID.setI(ki);
+        //     pivotPID.setD(kd);
+        //     kp0 = kp;
+        //     ki0 = ki;
+        //     kd0 = kd;
+        // }
+        // Dashboard.pidTuningGoalActual.set(new double[] { -Dashboard.freeTuningVariable.get(), getEncoderPosition().getDegrees() });
     }
 
     public void switchPiece() {
@@ -504,7 +522,7 @@ public class Arm extends SubsystemBase {
     private void updateArm(double extensionDistance_m, Rotation2d pivotAngle, Rotation2d wristAngle) {
         pivotOutput = new Rotation2d(
             MathUtil.clamp(pivotAngle.getRadians(), 
-            maxBackwardPivotAngle, maxForwardPivotAngle));
+            maxBackwardPivotAngle_rad, maxForwardPivotAngle_rad));
         
         extenderOutput_m = 
             MathUtil.clamp(extensionDistance_m, 
@@ -517,10 +535,10 @@ public class Arm extends SubsystemBase {
 
     boolean unlockExtender0 = false;
     public void updateOutputs() {
-        System.out.println(encoder.get());
+
         ActuatorInterlocks.testActuatorInterlocks(
             pivot, "Pivot_(p)", 
-            pivotOutput.getRotations() * pivotRatio, 0.0);
+            pivotPID.calculate(getEncoderPosition().getRotations(), pivotOutput.getRotations()));
 
         ActuatorInterlocks.testActuatorInterlocks(
             extender, "Extender_(p)", 

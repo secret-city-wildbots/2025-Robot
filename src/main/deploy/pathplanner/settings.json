@@ -2,8 +2,18 @@
   "robotWidth": 0.9,
   "robotLength": 0.9,
   "holonomicMode": true,
-  "pathFolders": [],
-  "autoFolders": [],
+  "pathFolders": [
+    "ToReef2",
+    "Starting Paths to Reef 3",
+    "Starting Paths to Reef 5",
+    "ToFeederL",
+    "ToFeederR",
+    "ToReef6"
+  ],
+  "autoFolders": [
+    "3Piece Blue",
+    "3Piece Red"
+  ],
   "defaultMaxVel": 2.0,
   "defaultMaxAccel": 2.0,
   "defaultMaxAngVel": 540.0,

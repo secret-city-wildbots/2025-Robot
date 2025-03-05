@@ -570,31 +570,31 @@ public class Drivetrain extends SubsystemBase {
       case STOW:
         masterState0 = MasterStates.STOW;
         if (headingLocked) {
-          if (Math.hypot(reefPoseX_m-poseX_m, reefPoseY_m-poseY_m) < 2.75) {
-            if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
-              // Bottom sextant
-              lockedHeading_rad = 0.0;
-            } else if (poseX_m < a) {
-              if (poseY_m < b) {
-                // Bottom right sextant
-                  lockedHeading_rad = Units.degreesToRadians(60.0);
-              } else {
-                // Bottom left sextant
-                  lockedHeading_rad = Units.degreesToRadians(-60.0);
-              }
-            } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
-              // Top sextant
-              lockedHeading_rad = Units.degreesToRadians(180.0);
-            } else if (poseY_m < b) {
-              // Top right sextant
-              lockedHeading_rad = Units.degreesToRadians(120);
-            } else {
-              // Top left sextant
-              lockedHeading_rad = Units.degreesToRadians(-120);
-            }
-          } else {
+          // if (Math.hypot(reefPoseX_m-poseX_m, reefPoseY_m-poseY_m) < 2.75) {
+            // if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+            //   // Bottom sextant
+            //   lockedHeading_rad = 0.0;
+            // } else if (poseX_m < a) {
+            //   if (poseY_m < b) {
+            //     // Bottom right sextant
+            //       lockedHeading_rad = Units.degreesToRadians(60.0);
+            //   } else {
+            //     // Bottom left sextant
+            //       lockedHeading_rad = Units.degreesToRadians(-60.0);
+            //   }
+            // } else if (poseX_m > ((Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
+            //   // Top sextant
+            //   lockedHeading_rad = Units.degreesToRadians(180.0);
+            // } else if (poseY_m < b) {
+            //   // Top right sextant
+            //   lockedHeading_rad = Units.degreesToRadians(120);
+            // } else {
+            //   // Top left sextant
+            //   lockedHeading_rad = Units.degreesToRadians(-120);
+            // }
+          // } else {
             lockedHeading_rad = Math.atan2(reefPoseY_m-poseY_m, reefPoseX_m-poseX_m);
-          }
+          // }
         } else {
         lockedHeading_rad = Double.NaN;
         }

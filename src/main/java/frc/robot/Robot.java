@@ -34,7 +34,7 @@ public class Robot extends TimedRobot {
   public static CommandXboxController driverCommandController;
   private final XboxController manipController;
   public static CommandXboxController manipCommandController;
-  private final Drivetrain drivetrain;
+  // private final Drivetrain drivetrain;
   private final Arm arm;
   // private final Intake intake;
   private final Compressor compressor;
@@ -121,7 +121,7 @@ public class Robot extends TimedRobot {
     driverCommandController = new CommandXboxController(0);
     manipCommandController = new CommandXboxController(1);
     manipController = new XboxController(1);
-    drivetrain = new Drivetrain();
+    // drivetrain = new Drivetrain();
     arm = new Arm();
     // intake = new Intake();
     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
@@ -186,7 +186,7 @@ public class Robot extends TimedRobot {
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
     }
 
-    drivetrain.determineGoalPose();
+    // drivetrain.determineGoalPose();
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
@@ -228,10 +228,10 @@ public class Robot extends TimedRobot {
       tofSensor.identifySensor();
 
     if (driverController.getBButtonPressed()) {
-      Pose2d goalPose = drivetrain.determineGoalPose();
-      pathfinder = drivetrain.getPathFindingCommand(goalPose);
-      pathfinder.schedule();
-      drivetrain.getFinalStrafeCorrectionCommand(goalPose).schedule();
+      // Pose2d goalPose = drivetrain.determineGoalPose();
+      // pathfinder = drivetrain.getPathFindingCommand(goalPose);
+      // pathfinder.schedule();
+      // drivetrain.getFinalStrafeCorrectionCommand(goalPose).schedule();
     }
 
     // Check for state updates based on manip inputs
@@ -249,7 +249,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    drivetrain.updateSensors();
+    // drivetrain.updateSensors();
     arm.updateSensors(manipController);
     // intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
@@ -259,7 +259,7 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    drivetrain.updateOutputs(isAutonomous());
+    // drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
     arm.updateOutputs();
     // intake.updateOutputs();
@@ -305,11 +305,11 @@ public class Robot extends TimedRobot {
   }
 
   private void configureDefaultCommands() {
-    drivetrain.setDefaultCommand(
-        DrivetrainCommands.drive(
-            drivetrain,
-            driverController,
-            manipController));
+    // drivetrain.setDefaultCommand(
+    //     DrivetrainCommands.drive(
+    //         drivetrain,
+    //         driverController,
+    //         manipController));
   }
 
   /**

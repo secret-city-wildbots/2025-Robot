@@ -1,0 +1,73 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "WallBToReef5"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreRight"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Reef5ToFeederL"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistFeeder"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "FeederLToReef6"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreRight"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Reef6ToFeederL"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistFeeder"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "FeederLToReef6"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreRight"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "3Piece Blue",
+  "choreoAuto": false
+}
