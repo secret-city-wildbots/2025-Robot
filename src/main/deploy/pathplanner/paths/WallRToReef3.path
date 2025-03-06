@@ -3,25 +3,25 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 8.0145,
+        "x": 7.188,
         "y": 0.4445
       },
       "prevControl": null,
       "nextControl": {
-        "x": 7.079937965007898,
-        "y": 0.6189222068125422
+        "x": 6.344934288999856,
+        "y": 0.98493953699352
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 5.2065,
-        "y": 2.7867499999999996
+        "x": 5.011,
+        "y": 2.793
       },
       "prevControl": {
-        "x": 5.438219188932256,
-        "y": 2.692908551372127
+        "x": 5.674761835920828,
+        "y": 1.7631104622905518
       },
       "nextControl": null,
       "isLocked": false,
@@ -48,13 +48,13 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
+    "velocity": 0.3,
     "rotation": 119.99999999999999
   },
   "reversed": false,
   "folder": "Starting Paths to Reef 3",
   "idealStartingState": {
-    "velocity": 0,
+    "velocity": 0.3,
     "rotation": 179.1319485502545
   },
   "useDefaultConstraints": true

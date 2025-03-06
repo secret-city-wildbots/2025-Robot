@@ -93,10 +93,10 @@ public class Drivetrain extends SubsystemBase {
   private boolean headingAssist = false;
   private Latch headingLatch = new Latch(0.0);
   private PIDController antiDriftPID = new PIDController(0.0007, 0, 0);
-  private PIDController headingAnglePID = new PIDController(1.2, 0.0, 0.02);
-  // private double kp0 = 0.0;
-  // private double ki0 = 0.0;
-  // private double kd0 = 0.0;
+  private PIDController headingAnglePID = new PIDController(1.2, 0.0, 0.06);
+  private double kp0 = 0.0;
+  private double ki0 = 0.0;
+  private double kd0 = 0.0;
   private boolean headingLatchSignal0 = false;
   private double driverHeadingFudge0_rad = 0.0;
   private StickyButton noRotationSticky = new StickyButton();
@@ -228,7 +228,7 @@ public class Drivetrain extends SubsystemBase {
                                     // optionally outputs individual module feedforwards
           new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
                                           // holonomic drive trains
-              new PIDConstants(7.0, 0.0, 0.005), // Translation PID constants
+              new PIDConstants(1.5, 0.0, 0), // Translation PID constants
               new PIDConstants(3.0, 0.0, 0.0) // Rotation PID constants
           ),
           config, // The robot configuration
@@ -474,9 +474,9 @@ public class Drivetrain extends SubsystemBase {
   }
 
 
-  public Command getFinalStrafeCorrectionCommand(Pose2d finalPose) {
+  public Command getFinalStrafeCorrectionCommand() {
     Command outputCommand = new FunctionalCommand(
-      () -> poseAccuracyFinal = finalPose,
+      () -> poseAccuracyFinal = determineGoalPose(),
       () -> {
         double[] strafeCorrection = getStrafeCorrection(determineGoalPose());
         moduleStateOutputs = kinematics.toSwerveModuleStates(
@@ -493,15 +493,17 @@ public class Drivetrain extends SubsystemBase {
   }
 
   Pose2d poseAccuracyFinal = new Pose2d();
-  double poseAccuracyAllowedError = 0.02; // Meters
+  double poseAccuracyAllowedError = 0.0254; // Meters
   double rotateAccuracyAllowedError = 1; // degree
 
   public boolean poseAccuracyGetter() {
-    // System.out.println(poseAccuracyFinal);
+    System.out.println("Pose accuracy: " + poseAccuracyFinal);
     Pose2d pose = poseEstimator.getEstimatedPosition();
+    System.out.println("Pose: " + pose);
     boolean xValid = (Math.abs(pose.getX() - poseAccuracyFinal.getX())) < poseAccuracyAllowedError;
     boolean yValid = (Math.abs(pose.getY() - poseAccuracyFinal.getY())) < poseAccuracyAllowedError;
-    boolean rotateValid = (Math.abs(pose.getRotation().getDegrees() - poseAccuracyFinal.getRotation().getDegrees())) < rotateAccuracyAllowedError;
+    boolean rotateValid = (Math.abs(pose.getRotation().getDegrees() - (poseAccuracyFinal.getRotation().getDegrees() % 360))) < rotateAccuracyAllowedError;
+    System.out.println("x: " + xValid + ", y: " + yValid + ", rotate: " + rotateValid);
     return xValid && yValid && rotateValid;
   }
 
@@ -690,7 +692,7 @@ public class Drivetrain extends SubsystemBase {
       lockedY_m += (reefApothem_m + robotSizeX_m)*Math.sin(theta); // Y position of the center of the face
       lockedY_m -= coralLocalYOffset_m * Math.cos(theta); // Y position of the scoring location
       lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
-      // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+      System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
       return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(Math.PI + theta));
     }
   }
@@ -752,22 +754,22 @@ public class Drivetrain extends SubsystemBase {
       driverHeadingFudge0_rad = MathUtil.clamp(driverHeadingFudge0_rad, -1 * headingFudgeMax_rad, headingFudgeMax_rad);
       lockHeading0 = true;
 
-      // // PID Tuning
-      // double kp = Dashboard.freeTuningkP.get();
-      // double ki = Dashboard.freeTuningkI.get();
-      // double kd = Dashboard.freeTuningkD.get();
-      // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-      // headingAnglePID.setP(kp);
-      // headingAnglePID.setI(ki);
-      // headingAnglePID.setD(kd);
-      // kp0 = kp;
-      // ki0 = ki;
-      // kd0 = kd;
-      // }
+      // PID Tuning
+      double kp = Dashboard.freeTuningkP.get();
+      double ki = Dashboard.freeTuningkI.get();
+      double kd = Dashboard.freeTuningkD.get();
+      if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+      headingAnglePID.setP(kp);
+      headingAnglePID.setI(ki);
+      headingAnglePID.setD(kd);
+      kp0 = kp;
+      ki0 = ki;
+      kd0 = kd;
+      }
 
       double assistedRotation = headingAnglePID.calculate(pigeonAngle.getRadians(),
           lockedHeading_rad + (driverHeadingFudge0_rad));
-      // Dashboard.pidTuningGoalActual.set(new double[] { Units.radiansToDegrees(lockedHeading_rad), pigeonAngle.getDegrees() });
+      Dashboard.pidTuningGoalActual.set(new double[] { Units.radiansToDegrees(lockedHeading_rad), pigeonAngle.getDegrees() });
       return (Math.abs(assistedRotation) > 0.01) ? assistedRotation : 0.0;
     }
   }

@@ -3,13 +3,13 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.764,
-        "y": 2.748
+        "x": 3.684,
+        "y": 2.958
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.2461657609254893,
-        "y": 1.6565012160931771
+        "x": 2.272742706201032,
+        "y": 1.7783968140394035
       },
       "isLocked": false,
       "linkedName": null
@@ -20,8 +20,8 @@
         "y": 1.0
       },
       "prevControl": {
-        "x": 2.9447661649415195,
-        "y": 2.183615814722213
+        "x": 2.824536547868238,
+        "y": 2.254835593986737
       },
       "nextControl": null,
       "isLocked": false,
@@ -48,13 +48,13 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
+    "velocity": 0.3,
     "rotation": 54.0
   },
   "reversed": false,
   "folder": "ToFeederR",
   "idealStartingState": {
-    "velocity": 0.0,
+    "velocity": 0.3,
     "rotation": 59.99999999999999
   },
   "useDefaultConstraints": true

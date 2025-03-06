@@ -1,6 +1,6 @@
 {
-  "robotWidth": 0.9,
-  "robotLength": 0.9,
+  "robotWidth": 0.889,
+  "robotLength": 0.889,
   "holonomicMode": true,
   "pathFolders": [
     "ToReef2",
@@ -11,8 +11,8 @@
     "ToReef6"
   ],
   "autoFolders": [
-    "3Piece Blue",
-    "3Piece Red"
+    "3PieceLeft",
+    "3PieceRight"
   ],
   "defaultMaxVel": 2.0,
   "defaultMaxAccel": 2.0,
@@ -24,9 +24,9 @@
   "robotTrackwidth": 0.546,
   "driveWheelRadius": 0.073,
   "driveGearing": 4.54,
-  "maxDriveSpeed": 5.73,
+  "maxDriveSpeed": 5.5,
   "driveMotorType": "krakenX60",
-  "driveCurrentLimit": 306.0,
+  "driveCurrentLimit": 314.0,
   "wheelCOF": 1.2,
   "flModuleX": 0.305,
   "flModuleY": 0.305,

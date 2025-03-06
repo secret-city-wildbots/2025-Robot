@@ -51,18 +51,21 @@ public class Dashboard {
     // Other Testing
     public static DoubleArrayPublisher pidTuningGoalActual;
     public static StringArrayPublisher legalActuatorNames;
+    public static StringArrayPublisher legalAutoPlayNames;
     public static BooleanArrayPublisher confirmedMasterStates;
 
     public static DoublePublisher pressureTransducer;
     public static DoublePublisher loopTime;
     public static DoublePublisher fieldWidth;
     public static DoublePublisher fieldLength;
+    public static DoublePublisher allianceColor;
     public static StringPublisher robotProfile;
     public static StringPublisher codeVersion;
     public static BooleanPublisher isAutonomous;
     
     public static DoubleSubscriber testActuatorValue;
     public static DoubleSubscriber testActuatorPeriod;
+    public static DoubleSubscriber selectedAutoPlay;
     public static DoubleSubscriber freeTuningVariable;
     public static DoubleSubscriber freeTuningkP;
     public static DoubleSubscriber freeTuningkI;
@@ -107,18 +110,21 @@ public class Dashboard {
         // Other testing
         pidTuningGoalActual = table.getDoubleArrayTopic("PID_Tuning_GoalActual").publish();
         legalActuatorNames = table.getStringArrayTopic("Legal_Actuator_Names").publish();
+        legalAutoPlayNames = table.getStringArrayTopic("Legal_Auto_Plays").publish();
         confirmedMasterStates = table.getBooleanArrayTopic("Confirmed_States").publish();
 
         pressureTransducer = table.getDoubleTopic("Pressure_Transducer").publish();
         loopTime = table.getDoubleTopic("Control_Loop_Time").publish();
         fieldWidth = table.getDoubleTopic("Field_Width").publish();
         fieldLength = table.getDoubleTopic("Field_Length").publish();
+        allianceColor = table.getDoubleTopic("Alliance_Color").publish();
         robotProfile = table.getStringTopic("Robot_Profile").publish();
         codeVersion = table.getStringTopic("Robot_Code_Version").publish();
         isAutonomous = table.getBooleanTopic("Robot_is_Autonomous").publish();
 
         testActuatorValue = table.getDoubleTopic("Test_Actuator_Value").subscribe(0.0);
         testActuatorPeriod = table.getDoubleTopic("Test_Actuator_Period").subscribe(0.0);
+        selectedAutoPlay = table.getDoubleTopic("Selected_Auto_Play").subscribe(0.0);
         freeTuningVariable = table.getDoubleTopic("Free_Tuning_Variable").subscribe(0);
         freeTuningkP = table.getDoubleTopic("Free_Tuning_PID_P").subscribe(0);
         freeTuningkI = table.getDoubleTopic("Free_Tuning_PID_I").subscribe(0);
