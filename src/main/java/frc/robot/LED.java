@@ -4,11 +4,12 @@ import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.util.Color;
+import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Utility.LEDHelpers;
 
 public class LED {
     private int locateLED = 0;
-    private float chosenHue = 0;
+    private float chosenHue = 250;
 
     private final AddressableLED m_led;
     private final AddressableLEDBuffer ledBuffer;
@@ -18,12 +19,13 @@ public class LED {
     public final int numStrips;
     public final int id;
 
-    private final double[] oceanHSV = {190, 1, 1};
+    private final double[] oceanHSV = {180, 1, 1};
     private final double[] darkSkyHSV = {239, 0.94, 0.19};
-    private final double[] stowBackgroundHSV = {190, 1, 0.5};
-    private final double[] scoreBackgroundHSV = {93, 0.99, 1};
+    private final double[] stowBackgroundHSV = {oceanHSV[0], 1, 0.5};
+    private final double[] scoreBackgroundHSV = {300, 1, 1};
+    private final double[] feedBackgroundHSV = {250, 1, 1};
     private final double[] nominalChaserHSV = {120, 1, 1};
-    private final double[] warningChaserHSV = {60, 1, 1};
+    private final double[] warningChaserHSV = {40, 1, 1};
     private final double[] criticalChaserHSV = {10, 1, 1};
 
     public static enum LEDStates {
@@ -62,6 +64,7 @@ public class LED {
     public ChaserStates chaserState = ChaserStates.NOMINAL;
 
     private double animationIndex = 0;
+    private double animationIndex2 = 0;
 
     private boolean LEDStateEdge = false;
 
@@ -96,16 +99,14 @@ public class LED {
     /**
      * Updates the LED state based on driver inputs and robot states
      * 
-     * @param driverController)
+     * @param driverController
      */
-    public void updateLED(XboxController driverController, boolean isAutonomous, double time) {
+    public void updateLED(XboxController driverController, boolean isAutonomous, double time, boolean atPos) {
         // If driver presses up d-pad, increment LED state
         if ((driverController.getPOV() < 45 || driverController.getPOV() > 315) && driverController.getPOV() >= 0) {
-            System.out.println("SIG");
             if (!LEDStateEdge) {
                 ledState = (ledState.equals(LEDStates.CHOOSEHUE)) ? LEDStates.NORMAL : LEDStates.values()[ledState.ordinal() + 1];
                 LEDStateEdge = true;
-                System.out.println("MA");
             }
         } else {
             LEDStateEdge = false;
@@ -136,19 +137,34 @@ public class LED {
                         case NORMAL:
                             double[] bgRGB;
                             switch (Robot.masterState) {
-                                case SCOR:
+                                case STOW:
                                     bgRGB = LEDHelpers.hsvToRgb(scoreBackgroundHSV);
+                                    if (atPos) {
+                                        animationIndex2+=0.1; // 1/2 second per toggle of LED
+                                        if (animationIndex2 > 2) {
+                                            animationIndex2 = 0;
+                                        }
+                                    } else {
+                                        animationIndex2 = -1;
+                                    }
                                     break;
                                 case FEED:
-                                    bgRGB = LEDHelpers.hsvToRgb(scoreBackgroundHSV);
+                                    bgRGB = LEDHelpers.hsvToRgb(feedBackgroundHSV);
+                                    animationIndex2 = -1;
                                     break;
                                 default:
                                     bgRGB = LEDHelpers.hsvToRgb(stowBackgroundHSV);
+                                    animationIndex2 = -1;
+                            }
+
+                            if (animationIndex2 > 1) {
+                                bgRGB = new double[] {0,0,0};
                             }
 
                             //update chaser state
                             //TODO
-                            if (Robot.loopTime_ms > 50) { //critical conditions
+                            boolean swerveFaults = Drivetrain.driveFaults[0] || Drivetrain.driveFaults[1] || Drivetrain.driveFaults[2] || Drivetrain.driveFaults[3] || Drivetrain.azimuthFaults[0] || Drivetrain.azimuthFaults[1] || Drivetrain.azimuthFaults[2] || Drivetrain.azimuthFaults[3];
+                            if (Robot.loopTime_ms > 50 || swerveFaults) { //critical conditions
                                 chaserState = ChaserStates.CRITICAL;
                             } else if (Robot.loopTime_ms > 30) { //warning conditions
                                 chaserState = ChaserStates.WARNING;
@@ -174,7 +190,7 @@ public class LED {
                             for (int i = 0; i < ledBuffer.getLength(); i++) {
                                 if (i == Math.floor(animationIndex) || i < 2) {
                                     LEDHelpers.setLED(ledBuffer, i, chaserRGB);
-                                    if (i > 3) {
+                                    if (i > 2) {
                                         LEDHelpers.setLED(ledBuffer, i-1, new double[] {0,0,0});
                                     }
                                 } else {

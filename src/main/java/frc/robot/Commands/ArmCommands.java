@@ -3,6 +3,7 @@ package frc.robot.Commands;
 import edu.wpi.first.wpilibj2.command.*;
 import frc.robot.Robot;
 import frc.robot.Subsystems.Arm;
+import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Subsystems.Intake;
 
 public class ArmCommands {
@@ -98,9 +99,10 @@ public class ArmCommands {
      */
     public static Command outtake(
             Intake intake,
-            Arm arm) {
+            Arm arm,
+            Drivetrain drivetrain) {
             return Commands.sequence(
-                        Commands.waitUntil(() -> arm.hasArrived() || Robot.driverController.getRightBumperButton()),
+                        Commands.waitUntil(() -> arm.hasArrived() && drivetrain.poseAccuracyGetter() || Robot.driverController.getRightBumperButton()),
                         Commands.runOnce(() -> intake.outtake(), intake),
                         Commands.waitSeconds(0.5),
                         Commands.waitUntil(() -> 

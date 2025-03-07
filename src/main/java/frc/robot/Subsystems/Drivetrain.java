@@ -60,6 +60,9 @@ public class Drivetrain extends SubsystemBase {
   private final double reefPoseX_m = 4.49;
   private final double reefPoseY_m = Robot.fieldWidth_m / 2;
 
+  public static boolean[] driveFaults = new boolean[4];
+  public static boolean[] azimuthFaults = new boolean[4];
+
   // Modules
   private final SwerveModule module0;
   private final SwerveModule module1;
@@ -770,9 +773,6 @@ public class Drivetrain extends SubsystemBase {
       return (Math.abs(assistedRotation) > 0.01) ? assistedRotation : 0.0;
     }
   }
-
-  private boolean[] driveFaults = new boolean[4];
-  private boolean[] azimuthFaults = new boolean[4];
 
   /**
    * 

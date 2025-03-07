@@ -43,8 +43,8 @@ public class Robot extends TimedRobot {
   private final XboxController manipController;
   public static CommandXboxController manipCommandController;
   private final Drivetrain drivetrain;
-  // private final Arm arm;
-  // private final Intake intake;
+  private final Arm arm;
+  private final Intake intake;
   private final Compressor compressor;
   private LED[] ledStrips = null;
   private Command autonomousCommand;
@@ -136,8 +136,8 @@ public class Robot extends TimedRobot {
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
     drivetrain = new Drivetrain();
-    // arm = new Arm();
-    // intake = new Intake();
+     arm = new Arm();
+    intake = new Intake();
     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
     legalAutoPlays = new String[Filesystem.getDeployDirectory().listFiles()[0].listFiles()[2].listFiles().length];
@@ -157,7 +157,7 @@ public class Robot extends TimedRobot {
     Dashboard.currentDriverProfileSetpoints
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
     Dashboard.legalActuatorNames.set(actuatorNames);
-    Dashboard.legalAutoPlayNames.set(legalAutoPlays);
+    //Dashboard.legalAutoPlayNames.set(legalAutoPlays);
     Dashboard.legalDrivers.set(legalDrivers);
     Dashboard.robotLengthBumpers.set(Units.metersToInches(robotLengthBumpers_m));
     Dashboard.robotWidthBumpers.set(Units.metersToInches(robotWidthBumpers_m));
@@ -261,7 +261,6 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {  
     @SuppressWarnings("unused")
       double distance = tofSensor.getRange();
-      // System.out.println("Distance: " + distance + " mm");
       tofSensor.identifySensor();
 
     if (driverController.getBButtonPressed()) {
@@ -286,8 +285,8 @@ public class Robot extends TimedRobot {
    */
   private void getSensors() {
     drivetrain.updateSensors();
-    // arm.updateSensors(manipController);
-    // intake.updateSensors();
+    arm.updateSensors(manipController);
+    intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -298,12 +297,12 @@ public class Robot extends TimedRobot {
     drivetrain.updateOutputs(isAutonomous());
     if (ledStrips.length > 0) {
       for (int i = 0; i < ledStrips.length; i++) {
-        ledStrips[i].updateLED(driverController, false, elapsedTime);
+        ledStrips[i].updateLED(driverController, false, elapsedTime, true);//arm.hasArrived() && drivetrain.poseAccuracyGetter());
         ledStrips[i].updateOutputs();
       }
     }
-    // arm.updateOutputs();
-    // intake.updateOutputs();
+    arm.updateOutputs();
+    intake.updateOutputs();
   }
 
   /**
@@ -369,8 +368,8 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-    // driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
-    // driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
-    // driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
+    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm, drivetrain));
+    driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm, drivetrain));
+    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
   }
 }
