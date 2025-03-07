@@ -563,9 +563,6 @@ public class Drivetrain extends SubsystemBase {
     double poseX_m = pose_m.getX();
     double poseY_m = pose_m.getY();
 
-    double b = reefPoseY_m;
-    double a = reefPoseX_m;
-
     double lockedHeading_rad;
 
     switch (Robot.masterState) {

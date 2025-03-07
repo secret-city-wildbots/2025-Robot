@@ -1,11 +1,11 @@
 package frc.robot.Subsystems;
 
-import com.ctre.phoenix6.configs.HardwareLimitSwitchConfigs;
+// import com.ctre.phoenix6.configs.HardwareLimitSwitchConfigs;
 // import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.ForwardLimitSourceValue;
+// import com.ctre.phoenix6.signals.ForwardLimitSourceValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.revrobotics.spark.SparkAbsoluteEncoder;
@@ -62,9 +62,9 @@ public class Arm extends SubsystemBase {
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
     SparkMaxConfig wristConfig = new SparkMaxConfig();
-    private double kp0 = 0.0;
-    private double ki0 = 0.0;
-    private double kd0 = 0.0;
+    // private double kp0 = 0.0;
+    // private double ki0 = 0.0;
+    // private double kd0 = 0.0;
 
     // Sensor values
     private Rotation2d pivotRotation = new Rotation2d();
