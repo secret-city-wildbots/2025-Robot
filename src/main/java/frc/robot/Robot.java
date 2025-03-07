@@ -112,7 +112,7 @@ public class Robot extends TimedRobot {
         robotWidth_m = Units.inchesToMeters(23);
         robotLengthBumpers_m = Units.inchesToMeters(35);
         robotWidthBumpers_m = Units.inchesToMeters(35);
-        ledStrips = new LED[] {new LED(5,1),new LED(8,2)};
+        ledStrips = new LED[] {new LED(14,1,1,0)};
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23);
@@ -121,7 +121,7 @@ public class Robot extends TimedRobot {
         robotWidthBumpers_m = Units.inchesToMeters(35);
         break;
       case "Linguini":
-        ledStrips = new LED[] {new LED(5,1),new LED(8,2)};
+        ledStrips = new LED[] {new LED(19,1,1,0)};
       default:
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
@@ -135,7 +135,7 @@ public class Robot extends TimedRobot {
      driverCommandController = new CommandXboxController(0);
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
-      drivetrain = new Drivetrain();
+    drivetrain = new Drivetrain();
     // arm = new Arm();
     // intake = new Intake();
     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
@@ -213,12 +213,6 @@ public class Robot extends TimedRobot {
     }
 
     drivetrain.determineGoalPose();
-
-    if (ledStrips.length > 0) {
-      for (int i = 0; i < ledStrips.length; i++) {
-        ledStrips[i].updateLED(driverController, false, elapsedTime);
-      }
-    }
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
@@ -304,6 +298,7 @@ public class Robot extends TimedRobot {
     drivetrain.updateOutputs(isAutonomous());
     if (ledStrips.length > 0) {
       for (int i = 0; i < ledStrips.length; i++) {
+        ledStrips[i].updateLED(driverController, false, elapsedTime);
         ledStrips[i].updateOutputs();
       }
     }

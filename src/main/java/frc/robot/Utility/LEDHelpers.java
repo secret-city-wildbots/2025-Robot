@@ -1,5 +1,9 @@
 package frc.robot.Utility;
 
+import edu.wpi.first.wpilibj.AddressableLEDBuffer;
+import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj.util.Color.RGBChannel;
+
 public class LEDHelpers {
 
     /**
@@ -11,6 +15,7 @@ public class LEDHelpers {
      */
     public static double[] hsvToRgb(double hue, double saturation, double value) {
 
+        /*
         int h = (int)(hue * 6) / 360;
         double f = hue * 6 - h;
         double p = value * (1 - saturation);
@@ -26,6 +31,9 @@ public class LEDHelpers {
           case 5: return new double[] {value, p, q};
           default: throw new RuntimeException("Something went wrong when converting from HSV to RGB. Input was " + hue + ", " + saturation + ", " + value);
         }
+          */
+          int packed = Color.hsvToRgb((int) (hue * 0.5), (int) (saturation*255), (int) (value*255));
+          return new double[] {Color.unpackRGB(packed, RGBChannel.kRed),Color.unpackRGB(packed, RGBChannel.kGreen),Color.unpackRGB(packed, RGBChannel.kBlue)};
     }
 
     /**
@@ -35,21 +43,34 @@ public class LEDHelpers {
      */
     public static double[] hsvToRgb(double[] hsv) {
 
-        int h = (int)(hsv[0] * 6) / 360;
+        /*int h = (int)(hsv[0] * 6) / 360;
         double f = hsv[0] * 6 - h;
-        double p = hsv[2] * (1 - hsv[1]);
-        double q = hsv[2] * (1 - f * hsv[1]);
-        double t = hsv[2] * (1 - (1 - f) * hsv[1]);
+        double p = hsv[2] * (1 - hsv[1]) * 255;
+        double q = hsv[2] * (1 - f * hsv[1]) * 255;
+        double t = hsv[2] * (1 - (1 - f) * hsv[1]) * 255;
     
         switch (h) {
-          case 0: return new double[] {hsv[2], t, p};
-          case 1: return new double[] {q, hsv[2], p};
-          case 2: return new double[] {p, hsv[2], t};
-          case 3: return new double[] {p, q, hsv[2]};
-          case 4: return new double[] {t, p, hsv[2]};
-          case 5: return new double[] {hsv[2], p, q};
+          case 0: return new double[] {hsv[2] * 255, t, p};
+          case 1: return new double[] {q, hsv[2] * 255, p};
+          case 2: return new double[] {p, hsv[2] * 255, t};
+          case 3: return new double[] {p, q, hsv[2] * 255};
+          case 4: return new double[] {t, p, hsv[2] * 255};
+          case 5: return new double[] {hsv[2] * 255, p, q};
           default: throw new RuntimeException("Something went wrong when converting from HSV to RGB. Input was " + hsv[0] + ", " + hsv[1] + ", " + hsv[2]);
-        }
+        }*/
+
+        int packed = Color.hsvToRgb((int) (hsv[0] * 0.5), (int) (hsv[1]*255), (int) (hsv[2]*255));
+        return new double[] {Color.unpackRGB(packed, RGBChannel.kRed),Color.unpackRGB(packed, RGBChannel.kGreen),Color.unpackRGB(packed, RGBChannel.kBlue)};
+
+    }
+
+    public static void setLED(AddressableLEDBuffer b, int index, double[] rgb) {
+        double[] grb = LEDHelpers.rgbtogrb(rgb);
+        b.setRGB(index, (int) grb[0], (int) grb[1], (int) grb[2]);
+    }
+    public static void setLED(AddressableLEDBuffer b, int index, Color color) {
+        double[] grb = LEDHelpers.rgbtogrb(new double[] {color.red, color.green, color.blue});
+        b.setRGB(index, (int) grb[0], (int) grb[1], (int) grb[2]);
     }
 
 

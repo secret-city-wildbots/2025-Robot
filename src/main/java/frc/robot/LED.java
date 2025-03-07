@@ -3,23 +3,24 @@ package frc.robot;
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.XboxController;
-
+import edu.wpi.first.wpilibj.util.Color;
 import frc.robot.Utility.LEDHelpers;
 
 public class LED {
     private int locateLED = 0;
     private float chosenHue = 0;
 
-    private final AddressableLED m_led = new AddressableLED(1);
+    private final AddressableLED m_led;
     private final AddressableLEDBuffer ledBuffer;
     private AddressableLEDBuffer priorLedBuffer;
 
     public final int numberOfLEDs;
+    public final int numStrips;
     public final int id;
 
-    private final double[] oceanHSV = {190, 1, 0.85};
+    private final double[] oceanHSV = {190, 1, 1};
     private final double[] darkSkyHSV = {239, 0.94, 0.19};
-    private final double[] stowBackgroundHSV = oceanHSV;
+    private final double[] stowBackgroundHSV = {190, 1, 0.5};
     private final double[] scoreBackgroundHSV = {93, 0.99, 1};
     private final double[] nominalChaserHSV = {120, 1, 1};
     private final double[] warningChaserHSV = {60, 1, 1};
@@ -62,19 +63,34 @@ public class LED {
 
     private double animationIndex = 0;
 
+    private boolean LEDStateEdge = false;
+
     private LEDStates ledState = LEDStates.NORMAL; // default to normal
 
     /**
      * Creates a new LED object to control LED outputs
+     * count * numStrips = total LED's
      */
-    public LED(int count, int id) {
+    public LED(int count, int numStrips, int id, int port) {
         numberOfLEDs = count;
+        this.numStrips = numStrips;
         this.id = id;
 
-        ledBuffer = new AddressableLEDBuffer(numberOfLEDs);
-        priorLedBuffer = new AddressableLEDBuffer(numberOfLEDs);
+        ledBuffer = new AddressableLEDBuffer(numberOfLEDs * numStrips);
+        priorLedBuffer = new AddressableLEDBuffer(numberOfLEDs * numStrips);
 
-        m_led.setLength(numberOfLEDs);
+        m_led = new AddressableLED(port);
+
+        m_led.setLength(numberOfLEDs * numStrips);
+
+        for (int i = 0; i < numberOfLEDs; i++) {
+            double[] grb = LEDHelpers.rgbtogrb(255, 0, 255);
+            ledBuffer.setRGB(i, (int) grb[0], (int) grb[1], (int) grb[2]);
+        }
+
+        m_led.setData(ledBuffer);
+        //m_led.setBitTiming(300, 600, 900, 600);
+        m_led.start();
     }
 
     /**
@@ -84,8 +100,15 @@ public class LED {
      */
     public void updateLED(XboxController driverController, boolean isAutonomous, double time) {
         // If driver presses up d-pad, increment LED state
-        if (driverController.getPOV() < 45 || driverController.getPOV() > 315) {
-            ledState = (ledState.equals(LEDStates.CHOOSEHUE)) ? LEDStates.NORMAL : LEDStates.values()[ledState.ordinal() + 1];
+        if ((driverController.getPOV() < 45 || driverController.getPOV() > 315) && driverController.getPOV() >= 0) {
+            System.out.println("SIG");
+            if (!LEDStateEdge) {
+                ledState = (ledState.equals(LEDStates.CHOOSEHUE)) ? LEDStates.NORMAL : LEDStates.values()[ledState.ordinal() + 1];
+                LEDStateEdge = true;
+                System.out.println("MA");
+            }
+        } else {
+            LEDStateEdge = false;
         }
 
         // remember previous LED buffer
@@ -149,22 +172,27 @@ public class LED {
 
                             // set all LED's to the bg color, except the chaser which is chaserRGB
                             for (int i = 0; i < ledBuffer.getLength(); i++) {
-                                if (i == animationIndex || i < 2) {
-                                    ledBuffer.setRGB(i, (int) chaserRGB[0], (int) chaserRGB[1], (int) chaserRGB[2]);
+                                if (i == Math.floor(animationIndex) || i < 2) {
+                                    LEDHelpers.setLED(ledBuffer, i, chaserRGB);
+                                    if (i > 3) {
+                                        LEDHelpers.setLED(ledBuffer, i-1, new double[] {0,0,0});
+                                    }
                                 } else {
-                                    ledBuffer.setRGB(i, (int) bgRGB[0], (int) bgRGB[1], (int) bgRGB[2]);
+                                    LEDHelpers.setLED(ledBuffer, i, bgRGB);
                                 }
                             }
 
-                            animationIndex += 1;
-                            animationIndex %= numberOfLEDs - 3;
+                            animationIndex += 0.5;
+                            if (animationIndex >= numberOfLEDs) {
+                                animationIndex = 2;
+                            }
                             break;
                         case CLIMB:
                             for (int i = 0; i < ledBuffer.getLength(); i++) {
                                 double t = time - (160 * 1000);
                                 double[] hsv = (i > ((4*Math.sin(Math.PI*t/2000))+(t/1000))/20*ledBuffer.getLength()) ? darkSkyHSV:oceanHSV; //makes a nice wave effect
                                 double[] rgb = LEDHelpers.hsvToRgb(hsv);
-                                ledBuffer.setRGB(0, (int) rgb[0], (int) rgb[1], (int) rgb[2]);
+                                LEDHelpers.setLED(ledBuffer, 0, rgb);
                             }
                     }
                 } else if (id == 2) {
@@ -173,17 +201,28 @@ public class LED {
                 break;
             case PARTY:
                 // Party mode
-                
+                for (int i = 0; i < ledBuffer.getLength(); i++) {
+                    LEDHelpers.setLED(ledBuffer, i, LEDHelpers.hsvToRgb((((double) i)/ledBuffer.getLength())*360 + animationIndex, 1, 0.75 - (Math.sin(animationIndex/180*Math.PI)/4)));
+                }
+                animationIndex += 5;
+                if (animationIndex > 360) {
+                    animationIndex = 0;
+                }
                 break;
             case LOCATE:
-                double[] rgb = LEDHelpers.hsvToRgb(nominalChaserHSV);
-                ledBuffer.setRGB(locateLED, (int) rgb[0], (int) rgb[1], (int) rgb[2]);
+                for (var i = 0; i < ledBuffer.getLength(); i++) {
+                    if (locateLED == i) {
+                        LEDHelpers.setLED(ledBuffer, i, new double[] {255,0,255});
+                    } else {
+                        LEDHelpers.setLED(ledBuffer, i, new double[] {0,0,0});
+                    }
+                }
                 break;
             case CHOOSEHUE:
                 double[] chooseRGB = LEDHelpers.hsvToRgb(chosenHue, 1, 1);
                 for (var i = 0; i < ledBuffer.getLength(); i++) {
                     // Sets the specified LED to the HSV values
-                    ledBuffer.setRGB(i, (int) chooseRGB[0], (int) chooseRGB[1], (int) chooseRGB[2]);
+                    LEDHelpers.setLED(ledBuffer, i, chooseRGB);
                 }
                 break;
         }
@@ -194,7 +233,15 @@ public class LED {
      * Sends stored values in the LED object to leds
      */
     public void updateOutputs() {
-        if (ledBuffer != priorLedBuffer) {
+        if (ledBuffer != priorLedBuffer) { 
+            if (numStrips > 1) { // code for multiple strips in one pwm port
+                for (int i = 0; i < numberOfLEDs; i++) {
+                    Color color = ledBuffer.getLED(i);
+                    for (int i2 = 1; i2 < numStrips; i2++) {
+                        LEDHelpers.setLED(ledBuffer, i+(i2*(numberOfLEDs)), color);
+                    }
+                }
+            }
             m_led.setData(ledBuffer);
         }
     }
