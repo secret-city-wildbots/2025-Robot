@@ -1,6 +1,5 @@
 package frc.robot.Subsystems;
 
-
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -22,18 +21,22 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Dashboard;
 import frc.robot.LimelightHelpers;
 import frc.robot.Robot;
 import frc.robot.LimelightHelpers.PoseEstimate;
 import frc.robot.Robot.MasterStates;
-import frc.robot.Subsystems.SwerveModule.ShiftedStates;
+import frc.robot.Utility.ActuatorInterlocks;
 import frc.robot.Utility.Control;
 import frc.robot.Utility.SwerveUtils;
 // import frc.robot.Utility.ClassHelpers.DriverProfile;
@@ -44,6 +47,12 @@ import frc.robot.Utility.ClassHelpers.Timer;
 import edu.wpi.first.math.util.Units;
 
 public class Drivetrain extends SubsystemBase {
+  enum ShiftedStates {
+      LOW,
+      TRANS,
+      HIGH
+  }
+
   // Constants
   private final double driveHighGearRatio;
   private final double driveLowGearRatio;
@@ -65,10 +74,10 @@ public class Drivetrain extends SubsystemBase {
   private final SwerveModule module1;
   private final SwerveModule module2;
   private final SwerveModule module3;
-  private final Translation2d module0Location_m = new Translation2d(0.305, -0.305);
-  private final Translation2d module1Location_m = new Translation2d(0.305, 0.305);
-  private final Translation2d module2Location_m = new Translation2d(-0.305, 0.305);
-  private final Translation2d module3Location_m = new Translation2d(-0.305, -0.305);
+  private final Translation2d module0Location_m = new Translation2d(0.301625, -0.276225);
+  private final Translation2d module1Location_m = new Translation2d(0.301625, 0.276225);
+  private final Translation2d module2Location_m = new Translation2d(-0.301625, 0.276225);
+  private final Translation2d module3Location_m = new Translation2d(-0.301625, -0.276225);
   private final TalonFXConfiguration[] driveConfigs;
   private final TalonFXConfiguration[] azimuthConfigs;
   private SwerveModuleState[] moduleStates = new SwerveModuleState[4];
@@ -80,9 +89,10 @@ public class Drivetrain extends SubsystemBase {
   SlewRateLimiter xAccelerationLimiter = new SlewRateLimiter(4.4, -1000, 0.0);
   SlewRateLimiter yAccelerationLimiter = new SlewRateLimiter(4.4, -1000, 0.0);
   private SwerveModuleState[] moduleStateOutputs = new SwerveModuleState[4];
+  public DoubleSolenoid shifter;
 
   // Used for modeDrivebase to check if master states changed
-  private Robot.MasterStates masterState0 = Robot.masterState;
+  public static Robot.MasterStates masterState0 = Robot.masterState;
   public static boolean shiftingEnabled = false;
   @SuppressWarnings("unused")
   private boolean headingLocked = false;
@@ -102,6 +112,10 @@ public class Drivetrain extends SubsystemBase {
   private StickyButton noRotationSticky = new StickyButton();
   private boolean lockHeading0 = false;
   private final double headingFudgeMax_rad = Units.degreesToRadians(5); // degrees
+
+  public static ShiftedStates shiftedState = ShiftedStates.HIGH;
+
+  public static final Trigger antiTipTrigger = new Trigger(() -> isTipping());
 
   private Timer resetIMUTimer = new Timer();
   private boolean resetIMU0 = false;
@@ -141,7 +155,7 @@ public class Drivetrain extends SubsystemBase {
         invertAzimuthDirection = false;
         driveConfigs = SwerveUtils.swerveModuleDriveConfigs();
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
-        driveManualAdjustments = new double[] { 104.0 / 105.0, 104.0 / 107.7, 104.0 / 107.0, 104.0 / 106.0 };
+        driveManualAdjustments = new double[] { 104.0 / 107.7, 104.0 / 105.0, 104.0 / 106.0, 104.0 / 107.0 };
         break;
       case "COTS_Testbed":
         nominalWheelDiameter_m = Units.inchesToMeters(4);
@@ -179,6 +193,10 @@ public class Drivetrain extends SubsystemBase {
         azimuthConfigs = SwerveUtils.swerveModuleAzimuthConfigs();
         driveManualAdjustments = new double[] { 1, 1, 1, 1 };
     }
+        if (shiftingEnabled) {
+            shifter = new DoubleSolenoid(2, PneumaticsModuleType.REVPH, 1, 0);
+            shifter.set(Value.kForward);
+        }
 
     // Defining all modules
     module0 = new SwerveModule(driveHighGearRatio, driveLowGearRatio, azimuthGearRatio, 0, driveConfigs[0],
@@ -251,6 +269,10 @@ public class Drivetrain extends SubsystemBase {
       // Handle exception as needed
       e.printStackTrace();
     }
+    LimelightHelpers.setLimelightNTDouble("limelight-left", "Throttle", 100.0);
+    LimelightHelpers.setPipelineIndex("limelight-left", 1);
+    LimelightHelpers.setLimelightNTDouble("limelight-right", "Throttle", 100.0);
+    LimelightHelpers.setPipelineIndex("limelight-right", 1);
   }
 
   public Command getPathFindingCommand(Pose2d targetPose) {
@@ -271,6 +293,17 @@ public class Drivetrain extends SubsystemBase {
   // Each module returns a ModuleState with current speed and position
   // Logs information to SmartDashboard
   public void updateSensors() {
+    if (Robot.isEnabled) {
+      LimelightHelpers.setLimelightNTDouble("limelight-left", "Throttle", 0.0);
+      LimelightHelpers.setPipelineIndex("limelight-left", 0);
+      LimelightHelpers.setLimelightNTDouble("limelight-right", "Throttle", 0.0);
+      LimelightHelpers.setPipelineIndex("limelight-right", 0);
+    } else {
+      LimelightHelpers.setLimelightNTDouble("limelight-left", "Throttle", 100.0);
+      LimelightHelpers.setPipelineIndex("limelight-left", 1);
+      LimelightHelpers.setLimelightNTDouble("limelight-right", "Throttle", 100.0);
+      LimelightHelpers.setPipelineIndex("limelight-right", 1);
+    }
     moduleStates = new SwerveModuleState[] {
         module0.updateSensors(Robot.driverController),
         module1.updateSensors(Robot.driverController),
@@ -293,7 +326,7 @@ public class Drivetrain extends SubsystemBase {
               module2.getPosition(),
               module3.getPosition()
           });
-    } else if (resetIMUTimer.getTimeMillis() > 3000) {
+    } else if (resetIMUTimer.getTimeMillis() > 2000) {
       if (!resetIMU0) {
         imuOffset = pigeon.getRotation2d();
         poseEstimator.resetRotation(getIMURotation());
@@ -395,6 +428,10 @@ public class Drivetrain extends SubsystemBase {
     return poseEstimator.getEstimatedPosition();
   }
 
+  public static boolean isTipping() {
+    return (Math.abs(pigeon.getPitch().getValueAsDouble()) > 10) || (Math.abs(pigeon.getRoll().getValueAsDouble()) > 10);
+  }
+
   /**
    * Resets the odometry to the specified pose.
    * Used for autoBuilder (pathplanner)
@@ -440,7 +477,7 @@ public class Drivetrain extends SubsystemBase {
     double limitedStrafeY = Control
         .clamp(Math.signum(strafeOutputs[1]) * yAccelerationLimiter.calculate(Math.abs(strafeOutputs[1])), -1, 1);
 
-    double[] limitedStrafe = new double[] { limitedStrafeX, limitedStrafeY };
+    double[] limitedStrafe = new double[] { -limitedStrafeX, -limitedStrafeY };
     // PID Tuning
       // double kp = Dashboard.freeTuningkP.get();
       // double ki = Dashboard.freeTuningkI.get();
@@ -481,7 +518,7 @@ public class Drivetrain extends SubsystemBase {
         double[] strafeCorrection = getStrafeCorrection(determineGoalPose());
         moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
-            strafeCorrection[0] * maxGroundSpeed_mPs, strafeCorrection[1] * maxGroundSpeed_mPs,
+            -strafeCorrection[0] * maxGroundSpeed_mPs, -strafeCorrection[1] * maxGroundSpeed_mPs,
             -strafeCorrection[2] * maxRotateSpeed_radPs,
             getIMURotation()), 0.001 * Robot.loopTime_ms));
         SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
@@ -497,13 +534,10 @@ public class Drivetrain extends SubsystemBase {
   double rotateAccuracyAllowedError = 1; // degree
 
   public boolean poseAccuracyGetter() {
-    System.out.println("Pose accuracy: " + poseAccuracyFinal);
     Pose2d pose = poseEstimator.getEstimatedPosition();
-    System.out.println("Pose: " + pose);
     boolean xValid = (Math.abs(pose.getX() - poseAccuracyFinal.getX())) < poseAccuracyAllowedError;
     boolean yValid = (Math.abs(pose.getY() - poseAccuracyFinal.getY())) < poseAccuracyAllowedError;
     boolean rotateValid = (Math.abs(pose.getRotation().getDegrees() - (poseAccuracyFinal.getRotation().getDegrees() % 360))) < rotateAccuracyAllowedError;
-    System.out.println("x: " + xValid + ", y: " + yValid + ", rotate: " + rotateValid);
     return xValid && yValid && rotateValid;
   }
 
@@ -553,11 +587,13 @@ public class Drivetrain extends SubsystemBase {
    * @return
    */
   private double modeDrivebase(XboxController manipController) {
-    if ((masterState0 != Robot.masterState) || (Robot.driverController.getYButton()) || (Robot.driverController.getBButton())) {
-      headingLocked = true;
+    if ((masterState0 != Robot.masterState && masterState0 != MasterStates.STOW) || (Robot.driverController.getYButton()) || (Robot.driverController.getBButton())) {
+      // headingLocked = true;
     } else if (Robot.driverController.getXButton()) {
       headingLocked = false;
     }
+    // Temp
+    headingLocked = false;
 
     Pose2d pose_m = poseEstimator.getEstimatedPosition();
     double poseX_m = pose_m.getX();
@@ -598,6 +634,25 @@ public class Drivetrain extends SubsystemBase {
         lockedHeading_rad = Double.NaN;
         }
         break;
+      case FEED:
+        masterState0 = MasterStates.FEED;
+        if (headingLocked) {
+          if (poseY_m < Robot.fieldWidth_m / 2) {
+            lockedHeading_rad = Units.degreesToRadians(54);
+          } else {
+            lockedHeading_rad = Units.degreesToRadians(-54);
+          }
+        } else {
+          lockedHeading_rad = Double.NaN;
+        }
+        break;
+      case SCOR:
+      masterState0 = MasterStates.SCOR;
+        if (headingLocked) {
+          lockedHeading_rad = Math.atan2(reefPoseY_m-poseY_m, reefPoseX_m-poseX_m);
+        } else {
+          lockedHeading_rad = Double.NaN;
+        }
       default:
       lockedHeading_rad = Double.NaN;
     }
@@ -689,7 +744,7 @@ public class Drivetrain extends SubsystemBase {
       lockedY_m += (reefApothem_m + robotSizeX_m)*Math.sin(theta); // Y position of the center of the face
       lockedY_m -= coralLocalYOffset_m * Math.cos(theta); // Y position of the scoring location
       lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
-      System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+      // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
       return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(Math.PI + theta));
     }
   }
@@ -821,19 +876,23 @@ public class Drivetrain extends SubsystemBase {
     module2.updateOutputs(moduleStateOutputs[2], isAutonomous, fLow, driveFaults[2] || azimuthFaults[2], homeWheels);
     module3.updateOutputs(moduleStateOutputs[3], isAutonomous, fLow, driveFaults[3] || azimuthFaults[3], homeWheels);
 
+    shiftedState = (fLow) ? ShiftedStates.LOW:ShiftedStates.HIGH;
+    ActuatorInterlocks.testActuatorInterlocks(shifter, "Swerve_Shifter_(b)",
+            !fLow);
+
     double[] loggingState = new double[] {
         moduleStateOutputs[1].angle.getRadians(),
         moduleStateOutputs[1].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module1.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+            * ((shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
         moduleStateOutputs[0].angle.getRadians(),
         moduleStateOutputs[0].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module0.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+            * ((shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
         moduleStateOutputs[2].angle.getRadians(),
         moduleStateOutputs[2].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module2.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
+            * ((shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs),
         moduleStateOutputs[3].angle.getRadians(),
         moduleStateOutputs[3].speedMetersPerSecond / maxGroundSpeed_mPs
-            * ((module3.shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs)
+            * ((shiftedState.equals(ShiftedStates.HIGH)) ? maxGroundSpeed_mPs : maxLowGearSpeed_mPs)
     };
 
     SmartDashboard.putNumberArray("modulestates", loggingState);
@@ -843,25 +902,25 @@ public class Drivetrain extends SubsystemBase {
         moduleStates[0].angle.getDegrees() % 360,
         module0.getTemp(),
         moduleStates[0].speedMetersPerSecond,
-        (module0.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+        (shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
     Dashboard.swerve1Details.set(new double[] {
         moduleStates[1].angle.getDegrees() % 360,
         module1.getTemp(),
         moduleStates[1].speedMetersPerSecond,
-        (module1.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+        (shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
     Dashboard.swerve2Details.set(new double[] {
         moduleStates[2].angle.getDegrees() % 360,
         module2.getTemp(),
         moduleStates[2].speedMetersPerSecond,
-        (module2.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+        (shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
     Dashboard.swerve3Details.set(new double[] {
         moduleStates[3].angle.getDegrees() % 360,
         module3.getTemp(),
         moduleStates[3].speedMetersPerSecond,
-        (module3.shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
+        (shiftedState.equals(ShiftedStates.HIGH)) ? 1 : 0
     });
   }
 

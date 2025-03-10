@@ -6,6 +6,7 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Dashboard;
 import frc.robot.Robot;
 import frc.robot.Utility.ActuatorInterlocks;
 import frc.robot.Utility.ClassHelpers.Timer;
@@ -14,8 +15,8 @@ public class Intake extends SubsystemBase {
     // Constants
     private final double coralIntakeSpeed = 0.3;
     private final double coralOuttakeSpeed = -0.7;
-    private final double algaeIntakeSpeed = 0.3;
-    private final double algaeOuttakeSpeed = -0.7;
+    private final double algaeIntakeSpeed = 1;
+    private final double algaeOuttakeSpeed = -1;
     private final Timer stallTimer = new Timer();
 
     // Sensors
@@ -43,23 +44,35 @@ public class Intake extends SubsystemBase {
         } else {
             stallTimer.reset();
         }
+        Dashboard.intakeVelocity_rpm.set(intake.getVelocity().getValueAsDouble() / 60.0);
+        Dashboard.intakeTemp_C.set(intake.getDeviceTemp().getValueAsDouble());
     }
 
     public void intake() {
         intakeOutput = (Robot.scoreCoral) ? coralIntakeSpeed : algaeIntakeSpeed;
+        Dashboard.intaking.set(true);
     }
 
     public void outtake() {
         intakeOutput = (Robot.scoreCoral) ? coralOuttakeSpeed : algaeOuttakeSpeed;
         hasPiece = false;
+        Dashboard.outtaking.set(true);
     }
 
     public void stop() {
         intakeOutput = 0.0;
+        Dashboard.intaking.set(false);
+        Dashboard.outtaking.set(false);
     }
 
     public void hold() {
-        intakeOutput = 0.0;
+        if (Robot.scoreCoral) {
+            intakeOutput = 0.0;
+        } else {
+            intakeOutput = 0.1;
+        }
+        Dashboard.intaking.set(false);
+        Dashboard.outtaking.set(false);
     }
 
     public boolean hasPiece() {

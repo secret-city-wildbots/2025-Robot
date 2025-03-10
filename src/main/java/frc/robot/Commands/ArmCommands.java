@@ -2,6 +2,7 @@ package frc.robot.Commands;
 
 import edu.wpi.first.wpilibj2.command.*;
 import frc.robot.Robot;
+import frc.robot.Robot.MasterStates;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Subsystems.Intake;
 
@@ -25,8 +26,17 @@ public class ArmCommands {
      */
     public static Command pickup(
             Arm arm) {
-            return Commands.runOnce(()->arm.pickup(), arm);
+            return Commands.sequence(
+                Commands.runOnce(() -> arm.pickupFeeder_init(), arm),
+                Commands.waitUntil(() -> arm.closeEnough()),
+                Commands.runOnce(()->arm.pickup(), arm)
+            );
         }
+
+    public static Command stow(Arm arm) {
+        return Commands.runOnce(() -> arm.drivingStow());
+        // return Commands.print("Oh no! We're tipping!!!! or this is broken, idk?");
+    }
 
     public static Command climb(
         Arm arm) {
@@ -60,6 +70,15 @@ public class ArmCommands {
         return Commands.runOnce(intake::stop, intake);
     }
 
+    public static Command groundPickup(Arm arm) {
+        return Commands.sequence(
+            Commands.runOnce(() -> Robot.scoreCoral = false),
+            Commands.runOnce(arm::scoringStow, arm),
+            Commands.waitUntil(() -> arm.closeEnough()),
+            Commands.runOnce(arm::groundPickup, arm)
+        );
+    }
+
     /**
      * Intakes a piece until driver stops holding left trigger or a game piece is acquired
      * Then stows the arm
@@ -71,23 +90,19 @@ public class ArmCommands {
     public static Command intake(
             Intake intake,
             Arm arm) {
-        return Commands.either(
-                Commands.sequence(
-                    Commands.runOnce(() -> intake.intake(), intake),
-                    Commands.waitSeconds(0.5),
-                    Commands.waitUntil(intake::stopIntaking),
-                    Commands.either(hold(intake), stop(intake), intake::hasPiece),
-                    Commands.runOnce(() -> arm.stow(), arm)
-                ),
-
+        return
                 Commands.sequence(
                     Commands.runOnce(() -> intake.intake(), intake),
                     Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7),
-                    Commands.either(hold(intake), stop(intake), intake::hasPiece)
-                ),
-
-                () -> !intake.hasPiece()
-        );
+                    Commands.either(hold(intake), stop(intake), intake::hasPiece),
+                    Commands.either(
+                        arm.carefulStow(),
+                        Commands.none(),
+                        () -> intake.hasPiece() && 
+                        (Robot.masterState.equals(MasterStates.STOW) || 
+                        Robot.masterState.equals(MasterStates.FEED))
+                    )
+                );
     }
 
     /**
@@ -107,7 +122,7 @@ public class ArmCommands {
                             (!Robot.driverController.getRightBumperButton() && 
                             (Robot.driverController.getRightTriggerAxis() < 0.7))),
                         stop(intake),
-                        Commands.runOnce(() -> arm.autoStow(), arm)
+                        Commands.runOnce(() -> Robot.masterState = MasterStates.STOW)
                     );
         }
 }

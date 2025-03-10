@@ -23,6 +23,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -44,14 +45,18 @@ public class Arm extends SubsystemBase {
     private final double maxForwardWristAngle_rad;
     private final double maxBackwardWristAngle_rad;
 
-    private final double maxAcceptableAngleError_rad = 1;
+    private final double maxAcceptableAngleError_rad = Units.degreesToRadians(1.5);
     private final double maxAcceptableExtensionError_m = Units.inchesToMeters(0.5);
+    private final double closeEnoughAngleError_rad = Units.degreesToRadians(10);
+    private final double closeEnoughExtensionError_m = Units.inchesToMeters(5);
 
     // Motors
     private final TalonFX pivot;
     private final TalonFX[] pivotFollowers = new TalonFX[3];
+    private TalonFXConfiguration pivotConfig;
+    private TalonFXConfiguration[] pivotFollowerConfigs;
     private final DutyCycleEncoder pivotEncoder = new DutyCycleEncoder(0, 1, 0);
-    private final double pivotEncoderOffset_rot = 0.676;
+    private final double pivotEncoderOffset_rot = 0.332;
     private final PIDController pivotPID = new PIDController(8.0, 0.0, 0.0);
 
     private final TalonFX extender;
@@ -66,20 +71,25 @@ public class Arm extends SubsystemBase {
     // private double ki0 = 0.0;
     // private double kd0 = 0.0;
 
+
     // Sensor values
-    private Rotation2d pivotRotation = new Rotation2d();
     private double extenderPosition_m = 0.0;
     private Rotation2d wristRotation = new Rotation2d();
+    private boolean disablePivot = false;
+    private boolean disableExtender = false;
+    private boolean disableWrist = false;
 
     // Outputs
     private Rotation2d pivotOutput = new Rotation2d();
+    private double pivotFF = 0.0;
     private double extenderOutput_m = 0.0;
     private Rotation2d wristOutput = new Rotation2d();
     private double wristFF = 0.0;
     private final double wristFFArbitraryScalar = 0.2;
     public static int scoreHeight = 1;
     public static int pickupHeight = 1;
-    private final Trigger switchPieces = new Trigger(() -> Robot.scoreCoral);
+    private final Trigger driverLBTrigger;
+    private final Trigger coralTrigger;
     private final Trigger stowTrigger = new Trigger(() -> Robot.masterState.equals(MasterStates.STOW));
     private final Trigger scoreTrigger = new Trigger(() -> Robot.masterState.equals(MasterStates.SCOR));
     private final Trigger feedrTrigger = new Trigger(() -> Robot.masterState.equals(MasterStates.FEED));
@@ -88,69 +98,65 @@ public class Arm extends SubsystemBase {
     private final Trigger manipXTrigger;
     private final Trigger manipYTrigger;
     private final Trigger manipBTrigger;
+    private final Trigger manipLBTrigger;
 
     public Arm() {
+        pivotPID.enableContinuousInput(0,1);
         switch (Robot.robotProfile) {
             case "2025_Robot":
-            // Temp values
-                pivotRatio = 
-                    (84.0 / 8.0) * // First gear reduction
-                    (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
-                maxForwardPivotAngle_rad = Units.degreesToRadians(23.5);
-                maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
+                // Temp values
+                pivotRatio = (84.0 / 8.0) * // First gear reduction
+                        (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
+                maxForwardPivotAngle_rad = Units.degreesToRadians(12);
+                maxBackwardPivotAngle_rad = Units.degreesToRadians(-90);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
-                    (1.0 / 5.25) *  // ratio of motor rotations to spool rotations
-                    Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
-                    * 2.0 // Two stages moving together doubles movement
+                        (1.0 / 5.25) * // ratio of motor rotations to spool rotations
+                                Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
+                                * 2.0 // Two stages moving together doubles movement
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 
-                    70.0 * // Neo reduction
-                    (34.0 / 12.0); // Small herringbone to big herringbone
+                wristRatio = 70.0 * // Neo reduction
+                        (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
                 maxBackwardWristAngle_rad = Units.degreesToRadians(-125);
                 break;
             case "COTS_Testbed":
-            // Temp values
-                pivotRatio = 
-                    (84.0 / 8.0) * // First gear reduction
-                    (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
-                    maxForwardPivotAngle_rad = Units.degreesToRadians(23.5);
-                    maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
+                // Temp values
+                pivotRatio = (84.0 / 8.0) * // First gear reduction
+                        (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
+                maxForwardPivotAngle_rad = Units.degreesToRadians(12);
+                maxBackwardPivotAngle_rad = Units.degreesToRadians(-90);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
-                    (1.0 / 5.25) *  // ratio of motor rotations to spool rotations
-                    Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
-                    * 2.0 // Two stages moving together doubles movement
+                        (1.0 / 5.25) * // ratio of motor rotations to spool rotations
+                                Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
+                                * 2.0 // Two stages moving together doubles movement
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 
-                    70.0 * // Neo reduction
-                    (34.0 / 12.0); // Small herringbone to big herringbone
+                wristRatio = 70.0 * // Neo reduction
+                        (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
                 maxBackwardWristAngle_rad = Units.degreesToRadians(-125);
                 break;
             default:
-            // Temp values
-                pivotRatio = 
-                    (84.0 / 8.0) * // First gear reduction
-                    (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
-                    maxForwardPivotAngle_rad = Units.degreesToRadians(23.5);
-                    maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
+                // Temp values
+                pivotRatio = (84.0 / 8.0) * // First gear reduction
+                        (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
+                maxForwardPivotAngle_rad = Units.degreesToRadians(12);
+                maxBackwardPivotAngle_rad = Units.degreesToRadians(-90);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
-                    (1.0 / 5.25) *  // ratio of motor rotations to spool rotations
-                    Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
-                    * 2.0 // Two stages moving together doubles movement
+                        (1.0 / 5.25) * // ratio of motor rotations to spool rotations
+                                Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
+                                * 2.0 // Two stages moving together doubles movement
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 
-                    70.0 * // Neo reduction
-                    (34.0 / 12.0); // Small herringbone to big herringbone
+                wristRatio = 70.0 * // Neo reduction
+                        (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
                 maxBackwardWristAngle_rad = Units.degreesToRadians(-125);
                 break;
@@ -158,59 +164,56 @@ public class Arm extends SubsystemBase {
 
         // Pivot and pivot follower configurations
         pivot = new TalonFX(30);
-        pivot.setPosition(getEncoderPosition().getRotations());
+        pivot.setPosition(getEncoderPosition().getRotations() * pivotRatio);
         pivot.getDutyCycle().setUpdateFrequency(50);
         pivot.getMotorVoltage().setUpdateFrequency(50);
         pivot.getTorqueCurrent().setUpdateFrequency(50);
-        TalonFXConfiguration pivotConfig = new TalonFXConfiguration();
-        pivotConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        pivotConfig = new TalonFXConfiguration();
+        pivotConfig.MotorOutput.PeakForwardDutyCycle = 0.1;
+        pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.1;
+        pivotConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        // Temp values
-        pivotConfig.Slot0.kP = 0.0;
-        pivotConfig.Slot0.kI = 0.0;
-        pivotConfig.Slot0.kD = 0.0;
-        pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
-            Units.radiansToRotations(maxForwardPivotAngle_rad) * pivotRatio;
-        pivotConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 
-            Units.radiansToRotations(maxBackwardPivotAngle_rad) * pivotRatio;
+        pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = Units.radiansToRotations(maxForwardPivotAngle_rad)
+                * pivotRatio;
+        pivotConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = Units.radiansToRotations(maxBackwardPivotAngle_rad)
+                * pivotRatio;
         pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
         pivotConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        pivot.getConfigurator().apply(pivotConfig);        
-        
-        TalonFXConfiguration[] pivotFollowerConfigs = new TalonFXConfiguration[3];
-        for (int i = 0; i<3; i++) {
-            pivotFollowers[i] = new TalonFX(31+i);
+        pivot.getConfigurator().apply(pivotConfig);
+
+        pivotFollowerConfigs = new TalonFXConfiguration[3];
+        for (int i = 0; i < 3; i++) {
+            pivotFollowers[i] = new TalonFX(31 + i);
             pivotFollowerConfigs[i] = new TalonFXConfiguration();
             pivotFollowerConfigs[i].MotorOutput.NeutralMode = NeutralModeValue.Brake;
             pivotFollowers[i].getConfigurator().apply(pivotFollowerConfigs[i]);
-            // Check if motor is on the same side as the master (30). If so, follow master with same configuration
-            if (i==0) {
+            // Check if motor is on the same side as the master (30). If so, follow master
+            // with same configuration
+            if (i == 0) {
                 // motor 31 will be on the same side as the master motor.
                 pivotFollowers[i].setControl(new Follower(30, false));
             } else {
-                // motors 32 and 33 will be on the opposite side as the master motor requiring the follower to oppose the
+                // motors 32 and 33 will be on the opposite side as the master motor requiring
+                // the follower to oppose the
                 // master direction
                 pivotFollowers[i].setControl(new Follower(30, true));
             }
-            
+
         }
 
         // // Extender configurations
         extender = new TalonFX(34);
-        extender.setPosition(Units.inchesToMeters(-1) * extenderRatio_m_to_rot);
+        extender.setPosition(Units.inchesToMeters(-1.0) * extenderRatio_m_to_rot);
         extenderConfig = new TalonFXConfiguration();
-        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.3;
-        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
+        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.8;
+        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.5;
         extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        // Temp values
-        extenderConfig.Slot0.kP = 0.17;
+        extenderConfig.Slot0.kP = 0.19;
         extenderConfig.Slot0.kI = 0.0;
         extenderConfig.Slot0.kD = 0.0;
-        extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = 
-            maxExtensionDistance_m * extenderRatio_m_to_rot;
-        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = 
-            0.0;
+        extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = maxExtensionDistance_m * extenderRatio_m_to_rot;
+        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = Units.inchesToMeters(-0.5) * extenderRatio_m_to_rot;
         extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
         extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
         extender.getConfigurator().apply(extenderConfig);
@@ -227,73 +230,167 @@ public class Arm extends SubsystemBase {
         wrist.getEncoder().setPosition(wristEncoder.getPosition() - 198.333);
         wristConfig.idleMode(IdleMode.kBrake);
         wristConfig.inverted(true);
-        wristConfig.closedLoop.pid(0.05,0.0,0.0);
+        wristConfig.closedLoop.pid(0.05, 0.0, 0.0);
         wristConfig.closedLoop.maxOutput(0.4);
         wristConfig.closedLoop.minOutput(-0.4);
         wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wristConfig.closedLoop.positionWrappingEnabled(true);
         wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
         wristConfig.absoluteEncoder.inverted(true);
-        wristConfig.absoluteEncoder.zeroOffset(0.8068750);
+
+        wristConfig.absoluteEncoder.zeroOffset(0.982746);
         wristConfig.absoluteEncoder.positionConversionFactor(198.333);
         // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.reverseSoftLimitEnabled(true);
         // wristConfig.softLimit.forwardSoftLimitEnabled(true);
         wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-        
 
         // Trigger configurations
-        switchPieces.onChange(Commands.runOnce(this::switchPiece, this));
-        stowTrigger.onTrue(Commands.runOnce(this::stow, this));
+        coralTrigger = new Trigger(() -> Robot.scoreCoral);
+        coralTrigger.onTrue(Commands.runOnce(() -> {scoreHeight = 1; pickupHeight = 1;}));
+        coralTrigger.onFalse(Commands.runOnce(() -> {scoreHeight = 6; pickupHeight = 2;}));
+        driverLBTrigger = Robot.driverCommandController.leftBumper();
+        driverLBTrigger.onTrue(ArmCommands.groundPickup(this));
+        manipLBTrigger = Robot.manipCommandController.leftBumper();
+        manipLBTrigger.onTrue(Commands.either(
+            Commands.runOnce(() -> drivingStow(), this),
+            Commands.runOnce(() -> scoringStow(), this),
+            () -> wristRotation.getDegrees() < 50
+        ));
+        Drivetrain.antiTipTrigger.onTrue(ArmCommands.stow(this));
+        scoreTrigger.onFalse(
+                Commands.sequence(
+                    Commands.runOnce(() -> {
+                        updatePivot(Rotation2d.fromDegrees(-25));
+                        updateWrist(Rotation2d.fromDegrees(25));
+                    }, this).onlyIf(() -> Robot.masterState.equals(MasterStates.STOW)),
+                    Commands.waitUntil(() -> closeEnough()),
+                    Commands.runOnce(() -> updateExtender(0.0)),       
+                    Commands.waitUntil(() -> closeEnough()),
+                    Commands.runOnce(() -> pickup(), this)
+                    ));
+        feedrTrigger.onFalse(
+            Commands.sequence(
+                Commands.runOnce(() -> {
+                    updatePivot(Rotation2d.fromDegrees(-25));
+                    updateWrist(Rotation2d.fromDegrees(25));
+                }, this).onlyIf(() -> Robot.masterState.equals(MasterStates.STOW)),
+                Commands.waitUntil(() -> closeEnough()),
+                Commands.runOnce(() -> updateExtender(0.0))
+            ));
+        stowTrigger.onFalse(
+            Commands.either(
+                Commands.sequence(
+                    Commands.runOnce(() -> 
+                        {updatePivot(Rotation2d.fromDegrees(-5));
+                        updateExtender(Units.inchesToMeters(37.1));}),
+                    Commands.waitUntil(() -> closeEnough()),
+                    Commands.runOnce(() -> updateWrist(Rotation2d.fromDegrees(67)))),
+                    Commands.none(),
+                    () -> Robot.masterState.equals(MasterStates.SCOR) && scoreHeight == 4));
         scoreTrigger.onTrue(ArmCommands.score(this));
         feedrTrigger.onTrue(ArmCommands.pickup(this));
         climbTrigger.onTrue(ArmCommands.climb(this));
         manipATrigger = Robot.manipCommandController.a();
         manipATrigger.onTrue(Commands.runOnce(() -> {
-            if (Robot.scoreCoral) { 
+            if (Robot.scoreCoral) {
                 scoreHeight = 2;
-                if (Robot.masterState.equals(MasterStates.SCOR)) {ArmCommands.score(this).schedule();}
-            } else { 
+                if (Robot.masterState.equals(MasterStates.SCOR)) {
+                    ArmCommands.score(this).schedule();
+                }
+            } else {
                 pickupHeight = 2;
-                if (Robot.masterState.equals(MasterStates.FEED)) {ArmCommands.pickup(this).schedule();}
+                if (Robot.masterState.equals(MasterStates.FEED)) {
+                    ArmCommands.pickup(this).schedule();
+                }
             }
         }, this));
         manipXTrigger = Robot.manipCommandController.x();
         manipXTrigger.onTrue(Commands.runOnce(() -> {
-            if (Robot.scoreCoral) { 
+            if (Robot.scoreCoral) {
                 scoreHeight = 3;
-                if (Robot.masterState.equals(MasterStates.SCOR)) {ArmCommands.score(this).schedule();} 
-            } else { 
+                if (Robot.masterState.equals(MasterStates.SCOR)) {
+                    ArmCommands.score(this).schedule();
+                }
+            } else {
                 pickupHeight = 3;
-                if (Robot.masterState.equals(MasterStates.FEED)) {ArmCommands.pickup(this).schedule();}
+                if (Robot.masterState.equals(MasterStates.FEED)) {
+                    ArmCommands.pickup(this).schedule();
+                }
             }
         }, this));
         manipYTrigger = Robot.manipCommandController.y();
         manipYTrigger.onTrue(Commands.runOnce(() -> {
-            if (Robot.scoreCoral) { scoreHeight = 4; } else { scoreHeight = 6;}
-            if (Robot.masterState.equals(MasterStates.SCOR)) {ArmCommands.score(this).schedule();};
+            if (Robot.scoreCoral) {
+                scoreHeight = 4;
+            } else {
+                scoreHeight = 6;
+            }
+            if (Robot.masterState.equals(MasterStates.SCOR)) {
+                ArmCommands.score(this).schedule();
+            }
+            ;
         }, this));
         manipBTrigger = Robot.manipCommandController.b();
         manipBTrigger.onTrue(Commands.runOnce(() -> {
-            if (Robot.scoreCoral) { scoreHeight = 1; } else { scoreHeight = 5;}
-            if (Robot.masterState.equals(MasterStates.SCOR)) {ArmCommands.score(this).schedule();};
+            if (Robot.scoreCoral) {
+                scoreHeight = 1;
+            } else {
+                scoreHeight = 5;
+            }
+            if (Robot.masterState.equals(MasterStates.SCOR)) {
+                ArmCommands.score(this).schedule();
+            }
+            ;
         }, this));
 
-        stow();
+        drivingStow();
     }
 
     public Rotation2d getEncoderPosition() {
-        return Rotation2d.fromRotations(pivotEncoderOffset_rot - pivotEncoder.get());
+        double encoderRotations = pivotEncoderOffset_rot - pivotEncoder.get();
+        return Rotation2d.fromRotations(encoderRotations);
     }
 
-    public void updateSensors(XboxController manipController) {        
-        // extenderPosition_m = 0.0;
-        // extenderPosition_m = extender.getPosition().getValueAsDouble() / extenderRatio_m_to_rot;
-        
-        // wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
-        // wristFF = pivotRotation.plus(wristRotation).getSin() * wristFFArbitraryScalar;
+    public void updateSensors(XboxController manipController) {
+        if (Dashboard.calibrateExtender.get()) {
+            extender.setPosition(Units.inchesToMeters(-1.0) * extenderRatio_m_to_rot);
+        }
+        extenderPosition_m = extender.getPosition().getValueAsDouble() / extenderRatio_m_to_rot;
+        Dashboard.extenderPosition_in.set(Units.metersToInches(extenderPosition_m));
 
+        wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
+        wristFF = getEncoderPosition().plus(wristRotation).getSin() * wristFFArbitraryScalar;
+        double realWristRotation_deg = wristRotation.getDegrees();
+        if (realWristRotation_deg > 180) {realWristRotation_deg -= 360;}
+        Dashboard.wristPosition_deg.set(realWristRotation_deg);
+
+        if (getEncoderPosition().getDegrees() < -15) {
+            pivotFF = -getEncoderPosition().getSin()*0.016;
+            // pivotFF = 0.0;
+        }
+
+        Dashboard.pivotPosition_deg.set(getEncoderPosition().getDegrees());
+
+        Dashboard.extenderTemp_C.set(extender.getDeviceTemp().getValueAsDouble());
+        Dashboard.wristTemp_C.set(wrist.getMotorTemperature());
+        Dashboard.pivotTemp_C.set(pivot.getDeviceTemp().getValueAsDouble());
+
+        // if (Robot.driverController.getLeftTriggerAxis() > 0.7) {
+        //     if (Robot.masterState.equals(MasterStates.FEED)) {
+        //         if (pickupHeight > 2) {
+        //             updateArm(
+        //                     Units.inchesToMeters(7.14),
+        //                     Rotation2d.fromDegrees(-3),
+        //                     Rotation2d.fromDegrees(25));
+        //         }
+        //     }
+        // } else if (Robot.masterState.equals(MasterStates.FEED)) {
+        //     if (pickupHeight > 2) {
+        //         pickupHighAlgae();
+        //     }
+        // }
         // PID Tuning
         // double kp = Dashboard.freeTuningkP.get();
         // double ki = Dashboard.freeTuningkI.get();
@@ -302,28 +399,34 @@ public class Arm extends SubsystemBase {
         // wristConfig.closedLoop.p(kp);
         // wristConfig.closedLoop.i(ki);
         // wristConfig.closedLoop.d(kd);
-        // wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+        // wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters,
+        // PersistMode.kNoPersistParameters);
         // kp0 = kp;
         // ki0 = ki;
         // kd0 = kd;
         // }
-        // Dashboard.pidTuningGoalActual.set(new double[] { wristOutput.getDegrees(), wristRotation.getDegrees() });
-    
+        // // Dashboard.pidTuningGoalActual.set(new double[] { wristOutput.getDegrees(),
+        // wristRotation.getDegrees() });
+        // // Dashboard.pidTuningGoalActual.set(new double[] {
+        // -Dashboard.freeTuningVariable.get(), wristRotation.getDegrees() });
+
         // PID Tuning
         // double kp = Dashboard.freeTuningkP.get();
         // double ki = Dashboard.freeTuningkI.get();
         // double kd = Dashboard.freeTuningkD.get();
         // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-        //     extenderConfig.Slot0.kP = kp;
-        //     extenderConfig.Slot0.kI = ki;
-        //     extenderConfig.Slot0.kD = kd;
-        //     extender.getConfigurator().apply(extenderConfig);
-        //     kp0 = kp;
-        //     ki0 = ki;
-        //     kd0 = kd;
+        // extenderConfig.Slot0.kP = kp;
+        // extenderConfig.Slot0.kI = ki;
+        // extenderConfig.Slot0.kD = kd;
+        // extender.getConfigurator().apply(extenderConfig);
+        // kp0 = kp;
+        // ki0 = ki;
+        // kd0 = kd;
         // }
-        // Dashboard.pidTuningGoalActual.set(new double[] { Dashboard.freeTuningVariable.get(), Units.metersToInches(extenderPosition_m) });
-        
+        // Dashboard.pidTuningGoalActual.set(new double[] {
+        // Dashboard.freeTuningVariable.get(), Units.metersToInches(extenderPosition_m)
+        // });
+
         // PID Tuning
         // double kp = Dashboard.freeTuningkP.get();
         // double ki = Dashboard.freeTuningkI.get();
@@ -336,60 +439,75 @@ public class Arm extends SubsystemBase {
         //     ki0 = ki;
         //     kd0 = kd;
         // }
-        // Dashboard.pidTuningGoalActual.set(new double[] { -Dashboard.freeTuningVariable.get(), getEncoderPosition().getDegrees() });
-    }
-
-    public void switchPiece() {
-        switch (scoreHeight) {
-            case 1, 2:
-                // Convert to low algae and processor
-                scoreHeight = 5;
-                pickupHeight = 2;
-                break;
-            case 3, 4:
-                // Convert to high algae and barge
-                scoreHeight = 6;
-                pickupHeight = 3;
-                break;
-            case 5, 6:
-                // Convert to low coral and feeder settings
-                scoreHeight = 2;
-                pickupHeight = 1;
-        }
+        // Dashboard.pidTuningGoalActual
+        //         .set(new double[] { -Dashboard.freeTuningVariable.get(), getEncoderPosition().getDegrees() });
     }
 
     public boolean hasArrived() {
         boolean hasArrived = false;
-        if((Math.abs(pivotRotation.getRadians() - pivotOutput.getRadians())) < maxAcceptableAngleError_rad) {
-            if((Math.abs(extenderPosition_m - extenderOutput_m)) < maxAcceptableExtensionError_m) {
-                if ((Math.abs(wristRotation.getRadians() - wristOutput.getRadians())) < maxAcceptableAngleError_rad) {
+        if ((Math.abs(getEncoderPosition().getRadians() - pivotOutput.getRadians())) < maxAcceptableAngleError_rad) {
+            if ((Math.abs(extenderPosition_m - extenderOutput_m)) < maxAcceptableExtensionError_m) {
+                double realWristRotation_rad = wristRotation.getRadians();
+                if (realWristRotation_rad > Math.PI) {realWristRotation_rad -= Math.PI * 2;}
+                if ((Math.abs(realWristRotation_rad - wristOutput.getRadians())) < maxAcceptableAngleError_rad) {
                     hasArrived = true;
-                }}}
+                }
+            }
+        }
         return hasArrived;
     }
 
-    public void stow() {
-        updateArm(0, 0, Rotation2d.fromDegrees(40));
+    public boolean closeEnough() {
+        boolean hasArrived = false;
+        if ((Math.abs(getEncoderPosition().getRadians() - pivotOutput.getRadians())) < closeEnoughAngleError_rad) {
+            if ((Math.abs(extenderPosition_m - extenderOutput_m)) < closeEnoughExtensionError_m) {
+                double realWristRotation_rad = wristRotation.getRadians();
+                if (realWristRotation_rad > Math.PI) {realWristRotation_rad -= Math.PI * 2;}
+                if ((Math.abs(realWristRotation_rad - wristOutput.getRadians())) < closeEnoughAngleError_rad) {
+                    hasArrived = true;
+                }
+            }
+        }
+        return hasArrived;
     }
 
-    public void autoStow() {
-        stow();
+    public void drivingStow() {
+        updateArm(0, 
+            Rotation2d.fromDegrees(-25), 
+            Rotation2d.fromDegrees(80));
+    }
+
+    public void scoringStow() {
+        updateArm(0, 
+            Rotation2d.fromDegrees(-25), 
+            Rotation2d.fromDegrees(25));
+    }
+
+    public Command carefulStow() {
+        return Commands.sequence(
+            Commands.runOnce(() -> updatePivot(Rotation2d.fromDegrees((pickupHeight < 1.5) ? 0:-25)), this),
+            Commands.waitUntil(() -> closeEnough()),
+            Commands.runOnce(() -> updateWrist(Rotation2d.fromDegrees(25)), this),
+            Commands.waitUntil(() -> closeEnough()),
+            Commands.runOnce(() -> scoringStow())
+        );
     }
 
     public void score() {
+        Robot.masterState = MasterStates.SCOR;
         switch (scoreHeight) {
             case 1:
                 scoreL1();
                 break;
-            
+
             case 2:
                 scoreL2();
                 break;
-            
+
             case 3:
                 scoreL3();
                 break;
-    
+
             case 4:
                 scoreL4();
                 break;
@@ -403,46 +521,59 @@ public class Arm extends SubsystemBase {
                 break;
 
             default:
-            new Exception("Score type out of range :(").printStackTrace();
+                new Exception("Score type out of range :(").printStackTrace();
                 break;
         }
     }
 
     private void scoreL4() {
         updateArm(
-            Units.inchesToMeters(37.1), 
-            Rotation2d.fromDegrees(-5), 
-            Rotation2d.fromDegrees(68));
+                Units.inchesToMeters(37.1),
+                Rotation2d.fromDegrees(-5),
+                Rotation2d.fromDegrees(67));
+        Dashboard.scoringState.set(3);
     }
+
     private void scoreL3() {
         updateArm(
-            Units.inchesToMeters(0), 
-            Rotation2d.fromDegrees(-11), 
-            Rotation2d.fromDegrees(38));}
+                Units.inchesToMeters(0),
+                Rotation2d.fromDegrees(-11),
+                Rotation2d.fromDegrees(38));
+        Dashboard.scoringState.set(2);
+    }
 
     private void scoreL2() {
         updateArm(
-            Units.inchesToMeters(0), 
-            Rotation2d.fromDegrees(-10), 
-            Rotation2d.fromDegrees(83));}
-    
-    private void scoreL1() {
-        // Temp values
-        updateArm(0.0, 0.0, Rotation2d.fromDegrees(40));
+                Units.inchesToMeters(0),
+                Rotation2d.fromDegrees(-10),
+                Rotation2d.fromDegrees(83));
+        Dashboard.scoringState.set(1);
     }
+
+    private void scoreL1() {
+        updateArm(
+                Units.inchesToMeters(0),
+                Rotation2d.fromDegrees(-42),
+                Rotation2d.fromDegrees(-125));
+        Dashboard.scoringState.set(0);
+    }
+
     private void scoreProcessor() {
         updateArm(
-            Units.inchesToMeters(0), 
-            Rotation2d.fromDegrees(-62), 
-            Rotation2d.fromDegrees(-125));
+                Units.inchesToMeters(0),
+                Rotation2d.fromDegrees(-62),
+                Rotation2d.fromDegrees(-125));
     }
+
     private void scoreBarge() {
         updateArm(
-            Units.inchesToMeters(42), 
-            Rotation2d.fromDegrees(0), 
-            Rotation2d.fromDegrees(-10));}
+                Units.inchesToMeters(42),
+                Rotation2d.fromDegrees(0),
+                Rotation2d.fromDegrees(-25));
+    }
 
     public void pickup() {
+        Robot.masterState = MasterStates.FEED;
         switch (pickupHeight) {
             case 1:
                 pickupFeeder();
@@ -462,88 +593,188 @@ public class Arm extends SubsystemBase {
         }
     }
 
+    public void pickupFeeder_init() {
+        updateArm(
+            0, 
+            Rotation2d.fromDegrees(-25), 
+            Rotation2d.fromDegrees(25));
+    }
+
     private void pickupFeeder() {
         updateArm(
-            Units.inchesToMeters(0), 
-            Rotation2d.fromDegrees(-5.5), 
-            Rotation2d.fromDegrees(-125));
-        }
+                Units.inchesToMeters(-0.5),
+                Rotation2d.fromDegrees(-9.8),
+                Rotation2d.fromDegrees(-121));
+    }
+
     private void pickupLowAlgae() {
         updateArm(
-            Units.inchesToMeters(0), 
-            Rotation2d.fromDegrees(-4.7), 
-            Rotation2d.fromDegrees(60));
-        }
+                Units.inchesToMeters(0),
+                Rotation2d.fromDegrees(-4.7),
+                Rotation2d.fromDegrees(53));
+    }
+
     private void pickupHighAlgae() {
+        // updateArm(
+        //     Units.inchesToMeters(-10), 
+        //     Units.inchesToMeters(7.13), 
+        //     Rotation2d.fromDegrees(28)
+        // );
         updateArm(
-            Units.inchesToMeters(9.64), 
-            Rotation2d.fromDegrees(-3), 
-            Rotation2d.fromDegrees(35));
-        }
+                Units.inchesToMeters(12.2),
+                Rotation2d.fromDegrees(-3),
+                Rotation2d.fromDegrees(44));
+    }
+
+    public void groundPickup() {
+        updateArm(
+            Units.inchesToMeters(0),
+            Rotation2d.fromDegrees(-72),
+            Rotation2d.fromDegrees(-125));
+    }
 
     public void climbInit() {
         updateArm(
-            Units.inchesToMeters(0), 
-            Rotation2d.fromDegrees(-19), 
-            Rotation2d.fromDegrees(40));
-        }
+                Units.inchesToMeters(0),
+                Rotation2d.fromDegrees(-19),
+                Rotation2d.fromDegrees(40));
+    }
 
     public void climbLift() {
         updateArm(
-            Units.inchesToMeters(37.1), 
-            Rotation2d.fromDegrees(-5), 
-            Rotation2d.fromDegrees(10));
-        }
-
-    /**
-     * Takes in a forward and upward distance along with a wrist angle and calculates the correct outputs
-     * @param forwardDistance_m The horizontal distance the wrist pivot should be from the base pivot
-     * @param upwardDistance_m The vertical distance the wrist pivot should be form the base pivot
-     * @param wristAngle The angle the wrist should be relative to vertical (not accounting for pivot angle)
-     */
-    private void updateArm(double forwardDistance_m, double upwardDistance_m, Rotation2d wristAngle) {
-        Rotation2d rotation = new Rotation2d();
-        if (upwardDistance_m > 1e-6 && forwardDistance_m > 1e-6) {
-            rotation = new Rotation2d(upwardDistance_m, forwardDistance_m);
-        }
-
-        updateArm(
-            Math.hypot(forwardDistance_m, upwardDistance_m), 
-            rotation, wristAngle.minus(rotation)
-        );
+                Units.inchesToMeters(0.0),
+                Rotation2d.fromDegrees(-90),
+                Rotation2d.fromDegrees(40));
     }
 
     /**
-     * Takes in a pivot and wrist angle and an extension distance directly output to motors
+     * Takes in a forward and upward distance along with a wrist angle and
+     * calculates the correct outputs
+     * 
+     * @param forwardDistance_m The horizontal distance the wrist pivot should be
+     *                          from the base pivot
+     * @param upwardDistance_m  The vertical distance the wrist pivot should be form
+     *                          the base pivot
+     * @param wristAngle        The angle the wrist should be relative to vertical
+     *                          (not accounting for pivot angle)
+     */
+    // private void updateArm(double forwardDistance_m, double upwardDistance_m, Rotation2d wristAngle) {
+    //     Rotation2d rotation = new Rotation2d();
+    //     if (upwardDistance_m > 1e-6 && forwardDistance_m > 1e-6) {
+    //         rotation = new Rotation2d(Math.atan2(forwardDistance_m, upwardDistance_m));
+    //     }
+
+    //     updateArm(
+    //             Math.hypot(forwardDistance_m, upwardDistance_m),
+    //             rotation, wristAngle.minus(rotation));
+    // }
+
+    /**
+     * Takes in a pivot and wrist angle and an extension distance directly output to
+     * motors
+     * 
      * @param extensionDistance_m The distance radially the extender should go to
-     * @param pivotAngle The angle relative to vertical the pivot should go to
-     * @param wristAngle The angle relative to the pivot the wrist should go to
+     * @param pivotAngle          The angle relative to vertical the pivot should go
+     *                            to
+     * @param wristAngle          The angle relative to the pivot the wrist should
+     *                            go to
      */
     private void updateArm(double extensionDistance_m, Rotation2d pivotAngle, Rotation2d wristAngle) {
         pivotOutput = new Rotation2d(
-            MathUtil.clamp(pivotAngle.getRadians(), 
-            maxBackwardPivotAngle_rad, maxForwardPivotAngle_rad));
-        
-        extenderOutput_m = 
-            MathUtil.clamp(extensionDistance_m, 
-            0.0, maxExtensionDistance_m);
+                MathUtil.clamp(pivotAngle.getRadians(),
+                        maxBackwardPivotAngle_rad, maxForwardPivotAngle_rad));
+
+        extenderOutput_m = MathUtil.clamp(extensionDistance_m,
+                -0.5, maxExtensionDistance_m);
 
         wristOutput = new Rotation2d(
-            MathUtil.clamp(wristAngle.getRadians(), 
-            maxBackwardWristAngle_rad, maxForwardWristAngle_rad));
+                MathUtil.clamp(wristAngle.getRadians(),
+                        maxBackwardWristAngle_rad, maxForwardWristAngle_rad));
+    }
+
+    private void updatePivot(Rotation2d pivotAngle) {
+        pivotOutput = new Rotation2d(
+                MathUtil.clamp(pivotAngle.getRadians(),
+                        maxBackwardPivotAngle_rad, maxForwardPivotAngle_rad));
+    }
+
+    private void updateWrist(Rotation2d wristAngle) {
+        wristOutput = new Rotation2d(
+                MathUtil.clamp(wristAngle.getRadians(),
+                        maxBackwardWristAngle_rad, maxForwardWristAngle_rad));
+    }
+
+    @SuppressWarnings("unused")
+    private void updateExtender(double extensionDistance_m) {
+        extenderOutput_m = MathUtil.clamp(extensionDistance_m,
+                -0.5, maxExtensionDistance_m);
     }
 
     boolean unlockExtender0 = false;
+    boolean unlockPivot0 = false;
+    boolean unlockWrist0 = false;
+    private Rotation2d pivotOutput0 = new Rotation2d();
+    private double extenderOutput0 = 0.0;
+    private Rotation2d wristOutput0 = new Rotation2d();
+
     public void updateOutputs() {
+        Dashboard.armArrived.set(hasArrived());
 
+        // Pivot
+        double finalPivotOutput_rot = 0.0;
+        if (disablePivot) {
+            finalPivotOutput_rot = pivotOutput0.getRotations();
+        } else {
+            finalPivotOutput_rot = pivotOutput.getRotations();
+            pivotOutput0 = pivotOutput;
+            // finalPivotOutput_rot = Units.degreesToRotations(-Dashboard.freeTuningVariable.get());
+        }
+        if (Dashboard.overridePivot.get()) {
+            finalPivotOutput_rot = 0.0;
+        }
+        finalPivotOutput_rot = MathUtil.clamp(finalPivotOutput_rot, Units.radiansToRotations(maxBackwardPivotAngle_rad),
+                Units.radiansToRotations(maxForwardPivotAngle_rad));
         ActuatorInterlocks.testActuatorInterlocks(
-            pivot, "Pivot_(p)", 
-            pivotPID.calculate(getEncoderPosition().getRotations(), pivotOutput.getRotations()));
+                pivot, "Pivot_(p)",
+                pivotPID.calculate(getEncoderPosition().getRotations(), finalPivotOutput_rot) + pivotFF);
+        // Unlock pivot
+        boolean unlockPivot = Dashboard.unlockPivot.get();
+        if (unlockPivot && (!unlockPivot0)) {
+            pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+            pivot.getConfigurator().apply(pivotConfig);
+            for (int i = 0; i < 3; i++) {
+                pivotFollowerConfigs[i].MotorOutput.NeutralMode = NeutralModeValue.Coast;
+                pivotFollowers[i].getConfigurator().apply(pivotFollowerConfigs[i]);
+            }
+        } else if ((!unlockPivot) && unlockPivot0) {
+            pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+            pivot.getConfigurator().apply(pivotConfig);
+            for (int i = 0; i < 3; i++) {
+                pivotFollowerConfigs[i].MotorOutput.NeutralMode = NeutralModeValue.Brake;
+                pivotFollowers[i].getConfigurator().apply(pivotFollowerConfigs[i]);
+            }
+        }
+        unlockPivot0 = unlockPivot;
 
+        // Extender
+        double finalextenderOutput = 0.0;
+        if (disableExtender) {
+            finalextenderOutput = extenderOutput0;
+        } else {
+            finalextenderOutput = extenderOutput_m;
+            extenderOutput0 = extenderOutput_m;
+            // finalextenderOutput =
+            // Units.inchesToMeters(Dashboard.freeTuningVariable.get()) *
+            // extenderRatio_m_to_rot;
+        }
+        if (Dashboard.overrideExtender.get()) {
+            finalextenderOutput = 0.0;
+        }
+        finalextenderOutput = MathUtil.clamp(finalextenderOutput, Units.inchesToMeters(-0.5), maxExtensionDistance_m);
         ActuatorInterlocks.testActuatorInterlocks(
-            extender, "Extender_(p)", 
-            extenderOutput_m * extenderRatio_m_to_rot, 0.03);
-
+                extender, "Extender_(p)",
+                finalextenderOutput * extenderRatio_m_to_rot, 0.03);
+        // Unlock extender
         boolean unlockExtender = Dashboard.unlockExtender.get();
         if (unlockExtender && (!unlockExtender0)) {
             extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
@@ -557,9 +788,37 @@ public class Arm extends SubsystemBase {
             extenderFollower.getConfigurator().apply(extenderFollowerConfig);
         }
         unlockExtender0 = unlockExtender;
-            
+
+        // Wrist
+        // System.out.println("Disable: " + disableWrist);
+        // System.out.println("Master State: " + Robot.masterState.toString());
+        double finalwristOutput_rot = 0.0;
+        if (disableWrist) {
+            finalwristOutput_rot = wristOutput0.getRotations();
+        } else {
+            finalwristOutput_rot = wristOutput.getRotations();
+            wristOutput0 = wristOutput;
+            // finalwristOutput_rot =
+            // Units.degreesToRotations(Dashboard.freeTuningVariable.get());
+        }
+        if (Dashboard.overrideWrist.get()) {
+            finalwristOutput_rot = 0.0;
+        }
+        finalwristOutput_rot = MathUtil.clamp(finalwristOutput_rot, Units.radiansToRotations(maxBackwardWristAngle_rad),
+                Units.radiansToRotations(maxForwardWristAngle_rad));
+                // System.out.println("Output: " + finalwristOutput_rot);
         ActuatorInterlocks.testActuatorInterlocks(
-            wrist, "Wrist_(p)", 
-            wristOutput.getRotations() * wristRatio, -wristFF);
+                wrist, "Wrist_(p)",
+                finalwristOutput_rot * wristRatio, -wristFF);
+        // Unlock wrist
+        boolean unlockWrist = Dashboard.unlockWrist.get();
+        if (unlockWrist && (!unlockWrist0)) {
+            wristConfig.idleMode(IdleMode.kCoast);
+            wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+        } else if ((!unlockWrist) && unlockWrist0) {
+            wristConfig.idleMode(IdleMode.kBrake);
+            wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+        }
+        unlockWrist0 = unlockWrist;
     }
 }
