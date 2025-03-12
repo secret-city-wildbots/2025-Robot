@@ -75,8 +75,11 @@ public class Arm extends SubsystemBase {
 
     // TOF sensors
     private TimeOfFlight frontTOFSensor = new TimeOfFlight(7);
+    @SuppressWarnings("unused")
     private double frontTOFOffset_m = Units.inchesToMeters(4.625);
+    @SuppressWarnings("unused")
     private TimeOfFlight backTOFSensor = new TimeOfFlight(8);
+    @SuppressWarnings("unused")
     private double backTOFOffset_m = Units.inchesToMeters(11.875);
 
 
@@ -554,16 +557,16 @@ public class Arm extends SubsystemBase {
     }
 
     private void scoreL4() {
-        double tofOffset = (frontTOFSensor.getRange()*0.001) - frontTOFOffset_m;
-        if (tofOffset > Units.inchesToMeters(12)) {tofOffset = 0.0;}
-        updateArm(
-            Units.inchesToMeters(-3.23) + tofOffset, 
-            Units.inchesToMeters(36.96), 
-            Rotation2d.fromDegrees(66));
+        // double tofOffset = (frontTOFSensor.getRange()*0.001) - frontTOFOffset_m;
+        // if (tofOffset > Units.inchesToMeters(12)) {tofOffset = 0.0;}
         // updateArm(
-        //         Units.inchesToMeters(37.1),
-        //         Rotation2d.fromDegrees(-5),
-        //         Rotation2d.fromDegrees(67));
+        //     Units.inchesToMeters(-3.23) + tofOffset, 
+        //     Units.inchesToMeters(36.96), 
+        //     Rotation2d.fromDegrees(66));
+        updateArm(
+                Units.inchesToMeters(37.1),
+                Rotation2d.fromDegrees(-5),
+                Rotation2d.fromDegrees(67));
         Dashboard.scoringState.set(3);
     }
 
@@ -691,6 +694,7 @@ public class Arm extends SubsystemBase {
      * @param wristAngle        The angle the wrist should be relative to vertical
      *                          (not accounting for pivot angle)
      */
+    @SuppressWarnings("unused")
     private void updateArm(double forwardDistance_m, double upwardDistance_m, Rotation2d wristAngle) {
         double armlength_m = Units.inchesToMeters(25.5);
         Rotation2d rotation = new Rotation2d(Math.atan2(forwardDistance_m, upwardDistance_m + armlength_m));
@@ -768,7 +772,7 @@ public class Arm extends SubsystemBase {
                 pivot, "Pivot_(p)",
                 pivotPID.calculate(getEncoderPosition().getRotations(), finalPivotOutput_rot) + pivotFF);
         // Unlock pivot
-        boolean unlockPivot = Dashboard.unlockPivot.get() || (!unlockButton.get() && !Robot.isEnabled);
+        boolean unlockPivot = Dashboard.unlockPivot.get() || (unlockButton.get() && !Robot.isEnabled);
         if (unlockPivot && (!unlockPivot0)) {
             pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
             pivot.getConfigurator().apply(pivotConfig);
@@ -841,7 +845,7 @@ public class Arm extends SubsystemBase {
                 wrist, "Wrist_(p)",
                 finalwristOutput_rot * wristRatio, -wristFF);
         // Unlock wrist
-        boolean unlockWrist = Dashboard.unlockWrist.get() || (!unlockButton.get() && !Robot.isEnabled);
+        boolean unlockWrist = Dashboard.unlockWrist.get() || (unlockButton.get() && !Robot.isEnabled);
         if (unlockWrist && (!unlockWrist0)) {
             wristConfig.idleMode(IdleMode.kCoast);
             wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
