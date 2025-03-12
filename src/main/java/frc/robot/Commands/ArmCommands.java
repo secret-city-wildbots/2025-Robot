@@ -111,6 +111,25 @@ public class ArmCommands {
                 );
     }
 
+    public static Command autoIntake(
+            Intake intake,
+            Arm arm,
+            double timeout) {
+        return
+                Commands.sequence(
+                    Commands.runOnce(() -> intake.intake(), intake),
+                    Commands.waitSeconds(timeout),
+                    Commands.either(hold(intake), stop(intake), intake::hasPiece),
+                    Commands.either(
+                        Commands.runOnce(() -> Robot.masterState = MasterStates.STOW),
+                        Commands.none(),
+                        () -> intake.hasPiece() && 
+                        (Robot.masterState.equals(MasterStates.STOW) || 
+                        Robot.masterState.equals(MasterStates.FEED))
+                    )
+                );
+    }
+
     /**
      * 
      * @param intake
@@ -159,9 +178,7 @@ public class ArmCommands {
                             arm.updateWrist(Rotation2d.fromDegrees(25));
                         }, arm),
                         Commands.waitUntil(() -> arm.closeEnough()),
-                        Commands.runOnce(() -> arm.updateExtender(0.0)),       
-                        Commands.waitUntil(() -> arm.closeEnough()),
-                        Commands.runOnce(() -> arm.pickupFeeder(), arm)
+                        Commands.runOnce(() -> arm.updateExtender(0.0))
                     )
                 );
             }
