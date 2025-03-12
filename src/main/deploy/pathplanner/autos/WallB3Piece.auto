@@ -7,19 +7,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "New Path"
+            "pathName": "WallBStartingLocation"
           }
         },
         {
           "type": "named",
           "data": {
             "name": "strafeAssistScoreRight"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "scoreL4"
           }
         },
         {
@@ -32,12 +26,6 @@
           "type": "named",
           "data": {
             "name": "strafeAssistScoreRight"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "scoreL4"
           }
         },
         {
@@ -50,12 +38,6 @@
           "type": "named",
           "data": {
             "name": "strafeAssistScoreLeft"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "scoreL4"
           }
         }
       ]

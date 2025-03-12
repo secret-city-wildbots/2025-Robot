@@ -56,6 +56,9 @@ public class DrivetrainCommands {
         Commands.runOnce(() -> arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25)), arm),
         Commands.waitUntil(() -> arm.closeEnough()),
         Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(25)), arm)
-      );
+      ).handleInterrupt(() -> {
+          arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25));
+          arm.updateWrist(Rotation2d.fromDegrees(25));
+      });
     }
 }

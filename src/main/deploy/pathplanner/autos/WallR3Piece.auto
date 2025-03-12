@@ -7,7 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "WallRToReef3"
+            "pathName": "WallRStartingLocation"
           }
         },
         {
@@ -17,21 +17,9 @@
           }
         },
         {
-          "type": "path",
-          "data": {
-            "pathName": "Reef3ToFeederR"
-          }
-        },
-        {
           "type": "named",
           "data": {
-            "name": "strafeAssistFeeder"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "FeederRToReef2"
+            "name": "pickupFeeder"
           }
         },
         {
@@ -41,27 +29,15 @@
           }
         },
         {
-          "type": "path",
+          "type": "named",
           "data": {
-            "pathName": "Reef2ToFeederR"
+            "name": "pickupFeeder"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "strafeAssistFeeder"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "FeederRToReef2"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "strafeAssistScoreLeft"
+            "name": "strafeAssistScoreRight"
           }
         }
       ]

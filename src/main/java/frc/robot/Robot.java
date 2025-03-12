@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.ArmCommands;
 import frc.robot.Commands.DrivetrainCommands;
@@ -335,10 +336,26 @@ public class Robot extends TimedRobot {
    * Use this method to register named commands for path planner.
    */
   private void registerNamedCommands() {
-    NamedCommands.registerCommand("strafeAssistScoreLeft", DrivetrainCommands.strafeAssistScoreLeft(drivetrain));
-    NamedCommands.registerCommand("strafeAssistScoreRight", DrivetrainCommands.strafeAssistScoreRight(drivetrain));
-    NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
-    NamedCommands.registerCommand("pickupFeeder", DrivetrainCommands.pickupFeeder(drivetrain, arm, intake));
+    NamedCommands.registerCommand("strafeAssistScoreLeft", 
+      Commands.parallel(
+        DrivetrainCommands.strafeAssistScoreLeft(drivetrain), 
+        Commands.sequence(
+          Commands.waitSeconds(0.5),
+          ArmCommands.scoreL4(arm, intake, drivetrain)
+        )
+      )
+    );
+    NamedCommands.registerCommand("strafeAssistScoreRight", 
+      Commands.parallel(
+        DrivetrainCommands.strafeAssistScoreRight(drivetrain), 
+        Commands.sequence(
+          Commands.waitSeconds(0.5),
+          ArmCommands.scoreL4(arm, intake, drivetrain)
+        )
+      )
+    );
+    // NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
+    NamedCommands.registerCommand("pickupFeeder", DrivetrainCommands.pickupFeeder(drivetrain, arm, intake).until(() -> intake.hasPiece()));
   }
 
   /**

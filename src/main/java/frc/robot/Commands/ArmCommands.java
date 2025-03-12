@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.*;
 import frc.robot.Robot;
 import frc.robot.Robot.MasterStates;
 import frc.robot.Subsystems.Arm;
+import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Subsystems.Intake;
 
 public class ArmCommands {
@@ -95,7 +96,10 @@ public class ArmCommands {
         return
                 Commands.sequence(
                     Commands.runOnce(() -> intake.intake(), intake),
-                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7),
+                    Commands.parallel(
+                        Commands.waitSeconds(1),
+                        Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7)
+                    ),
                     Commands.either(hold(intake), stop(intake), intake::hasPiece),
                     Commands.either(
                         Commands.runOnce(() -> Robot.masterState = MasterStates.STOW),
@@ -130,7 +134,8 @@ public class ArmCommands {
 
     public static Command scoreL4(
             Arm arm,
-            Intake intake) {
+            Intake intake,
+            Drivetrain drivetrain) {
                 return Commands.sequence(
                     Commands.runOnce(() -> {Robot.scoreCoral = true; Arm.scoreHeight = 4;}),
                     Commands.sequence(
@@ -140,7 +145,13 @@ public class ArmCommands {
                         Commands.waitUntil(() -> arm.closeEnough()),
                         Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(67)))
                     ),
-                    Commands.print("hi"),
+                    Commands.race(
+                        Commands.sequence(
+                            Commands.waitUntil(() -> drivetrain.poseAccuracyGetter()),
+                            Commands.waitSeconds(0.5)
+                        ),
+                        Commands.waitSeconds(3)
+                    ),
                     outtake(intake, arm),
                     Commands.sequence(
                         Commands.runOnce(() -> {

@@ -69,9 +69,9 @@ public class Arm extends SubsystemBase {
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
     SparkMaxConfig wristConfig = new SparkMaxConfig();
-    private double kp0 = 0.0;
-    private double ki0 = 0.0;
-    private double kd0 = 0.0;
+    // private double kp0 = 0.0;
+    // private double ki0 = 0.0;
+    // private double kd0 = 0.0;
 
     // TOF sensors
     private TimeOfFlight frontTOFSensor = new TimeOfFlight(7);
@@ -399,21 +399,21 @@ public class Arm extends SubsystemBase {
         Dashboard.pivotTemp_C.set(pivot.getDeviceTemp().getValueAsDouble());
 
         // PID Tuning
-        double kp = Dashboard.freeTuningkP.get();
-        double ki = Dashboard.freeTuningkI.get();
-        double kd = Dashboard.freeTuningkD.get();
-        if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-        wristConfig.closedLoop.p(kp);
-        wristConfig.closedLoop.i(ki);
-        wristConfig.closedLoop.d(kd);
-        wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters,
-        PersistMode.kNoPersistParameters);
-        kp0 = kp;
-        ki0 = ki;
-        kd0 = kd;
-        }
-        Dashboard.pidTuningGoalActual.set(new double[] { wristOutput.getDegrees(),
-        wristRotation.getDegrees() });
+        // double kp = Dashboard.freeTuningkP.get();
+        // double ki = Dashboard.freeTuningkI.get();
+        // double kd = Dashboard.freeTuningkD.get();
+        // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+        // wristConfig.closedLoop.p(kp);
+        // wristConfig.closedLoop.i(ki);
+        // wristConfig.closedLoop.d(kd);
+        // wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters,
+        // PersistMode.kNoPersistParameters);
+        // kp0 = kp;
+        // ki0 = ki;
+        // kd0 = kd;
+        // }
+        // Dashboard.pidTuningGoalActual.set(new double[] { wristOutput.getDegrees(),
+        // wristRotation.getDegrees() });
 
         double tofRange = frontTOFSensor.getRange();
         if (Math.abs(tofRange0 - tofRange) > 0.001 && 
@@ -565,8 +565,8 @@ public class Arm extends SubsystemBase {
         //     Rotation2d.fromDegrees(66));
         updateArm(
                 Units.inchesToMeters(37.1),
-                Rotation2d.fromDegrees(-5),
-                Rotation2d.fromDegrees(67));
+                Rotation2d.fromDegrees(-3),
+                Rotation2d.fromDegrees(72));
         Dashboard.scoringState.set(3);
     }
 

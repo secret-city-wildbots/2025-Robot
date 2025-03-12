@@ -95,7 +95,7 @@ public class Drivetrain extends SubsystemBase {
   public static Robot.MasterStates masterState0 = Robot.masterState;
   public static boolean shiftingEnabled = false;
   private boolean headingLocked = false;
-  public static final PIDController strafePID = new PIDController(0.4, 0.002, 0);
+  public static final PIDController strafePID = new PIDController(0.4, 0.001, 0);
 
   // Variables stored for the assist heading function
   private StickyButton highSpeedSticky = new StickyButton();
@@ -559,20 +559,19 @@ public class Drivetrain extends SubsystemBase {
         }, 
       (interrupt) -> {disableRightLimelight = false; disableLeftLimelight = false;}, 
       () -> (this.poseAccuracyGetter()), 
-      this).withTimeout(2);
+      this).withTimeout(2.5);
     return outputCommand;
   }
 
   Pose2d poseAccuracyFinal = new Pose2d();
-  double poseAccuracyAllowedError = 1.5*0.0254; // Meters
+  double poseAccuracyAllowedError = 1*0.0254; // Meters
   double rotateAccuracyAllowedError = 2; // degree
 
   public boolean poseAccuracyGetter() {
-    System.out.println("Pose: " + poseAccuracyFinal);
     Pose2d pose = poseEstimator.getEstimatedPosition();
     boolean xValid = (Math.abs(pose.getX() - poseAccuracyFinal.getX())) < poseAccuracyAllowedError;
     boolean yValid = (Math.abs(pose.getY() - poseAccuracyFinal.getY())) < poseAccuracyAllowedError;
-    boolean rotateValid = (Math.abs(pose.getRotation().getDegrees() - (poseAccuracyFinal.getRotation().getDegrees() % 360))) < rotateAccuracyAllowedError;
+    boolean rotateValid = (Math.abs(((pose.getRotation().getDegrees()+360)%360) - ((poseAccuracyFinal.getRotation().getDegrees()+360) % 360))) < rotateAccuracyAllowedError;
     return xValid && yValid && rotateValid;
   }
 

@@ -55,7 +55,7 @@ public class SwerveModule {
 
     // Prior loop kp, i, and d tracking
     @SuppressWarnings("unused")
-    private double kp0 = 0.12;
+    private double kp0 = 0.0;
     @SuppressWarnings("unused")
     private double ki0 = 0;
     @SuppressWarnings("unused")
