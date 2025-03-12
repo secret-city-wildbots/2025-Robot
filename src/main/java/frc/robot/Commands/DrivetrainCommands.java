@@ -1,10 +1,13 @@
 package frc.robot.Commands;
 
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Robot;
+import frc.robot.Subsystems.Arm;
 import frc.robot.Subsystems.Drivetrain;
+import frc.robot.Subsystems.Intake;
 
 public class DrivetrainCommands {
     private DrivetrainCommands() {}
@@ -28,9 +31,31 @@ public class DrivetrainCommands {
     public static Command strafeAssistScoreLeft(Drivetrain drivetrain) {
       return Commands.sequence(
         Commands.runOnce(() -> {
+          Robot.scoreCoral = true;
           Robot.scoreRight = false;
         }, drivetrain),
-        drivetrain.getFinalStrafeCorrectionCommand()
+        drivetrain.getAutoStrafeCorrectionCommand(false)
+      );
+    }
+
+    public static Command strafeAssistScoreRight(Drivetrain drivetrain) {
+      return Commands.sequence(
+        Commands.runOnce(() -> {
+          Robot.scoreCoral = true;
+          Robot.scoreRight = true;
+        }, drivetrain),
+        drivetrain.getAutoStrafeCorrectionCommand(false)
+      );
+    }
+
+    public static Command pickupFeeder(Drivetrain drivetrain, Arm arm, Intake intake) {
+      return Commands.sequence(
+        drivetrain.getAutoStrafeCorrectionCommand(true),
+        ArmCommands.intake(intake, arm),
+        Commands.waitSeconds(1),
+        Commands.runOnce(() -> arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25)), arm),
+        Commands.waitUntil(() -> arm.closeEnough()),
+        Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(25)), arm)
       );
     }
 }

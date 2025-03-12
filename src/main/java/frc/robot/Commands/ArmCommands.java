@@ -1,5 +1,7 @@
 package frc.robot.Commands;
 
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.*;
 import frc.robot.Robot;
 import frc.robot.Robot.MasterStates;
@@ -96,7 +98,7 @@ public class ArmCommands {
                     Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7),
                     Commands.either(hold(intake), stop(intake), intake::hasPiece),
                     Commands.either(
-                        arm.carefulStow(),
+                        Commands.runOnce(() -> Robot.masterState = MasterStates.STOW),
                         Commands.none(),
                         () -> intake.hasPiece() && 
                         (Robot.masterState.equals(MasterStates.STOW) || 
@@ -125,4 +127,31 @@ public class ArmCommands {
                         Commands.runOnce(() -> Robot.masterState = MasterStates.STOW)
                     );
         }
+
+    public static Command scoreL4(
+            Arm arm,
+            Intake intake) {
+                return Commands.sequence(
+                    Commands.runOnce(() -> {Robot.scoreCoral = true; Arm.scoreHeight = 4;}),
+                    Commands.sequence(
+                        Commands.runOnce(() -> 
+                            {arm.updatePivot(Rotation2d.fromDegrees(-5));
+                            arm.updateExtender(Units.inchesToMeters(37.1));}),
+                        Commands.waitUntil(() -> arm.closeEnough()),
+                        Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(67)))
+                    ),
+                    Commands.print("hi"),
+                    outtake(intake, arm),
+                    Commands.sequence(
+                        Commands.runOnce(() -> {
+                            arm.updatePivot(Rotation2d.fromDegrees(-25));
+                            arm.updateWrist(Rotation2d.fromDegrees(25));
+                        }, arm),
+                        Commands.waitUntil(() -> arm.closeEnough()),
+                        Commands.runOnce(() -> arm.updateExtender(0.0)),       
+                        Commands.waitUntil(() -> arm.closeEnough()),
+                        Commands.runOnce(() -> arm.pickupFeeder(), arm)
+                    )
+                );
+            }
 }

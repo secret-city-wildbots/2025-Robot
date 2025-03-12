@@ -13,7 +13,6 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.ArmCommands;
 import frc.robot.Commands.DrivetrainCommands;
@@ -32,13 +31,11 @@ import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 
-import com.playingwithfusion.TimeOfFlight;
-
 public class Robot extends TimedRobot {
   // Subsystems and major objects
   public static XboxController driverController;
   public static CommandXboxController driverCommandController;
-  private final XboxController manipController;
+  public static XboxController manipController;
   public static CommandXboxController manipCommandController;
   private final Drivetrain drivetrain;
   private final Arm arm;
@@ -91,12 +88,9 @@ public class Robot extends TimedRobot {
   private static double loopTime0 = System.currentTimeMillis();
 
   public static boolean isEnabled = false;
+  public static boolean isAutonomous = false;
   // Dashboard variables
   private double selectedDriver0 = 0;
-
-  // TOF Test
-  private TimeOfFlight tofSensor;
-  private final int tofSensorID = 7;
 
   /**
    * This is called when the robot is initalized
@@ -174,8 +168,6 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     getSensors();
     FollowPathCommand.warmupCommand().schedule();
-
-    tofSensor = new TimeOfFlight(tofSensorID);
   }
 
   /**
@@ -186,9 +178,9 @@ public class Robot extends TimedRobot {
     // Start by updating all sensor values
     getSensors();
 
-    CommandScheduler.getInstance().run();
-
     updateMasterState();
+
+    CommandScheduler.getInstance().run();
 
     boolean[] confirmedStates = new boolean[]{false, false, false, false};
     confirmedStates[masterState.ordinal()] = true;
@@ -234,6 +226,7 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     updateOutputs();
+    isAutonomous = isAutonomous();
   }
 
   @Override
@@ -246,11 +239,10 @@ public class Robot extends TimedRobot {
    * This is called every loop cycle while the robot is enabled in TeleOp mode
    */
   @Override
-  public void teleopPeriodic() {  
-    @SuppressWarnings("unused")
-      double distance = tofSensor.getRange();
-      // System.out.println("Distance: " + distance + " mm");
-      tofSensor.identifySensor();
+  public void teleopPeriodic() { 
+      // double distance = tofSensor.getRange();
+      // // System.out.println("Distance: " + distance + " mm");
+      // tofSensor.identifySensor();
 
     if (driverController.getBButtonPressed()) {
       Pose2d goalPose = drivetrain.determineGoalPose();
@@ -344,10 +336,9 @@ public class Robot extends TimedRobot {
    */
   private void registerNamedCommands() {
     NamedCommands.registerCommand("strafeAssistScoreLeft", DrivetrainCommands.strafeAssistScoreLeft(drivetrain));
-    NamedCommands.registerCommand("strafeAssistFeeder", Commands.print("strafeAssistFeeder"));
-    NamedCommands.registerCommand("strafeAssistScoreRight", Commands.print("strafeAssistScoreRight"));
-    NamedCommands.registerCommand("scoreL4", Commands.print("scoreL4"));
-    NamedCommands.registerCommand("pickupFeeder", Commands.print("pickupFeeder"));
+    NamedCommands.registerCommand("strafeAssistScoreRight", DrivetrainCommands.strafeAssistScoreRight(drivetrain));
+    NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
+    NamedCommands.registerCommand("pickupFeeder", DrivetrainCommands.pickupFeeder(drivetrain, arm, intake));
   }
 
   /**

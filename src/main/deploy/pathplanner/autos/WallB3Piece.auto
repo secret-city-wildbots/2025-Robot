@@ -7,7 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "WallBToReef5"
+            "pathName": "New Path"
           }
         },
         {
@@ -17,21 +17,15 @@
           }
         },
         {
-          "type": "path",
+          "type": "named",
           "data": {
-            "pathName": "Reef5ToFeederL"
+            "name": "scoreL4"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "strafeAssistFeeder"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "FeederLToReef6"
+            "name": "pickupFeeder"
           }
         },
         {
@@ -41,27 +35,27 @@
           }
         },
         {
-          "type": "path",
+          "type": "named",
           "data": {
-            "pathName": "Reef6ToFeederL"
+            "name": "scoreL4"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "strafeAssistFeeder"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "FeederLToReef6"
+            "name": "pickupFeeder"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "strafeAssistScoreRight"
+            "name": "strafeAssistScoreLeft"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "scoreL4"
           }
         }
       ]

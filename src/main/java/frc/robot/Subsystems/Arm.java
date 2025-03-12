@@ -8,6 +8,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 // import com.ctre.phoenix6.signals.ForwardLimitSourceValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.playingwithfusion.TimeOfFlight;
 import com.revrobotics.spark.SparkAbsoluteEncoder;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
@@ -21,6 +22,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -47,7 +49,7 @@ public class Arm extends SubsystemBase {
 
     private final double maxAcceptableAngleError_rad = Units.degreesToRadians(1.5);
     private final double maxAcceptableExtensionError_m = Units.inchesToMeters(0.5);
-    private final double closeEnoughAngleError_rad = Units.degreesToRadians(10);
+    private final double closeEnoughAngleError_rad = Units.degreesToRadians(5);
     private final double closeEnoughExtensionError_m = Units.inchesToMeters(5);
 
     // Motors
@@ -67,17 +69,24 @@ public class Arm extends SubsystemBase {
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
     SparkMaxConfig wristConfig = new SparkMaxConfig();
-    // private double kp0 = 0.0;
-    // private double ki0 = 0.0;
-    // private double kd0 = 0.0;
+    private double kp0 = 0.0;
+    private double ki0 = 0.0;
+    private double kd0 = 0.0;
+
+    // TOF sensors
+    private TimeOfFlight frontTOFSensor = new TimeOfFlight(7);
+    private double frontTOFOffset_m = Units.inchesToMeters(4.625);
+    private TimeOfFlight backTOFSensor = new TimeOfFlight(8);
+    private double backTOFOffset_m = Units.inchesToMeters(11.875);
 
 
     // Sensor values
     private double extenderPosition_m = 0.0;
-    private Rotation2d wristRotation = new Rotation2d();
+    public static Rotation2d wristRotation = new Rotation2d();
     private boolean disablePivot = false;
     private boolean disableExtender = false;
     private boolean disableWrist = false;
+    private DigitalInput unlockButton = new DigitalInput(1);
 
     // Outputs
     private Rotation2d pivotOutput = new Rotation2d();
@@ -231,8 +240,8 @@ public class Arm extends SubsystemBase {
         wristConfig.idleMode(IdleMode.kBrake);
         wristConfig.inverted(true);
         wristConfig.closedLoop.pid(0.05, 0.0, 0.0);
-        wristConfig.closedLoop.maxOutput(0.4);
-        wristConfig.closedLoop.minOutput(-0.4);
+        wristConfig.closedLoop.maxOutput(0.5);
+        wristConfig.closedLoop.minOutput(-0.5);
         wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wristConfig.closedLoop.positionWrappingEnabled(true);
         wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
@@ -248,18 +257,21 @@ public class Arm extends SubsystemBase {
 
         // Trigger configurations
         coralTrigger = new Trigger(() -> Robot.scoreCoral);
-        coralTrigger.onTrue(Commands.runOnce(() -> {scoreHeight = 1; pickupHeight = 1;}));
-        coralTrigger.onFalse(Commands.runOnce(() -> {scoreHeight = 6; pickupHeight = 2;}));
+        coralTrigger.onTrue(Commands.runOnce(() -> {scoreHeight = 1; Dashboard.scoringState.set(0); pickupHeight = 1;}));
+        coralTrigger.onFalse(Commands.runOnce(() -> {scoreHeight = 6; Dashboard.scoringState.set(0); pickupHeight = 2;}));
         driverLBTrigger = Robot.driverCommandController.leftBumper();
         driverLBTrigger.onTrue(ArmCommands.groundPickup(this));
         manipLBTrigger = Robot.manipCommandController.leftBumper();
-        manipLBTrigger.onTrue(Commands.either(
-            Commands.runOnce(() -> drivingStow(), this),
-            Commands.runOnce(() -> scoringStow(), this),
-            () -> wristRotation.getDegrees() < 50
-        ));
+        manipLBTrigger.onTrue(
+            Commands.either(
+                Commands.runOnce(() -> drivingStow(), this),
+                Commands.runOnce(() -> scoringStow(), this),
+                () -> wristRotation.getDegrees() < 50
+            ).onlyIf(() -> Drivetrain.masterState0.equals(MasterStates.STOW)));
         Drivetrain.antiTipTrigger.onTrue(ArmCommands.stow(this));
         scoreTrigger.onFalse(
+            Commands.either(
+                // If autoStow
                 Commands.sequence(
                     Commands.runOnce(() -> {
                         updatePivot(Rotation2d.fromDegrees(-25));
@@ -269,16 +281,19 @@ public class Arm extends SubsystemBase {
                     Commands.runOnce(() -> updateExtender(0.0)),       
                     Commands.waitUntil(() -> closeEnough()),
                     Commands.runOnce(() -> pickup(), this)
-                    ));
-        feedrTrigger.onFalse(
-            Commands.sequence(
-                Commands.runOnce(() -> {
-                    updatePivot(Rotation2d.fromDegrees(-25));
-                    updateWrist(Rotation2d.fromDegrees(25));
-                }, this).onlyIf(() -> Robot.masterState.equals(MasterStates.STOW)),
-                Commands.waitUntil(() -> closeEnough()),
-                Commands.runOnce(() -> updateExtender(0.0))
-            ));
+                ),
+                Commands.sequence(
+                    Commands.runOnce(() -> {
+                        updatePivot(Rotation2d.fromDegrees(-25));
+                        updateWrist(Rotation2d.fromDegrees(25));
+                    }, this).onlyIf(() -> Robot.masterState.equals(MasterStates.STOW)),
+                    Commands.waitUntil(() -> closeEnough()),
+                    Commands.runOnce(() -> updateExtender(0.0))
+                ),
+                Robot.manipCommandController.leftBumper().negate()
+            )
+        );
+        feedrTrigger.onFalse(carefulStow().onlyIf(() -> !Robot.isAutonomous));
         stowTrigger.onFalse(
             Commands.either(
                 Commands.sequence(
@@ -287,15 +302,17 @@ public class Arm extends SubsystemBase {
                         updateExtender(Units.inchesToMeters(37.1));}),
                     Commands.waitUntil(() -> closeEnough()),
                     Commands.runOnce(() -> updateWrist(Rotation2d.fromDegrees(67)))),
-                    Commands.none(),
-                    () -> Robot.masterState.equals(MasterStates.SCOR) && scoreHeight == 4));
-        scoreTrigger.onTrue(ArmCommands.score(this));
-        feedrTrigger.onTrue(ArmCommands.pickup(this));
+                Commands.none(),
+                () -> Robot.masterState.equals(MasterStates.SCOR) && scoreHeight == 4).onlyIf(() -> !Robot.isAutonomous));
+        climbTrigger.onFalse(carefulStow());
+        scoreTrigger.onTrue(ArmCommands.score(this).onlyIf(() -> !Robot.isAutonomous));
+        feedrTrigger.onTrue(ArmCommands.pickup(this).onlyIf(() -> !Robot.isAutonomous));
         climbTrigger.onTrue(ArmCommands.climb(this));
         manipATrigger = Robot.manipCommandController.a();
         manipATrigger.onTrue(Commands.runOnce(() -> {
             if (Robot.scoreCoral) {
                 scoreHeight = 2;
+                Dashboard.scoringState.set(0);
                 if (Robot.masterState.equals(MasterStates.SCOR)) {
                     ArmCommands.score(this).schedule();
                 }
@@ -353,6 +370,7 @@ public class Arm extends SubsystemBase {
         return Rotation2d.fromRotations(encoderRotations);
     }
 
+    double tofRange0 = frontTOFSensor.getRange();
     public void updateSensors(XboxController manipController) {
         if (Dashboard.calibrateExtender.get()) {
             extender.setPosition(Units.inchesToMeters(-1.0) * extenderRatio_m_to_rot);
@@ -377,37 +395,46 @@ public class Arm extends SubsystemBase {
         Dashboard.wristTemp_C.set(wrist.getMotorTemperature());
         Dashboard.pivotTemp_C.set(pivot.getDeviceTemp().getValueAsDouble());
 
-        // if (Robot.driverController.getLeftTriggerAxis() > 0.7) {
-        //     if (Robot.masterState.equals(MasterStates.FEED)) {
-        //         if (pickupHeight > 2) {
-        //             updateArm(
-        //                     Units.inchesToMeters(7.14),
-        //                     Rotation2d.fromDegrees(-3),
-        //                     Rotation2d.fromDegrees(25));
-        //         }
-        //     }
-        // } else if (Robot.masterState.equals(MasterStates.FEED)) {
-        //     if (pickupHeight > 2) {
-        //         pickupHighAlgae();
-        //     }
-        // }
         // PID Tuning
-        // double kp = Dashboard.freeTuningkP.get();
-        // double ki = Dashboard.freeTuningkI.get();
-        // double kd = Dashboard.freeTuningkD.get();
-        // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-        // wristConfig.closedLoop.p(kp);
-        // wristConfig.closedLoop.i(ki);
-        // wristConfig.closedLoop.d(kd);
-        // wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters,
-        // PersistMode.kNoPersistParameters);
-        // kp0 = kp;
-        // ki0 = ki;
-        // kd0 = kd;
-        // }
-        // // Dashboard.pidTuningGoalActual.set(new double[] { wristOutput.getDegrees(),
-        // wristRotation.getDegrees() });
-        // // Dashboard.pidTuningGoalActual.set(new double[] {
+        double kp = Dashboard.freeTuningkP.get();
+        double ki = Dashboard.freeTuningkI.get();
+        double kd = Dashboard.freeTuningkD.get();
+        if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+        wristConfig.closedLoop.p(kp);
+        wristConfig.closedLoop.i(ki);
+        wristConfig.closedLoop.d(kd);
+        wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters,
+        PersistMode.kNoPersistParameters);
+        kp0 = kp;
+        ki0 = ki;
+        kd0 = kd;
+        }
+        Dashboard.pidTuningGoalActual.set(new double[] { wristOutput.getDegrees(),
+        wristRotation.getDegrees() });
+
+        double tofRange = frontTOFSensor.getRange();
+        if (Math.abs(tofRange0 - tofRange) > 0.001 && 
+            Robot.manipController.getRightTriggerAxis() > 0.7 && 
+            Robot.masterState.equals(MasterStates.SCOR)) {
+        switch (scoreHeight) {
+            case 1:
+                scoreL1();
+                break;
+            case 2:
+                scoreL2();
+                break;
+            case 3:
+                scoreL3();
+                break;
+            case 4:
+                scoreL4();
+                break;
+            default:
+                break;
+        }
+        }
+        tofRange0 = frontTOFSensor.getRange();
+        // Dashboard.pidTuningGoalActual.set(new double[] {
         // -Dashboard.freeTuningVariable.get(), wristRotation.getDegrees() });
 
         // PID Tuning
@@ -485,7 +512,7 @@ public class Arm extends SubsystemBase {
 
     public Command carefulStow() {
         return Commands.sequence(
-            Commands.runOnce(() -> updatePivot(Rotation2d.fromDegrees((pickupHeight < 1.5) ? 0:-25)), this),
+            Commands.runOnce(() -> updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25)), this),
             Commands.waitUntil(() -> closeEnough()),
             Commands.runOnce(() -> updateWrist(Rotation2d.fromDegrees(25)), this),
             Commands.waitUntil(() -> closeEnough()),
@@ -527,10 +554,16 @@ public class Arm extends SubsystemBase {
     }
 
     private void scoreL4() {
+        double tofOffset = (frontTOFSensor.getRange()*0.001) - frontTOFOffset_m;
+        if (tofOffset > Units.inchesToMeters(12)) {tofOffset = 0.0;}
         updateArm(
-                Units.inchesToMeters(37.1),
-                Rotation2d.fromDegrees(-5),
-                Rotation2d.fromDegrees(67));
+            Units.inchesToMeters(-3.23) + tofOffset, 
+            Units.inchesToMeters(36.96), 
+            Rotation2d.fromDegrees(66));
+        // updateArm(
+        //         Units.inchesToMeters(37.1),
+        //         Rotation2d.fromDegrees(-5),
+        //         Rotation2d.fromDegrees(67));
         Dashboard.scoringState.set(3);
     }
 
@@ -600,10 +633,10 @@ public class Arm extends SubsystemBase {
             Rotation2d.fromDegrees(25));
     }
 
-    private void pickupFeeder() {
+    public void pickupFeeder() {
         updateArm(
                 Units.inchesToMeters(-0.5),
-                Rotation2d.fromDegrees(-9.8),
+                Rotation2d.fromDegrees(-11.8),
                 Rotation2d.fromDegrees(-121));
     }
 
@@ -636,15 +669,15 @@ public class Arm extends SubsystemBase {
     public void climbInit() {
         updateArm(
                 Units.inchesToMeters(0),
-                Rotation2d.fromDegrees(-19),
-                Rotation2d.fromDegrees(40));
+                Rotation2d.fromDegrees(5),
+                Rotation2d.fromDegrees(-90));
     }
 
     public void climbLift() {
         updateArm(
                 Units.inchesToMeters(0.0),
-                Rotation2d.fromDegrees(-90),
-                Rotation2d.fromDegrees(40));
+                Rotation2d.fromDegrees(5),
+                Rotation2d.fromDegrees(-90));
     }
 
     /**
@@ -658,16 +691,13 @@ public class Arm extends SubsystemBase {
      * @param wristAngle        The angle the wrist should be relative to vertical
      *                          (not accounting for pivot angle)
      */
-    // private void updateArm(double forwardDistance_m, double upwardDistance_m, Rotation2d wristAngle) {
-    //     Rotation2d rotation = new Rotation2d();
-    //     if (upwardDistance_m > 1e-6 && forwardDistance_m > 1e-6) {
-    //         rotation = new Rotation2d(Math.atan2(forwardDistance_m, upwardDistance_m));
-    //     }
-
-    //     updateArm(
-    //             Math.hypot(forwardDistance_m, upwardDistance_m),
-    //             rotation, wristAngle.minus(rotation));
-    // }
+    private void updateArm(double forwardDistance_m, double upwardDistance_m, Rotation2d wristAngle) {
+        double armlength_m = Units.inchesToMeters(25.5);
+        Rotation2d rotation = new Rotation2d(Math.atan2(forwardDistance_m, upwardDistance_m + armlength_m));
+        updateArm(
+                Math.hypot(forwardDistance_m, upwardDistance_m + armlength_m) - armlength_m,
+                rotation, wristAngle.minus(rotation));
+    }
 
     /**
      * Takes in a pivot and wrist angle and an extension distance directly output to
@@ -692,20 +722,20 @@ public class Arm extends SubsystemBase {
                         maxBackwardWristAngle_rad, maxForwardWristAngle_rad));
     }
 
-    private void updatePivot(Rotation2d pivotAngle) {
+    public void updatePivot(Rotation2d pivotAngle) {
         pivotOutput = new Rotation2d(
                 MathUtil.clamp(pivotAngle.getRadians(),
                         maxBackwardPivotAngle_rad, maxForwardPivotAngle_rad));
     }
 
-    private void updateWrist(Rotation2d wristAngle) {
+    public void updateWrist(Rotation2d wristAngle) {
         wristOutput = new Rotation2d(
                 MathUtil.clamp(wristAngle.getRadians(),
                         maxBackwardWristAngle_rad, maxForwardWristAngle_rad));
     }
 
     @SuppressWarnings("unused")
-    private void updateExtender(double extensionDistance_m) {
+    public void updateExtender(double extensionDistance_m) {
         extenderOutput_m = MathUtil.clamp(extensionDistance_m,
                 -0.5, maxExtensionDistance_m);
     }
@@ -730,7 +760,7 @@ public class Arm extends SubsystemBase {
             // finalPivotOutput_rot = Units.degreesToRotations(-Dashboard.freeTuningVariable.get());
         }
         if (Dashboard.overridePivot.get()) {
-            finalPivotOutput_rot = 0.0;
+            ActuatorInterlocks.testActuatorInterlocks(pivot, "Pivot_(p)", 0.0);
         }
         finalPivotOutput_rot = MathUtil.clamp(finalPivotOutput_rot, Units.radiansToRotations(maxBackwardPivotAngle_rad),
                 Units.radiansToRotations(maxForwardPivotAngle_rad));
@@ -738,7 +768,7 @@ public class Arm extends SubsystemBase {
                 pivot, "Pivot_(p)",
                 pivotPID.calculate(getEncoderPosition().getRotations(), finalPivotOutput_rot) + pivotFF);
         // Unlock pivot
-        boolean unlockPivot = Dashboard.unlockPivot.get();
+        boolean unlockPivot = Dashboard.unlockPivot.get() || (!unlockButton.get() && !Robot.isEnabled);
         if (unlockPivot && (!unlockPivot0)) {
             pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
             pivot.getConfigurator().apply(pivotConfig);
@@ -768,7 +798,7 @@ public class Arm extends SubsystemBase {
             // extenderRatio_m_to_rot;
         }
         if (Dashboard.overrideExtender.get()) {
-            finalextenderOutput = 0.0;
+            ActuatorInterlocks.testActuatorInterlocks(extender, "Extender_(p)", 0.0);
         }
         finalextenderOutput = MathUtil.clamp(finalextenderOutput, Units.inchesToMeters(-0.5), maxExtensionDistance_m);
         ActuatorInterlocks.testActuatorInterlocks(
@@ -802,7 +832,7 @@ public class Arm extends SubsystemBase {
             // Units.degreesToRotations(Dashboard.freeTuningVariable.get());
         }
         if (Dashboard.overrideWrist.get()) {
-            finalwristOutput_rot = 0.0;
+            ActuatorInterlocks.testActuatorInterlocks(wrist, "Wrist_(p)", 0.0);
         }
         finalwristOutput_rot = MathUtil.clamp(finalwristOutput_rot, Units.radiansToRotations(maxBackwardWristAngle_rad),
                 Units.radiansToRotations(maxForwardWristAngle_rad));
@@ -811,7 +841,7 @@ public class Arm extends SubsystemBase {
                 wrist, "Wrist_(p)",
                 finalwristOutput_rot * wristRatio, -wristFF);
         // Unlock wrist
-        boolean unlockWrist = Dashboard.unlockWrist.get();
+        boolean unlockWrist = Dashboard.unlockWrist.get() || (!unlockButton.get() && !Robot.isEnabled);
         if (unlockWrist && (!unlockWrist0)) {
             wristConfig.idleMode(IdleMode.kCoast);
             wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);

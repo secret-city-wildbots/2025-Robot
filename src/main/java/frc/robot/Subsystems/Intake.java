@@ -20,7 +20,8 @@ public class Intake extends SubsystemBase {
     private final Timer stallTimer = new Timer();
 
     // Sensors
-    private boolean hasPiece;
+    public static boolean hasPiece;
+    public static boolean hasPiece0;
 
     // Motors
     private final TalonFX intake;
