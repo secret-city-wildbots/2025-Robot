@@ -561,7 +561,7 @@ public class Drivetrain extends SubsystemBase {
       () -> {
         if (Robot.masterState.equals(MasterStates.STOW) || Robot.masterState.equals(MasterStates.SCOR)) {
           if (Robot.scoreRight) {disableRightLimelight = true; disableLeftLimelight = false;}
-          else {disableLeftLimelight = true; disableRightLimelight = false;}
+          else {disableLeftLimelight = true; disableRightLimelight = false; System.out.println("HI");}
         } else {disableRightLimelight = false; disableLeftLimelight = false;}
         double[] strafeCorrection = getStrafeCorrection(determineGoalPose());
         moduleStateOutputs = kinematics.toSwerveModuleStates(
@@ -604,7 +604,7 @@ public class Drivetrain extends SubsystemBase {
   }
 
   Pose2d poseAccuracyFinal = new Pose2d();
-  double poseAccuracyAllowedError = 1*0.0254; // Meters
+  double poseAccuracyAllowedError = 1.5*0.0254; // Meters
   double rotateAccuracyAllowedError = 2; // degree
 
   public boolean poseAccuracyGetter() {

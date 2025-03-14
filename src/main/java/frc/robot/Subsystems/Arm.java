@@ -71,7 +71,7 @@ public class Arm extends SubsystemBase {
     // private double kp0 = 0.0;
     // private double ki0 = 0.0;
     // private double kd0 = 0.0;
-
+    
     // Sensor values
     private double extenderPosition_m = 0.0;
     public static Rotation2d wristRotation = new Rotation2d();
@@ -611,11 +611,7 @@ public class Arm extends SubsystemBase {
     }
 
     private void pickupHighAlgae() {
-        // updateArm(
-        //     Units.inchesToMeters(-10), 
-        //     Units.inchesToMeters(7.13), 
-        //     Rotation2d.fromDegrees(28)
-        // );
+
         updateArm(
                 Units.inchesToMeters(12.2),
                 Rotation2d.fromDegrees(-3),
