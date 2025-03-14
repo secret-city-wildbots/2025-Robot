@@ -70,7 +70,7 @@ public class Intake extends SubsystemBase {
         if (Robot.scoreCoral) {
             intakeOutput = 0.0;
         } else {
-            intakeOutput = 0.1;
+            intakeOutput = 0.4;
         }
         Dashboard.intaking.set(false);
         Dashboard.outtaking.set(false);

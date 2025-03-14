@@ -97,6 +97,7 @@ public class Robot extends TimedRobot {
    * This is called when the robot is initalized
    */
   public Robot() {
+    // CameraServer.startAutomaticCapture();
     // Set major constants using profiles
     switch (Robot.robotProfile) {
       case "2025_Robot":
@@ -241,6 +242,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() { 
+    isAutonomous = false;
       // double distance = tofSensor.getRange();
       // // System.out.println("Distance: " + distance + " mm");
       // tofSensor.identifySensor();
@@ -355,7 +357,8 @@ public class Robot extends TimedRobot {
       )
     );
     // NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
-    NamedCommands.registerCommand("pickupFeeder", DrivetrainCommands.pickupFeeder(drivetrain, arm, intake).until(() -> intake.hasPiece()));
+    NamedCommands.registerCommand("pickupFeeder", 
+        DrivetrainCommands.pickupFeeder(drivetrain, arm, intake).until(() -> intake.hasPiece()));
   }
 
   /**

@@ -49,13 +49,20 @@ public class DrivetrainCommands {
     }
 
     public static Command pickupFeeder(Drivetrain drivetrain, Arm arm, Intake intake) {
-      return Commands.sequence(
-        drivetrain.getAutoStrafeCorrectionCommand(true),
-        ArmCommands.intake(intake, arm),
-        Commands.waitSeconds(1),
-        Commands.runOnce(() -> arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25)), arm),
-        Commands.waitUntil(() -> arm.closeEnough()),
-        Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(25)), arm)
+      return 
+        Commands.parallel(
+          drivetrain.getAutoStrafeCorrectionCommand(true),
+          
+          Commands.sequence(
+            Commands.waitUntil(() -> arm.closeEnough()),
+            Commands.runOnce(() -> arm.pickupFeeder(), arm),
+            ArmCommands.autoIntake(intake, arm, 2),
+            Commands.waitUntil(() -> drivetrain.poseAccuracyGetter()).withTimeout(2),
+            Commands.waitSeconds(1),
+            Commands.runOnce(() -> arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25)), arm),
+            Commands.waitUntil(() -> arm.closeEnough()),
+            Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(25)), arm)
+          )
       ).handleInterrupt(() -> {
           arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25));
           arm.updateWrist(Rotation2d.fromDegrees(25));

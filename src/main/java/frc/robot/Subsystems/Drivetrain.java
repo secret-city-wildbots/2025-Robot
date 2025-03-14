@@ -1,5 +1,7 @@
 package frc.robot.Subsystems;
 
+import java.util.Optional;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -23,6 +25,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.XboxController;
@@ -255,10 +258,10 @@ public class Drivetrain extends SubsystemBase {
             // This will flip the path being followed to the red side of the field.
             // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
 
-            var alliance = DriverStation.getAlliance();
-            if (alliance.isPresent()) {
-              return alliance.get() == DriverStation.Alliance.Red;
-            }
+            // var alliance = DriverStation.getAlliance();
+            // if (alliance.isPresent()) {
+            //   return alliance.get() == DriverStation.Alliance.Red;
+            // }
             return false;
           },
           this // Reference to this subsystem to set requirements
@@ -354,11 +357,29 @@ public class Drivetrain extends SubsystemBase {
       resetPose(new Pose2d(x, y, h));
     }
 
-    LimelightHelpers.SetRobotOrientation("limelight-left", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
-    LimelightHelpers.SetRobotOrientation("limelight-right", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+    if (!DriverStation.getAlliance().isEmpty()) {
+      if (DriverStation.getAlliance().equals(Optional.of(Alliance.Blue))) {
+        LimelightHelpers.SetRobotOrientation("limelight-left", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+        LimelightHelpers.SetRobotOrientation("limelight-right", getIMURotation().getDegrees(), 0, 0, 0, 0, 0);
+      } else {
+        LimelightHelpers.SetRobotOrientation("limelight-left", getIMURotation().minus(Rotation2d.fromDegrees(180)).getDegrees(), 0, 0, 0, 0, 0);
+        LimelightHelpers.SetRobotOrientation("limelight-right", getIMURotation().minus(Rotation2d.fromDegrees(180)).getDegrees(), 0, 0, 0, 0, 0);
+      }
+    }
+    
+    
 
-    boolean leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
-    boolean rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
+    boolean leftEstimateValid = false;
+    boolean rightEstimateValid = false;
+    if (!DriverStation.getAlliance().isEmpty()) {
+      if (DriverStation.getAlliance().equals(Optional.of(Alliance.Blue))) {
+      leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
+      rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
+      } else {
+        leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left"));
+      rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right"));
+      }
+    }
     
 
     // if (leftEstimateValid && rightEstimateValid) {
@@ -381,29 +402,48 @@ public class Drivetrain extends SubsystemBase {
     //     poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
     //   }
     // }
-    PoseEstimate rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
-    PoseEstimate leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
+    PoseEstimate rightPose = new PoseEstimate();
+    PoseEstimate leftPose = new PoseEstimate();
+    Pose2d rightPose2d = new Pose2d();
+    Pose2d leftPose2d = new Pose2d();
+    if (!DriverStation.getAlliance().isEmpty()) {
+      if (DriverStation.getAlliance().equals(Optional.of(Alliance.Blue))) {
+        rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
+        // rightPose2d = rightPose.pose.plus(new Transform2d(-Robot.fieldLength_m, -Robot.fieldWidth_m, new Rotation2d()));
+        rightPose2d = rightPose.pose;
+        leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
+        // leftPose2d = leftPose.pose.plus(new Transform2d(-Robot.fieldLength_m, -Robot.fieldWidth_m, new Rotation2d()));
+        leftPose2d = leftPose.pose;
+      } else {
+        rightPose = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right");
+        // rightPose2d = rightPose.pose.plus(new Transform2d(0.0, 0.0, Rotation2d.fromDegrees(180)));
+        rightPose2d = rightPose.pose;
+        leftPose = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left");
+        // leftPose2d = leftPose.pose.plus(new Transform2d(0.0, 0.0, Rotation2d.fromDegrees(180)));
+        leftPose2d = leftPose.pose;
+      }
       if (disableLeftLimelight) {
         if (rightEstimateValid) {
-          poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(rightPose2d, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         }
       } else if (disableRightLimelight) {
         if (leftEstimateValid) {
-          poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(leftPose2d, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         }
       } else {
         if (leftEstimateValid && rightEstimateValid) {
           if (leftPose.avgTagDist < rightPose.avgTagDist) {
-            poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+            poseEstimator.addVisionMeasurement(leftPose2d, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
           } else {
-            poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+            poseEstimator.addVisionMeasurement(rightPose2d, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
           }
         } else if (leftEstimateValid) {
-          poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(leftPose2d, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         } else if (rightEstimateValid) {
-          poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(rightPose2d, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         }
       }
+    }
 
     Dashboard.robotX.set(Units.metersToInches(poseEstimator.getEstimatedPosition().getX()));
     Dashboard.robotY.set(Units.metersToInches(poseEstimator.getEstimatedPosition().getY()));
@@ -621,7 +661,7 @@ public class Drivetrain extends SubsystemBase {
    * @return
    */
   private double modeDrivebase(XboxController manipController) {
-    if (((masterState0 != Robot.masterState) && (Robot.masterState != MasterStates.STOW)) || (Robot.driverController.getYButton()) || (Robot.driverController.getBButton())) {
+    if ((Robot.driverController.getYButton()) || (Robot.driverController.getBButton())) {
       headingLocked = true;
     } else if (Robot.driverController.getXButton()) {
       headingLocked = false;
@@ -769,7 +809,7 @@ public class Drivetrain extends SubsystemBase {
         return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
       } else {
         lockedX_m = Units.inchesToMeters(22.51);
-        lockedY_m = Units.inchesToMeters(294.2);
+        lockedY_m = Units.inchesToMeters(302.121);
         theta = Units.degreesToRadians(306);
         lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
         lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
