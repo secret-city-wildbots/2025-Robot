@@ -136,7 +136,7 @@ public class Drivetrain extends SubsystemBase {
     return poseEstimator;
   }
 
-  public SwerveDrivePoseEstimator poseEstimator;
+  public static SwerveDrivePoseEstimator poseEstimator;
 
   public Drivetrain() {
     // Check for driver profile and set constants
@@ -295,7 +295,7 @@ public class Drivetrain extends SubsystemBase {
   // Each module returns a ModuleState with current speed and position
   // Logs information to SmartDashboard
   public void updateSensors() {
-    if (Robot.isEnabled) {
+    if (Robot.isEnabled || !Dashboard.disableFusionDisabled.get()) {
       LimelightHelpers.setLimelightNTDouble("limelight-left", "Throttle", 0.0);
       LimelightHelpers.setPipelineIndex("limelight-left", 0);
       LimelightHelpers.setLimelightNTDouble("limelight-right", "Throttle", 0.0);
@@ -373,11 +373,11 @@ public class Drivetrain extends SubsystemBase {
     boolean rightEstimateValid = false;
     if (!DriverStation.getAlliance().isEmpty()) {
       if (DriverStation.getAlliance().equals(Optional.of(Alliance.Blue))) {
-      leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
-      rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
+        leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left"));
+        rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right"));
       } else {
         leftEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left"));
-      rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right"));
+        rightEstimateValid = LimelightHelpers.validPoseEstimate(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right"));
       }
     }
     
@@ -402,45 +402,39 @@ public class Drivetrain extends SubsystemBase {
     //     poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
     //   }
     // }
-    PoseEstimate rightPose = new PoseEstimate();
-    PoseEstimate leftPose = new PoseEstimate();
-    Pose2d rightPose2d = new Pose2d();
-    Pose2d leftPose2d = new Pose2d();
+    PoseEstimate rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
+    PoseEstimate leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
     if (!DriverStation.getAlliance().isEmpty()) {
       if (DriverStation.getAlliance().equals(Optional.of(Alliance.Blue))) {
         rightPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-right");
         // rightPose2d = rightPose.pose.plus(new Transform2d(-Robot.fieldLength_m, -Robot.fieldWidth_m, new Rotation2d()));
-        rightPose2d = rightPose.pose;
         leftPose = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-left");
         // leftPose2d = leftPose.pose.plus(new Transform2d(-Robot.fieldLength_m, -Robot.fieldWidth_m, new Rotation2d()));
-        leftPose2d = leftPose.pose;
       } else {
         rightPose = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-right");
         // rightPose2d = rightPose.pose.plus(new Transform2d(0.0, 0.0, Rotation2d.fromDegrees(180)));
-        rightPose2d = rightPose.pose;
         leftPose = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("limelight-left");
         // leftPose2d = leftPose.pose.plus(new Transform2d(0.0, 0.0, Rotation2d.fromDegrees(180)));
-        leftPose2d = leftPose.pose;
       }
       if (disableLeftLimelight) {
         if (rightEstimateValid) {
-          poseEstimator.addVisionMeasurement(rightPose2d, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         }
       } else if (disableRightLimelight) {
         if (leftEstimateValid) {
-          poseEstimator.addVisionMeasurement(leftPose2d, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         }
       } else {
         if (leftEstimateValid && rightEstimateValid) {
           if (leftPose.avgTagDist < rightPose.avgTagDist) {
-            poseEstimator.addVisionMeasurement(leftPose2d, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+            poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
           } else {
-            poseEstimator.addVisionMeasurement(rightPose2d, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+            poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
           }
         } else if (leftEstimateValid) {
-          poseEstimator.addVisionMeasurement(leftPose2d, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(leftPose.pose, leftPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         } else if (rightEstimateValid) {
-          poseEstimator.addVisionMeasurement(rightPose2d, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
+          poseEstimator.addVisionMeasurement(rightPose.pose, rightPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 999999));
         }
       }
     }
@@ -572,7 +566,7 @@ public class Drivetrain extends SubsystemBase {
         SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
         }, 
       (interrupt) -> {disableRightLimelight = false; disableLeftLimelight = false;}, 
-      () -> ((Robot.masterState.equals(MasterStates.FEED) && this.poseAccuracyGetter())||
+      () -> ((Robot.masterState.equals(MasterStates.FEED) && poseAccuracyGetter())||
             Robot.driverController.getXButton() || 
             Robot.driverController.getYButton() || 
             Robot.driverController.getRightTriggerAxis() > 0.7 || 
@@ -589,6 +583,7 @@ public class Drivetrain extends SubsystemBase {
           if (Robot.scoreRight) {disableRightLimelight = true; disableLeftLimelight = false;}
           else {disableLeftLimelight = true; disableRightLimelight = false;}
         } else {disableRightLimelight = false; disableLeftLimelight = false;}
+        disableRightLimelight = false; disableLeftLimelight = false;
         double[] strafeCorrection = getStrafeCorrection(autoDetermineGoalPose(feederMode));
         moduleStateOutputs = kinematics.toSwerveModuleStates(
         ChassisSpeeds.discretize(ChassisSpeeds.fromFieldRelativeSpeeds(
@@ -598,16 +593,16 @@ public class Drivetrain extends SubsystemBase {
         SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
         }, 
       (interrupt) -> {disableRightLimelight = false; disableLeftLimelight = false;}, 
-      () -> (this.poseAccuracyGetter()), 
-      this).withTimeout(2.5);
+      () -> (poseAccuracyGetter()), 
+      this).withTimeout(4);
     return outputCommand;
   }
 
-  Pose2d poseAccuracyFinal = new Pose2d();
-  double poseAccuracyAllowedError = 1.5*0.0254; // Meters
-  double rotateAccuracyAllowedError = 2; // degree
+  static Pose2d poseAccuracyFinal = new Pose2d();
+  static double poseAccuracyAllowedError = 1*0.0254; // Meters
+  static double rotateAccuracyAllowedError = 2; // degree
 
-  public boolean poseAccuracyGetter() {
+  public static boolean poseAccuracyGetter() {
     Pose2d pose = poseEstimator.getEstimatedPosition();
     boolean xValid = (Math.abs(pose.getX() - poseAccuracyFinal.getX())) < poseAccuracyAllowedError;
     boolean yValid = (Math.abs(pose.getY() - poseAccuracyFinal.getY())) < poseAccuracyAllowedError;
@@ -776,15 +771,11 @@ public class Drivetrain extends SubsystemBase {
 
   }
 
-  double maxStrafeFudge = Units.inchesToMeters(2);
+  double maxStrafeFudge = Units.inchesToMeters(3);
   public Pose2d autoDetermineGoalPose(boolean feederMode) {
     double reefApothem_m = Units.inchesToMeters(32.75);
     double coralLocalYOffset_m = ((Robot.scoreRight) ? -1 : 1) * Units.inchesToMeters(12.94 / 2);
     double robotSizeX_m = Robot.robotLengthBumpers_m / 2.0 + (0.0254 * 2);
-
-    if (!Robot.scoreCoral) {
-      coralLocalYOffset_m = 0.0;
-    }
 
     Pose2d pose_m = poseEstimator.getEstimatedPosition();
     double poseX_m = pose_m.getX();
@@ -797,26 +788,74 @@ public class Drivetrain extends SubsystemBase {
     lockedX_m = reefPoseX_m;
     lockedY_m = reefPoseY_m;
     if (feederMode) {
-      if (poseY_m < reefPoseY_m) {
-        lockedX_m = Units.inchesToMeters(22.51);
-        lockedY_m = Units.inchesToMeters(14.8);
-        theta = Units.degreesToRadians(54);
-        lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
-        lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
-        lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
-        lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
-        // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
-        return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+      if (!DriverStation.getAlliance().isEmpty()) {
+        if (DriverStation.getAlliance().equals(Optional.of(Alliance.Blue))) {
+          if (poseY_m < reefPoseY_m) {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(14.8);
+            theta = Units.degreesToRadians(54);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          } else {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(308.13);
+            theta = Units.degreesToRadians(306);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          }
+        } else {
+          if (poseY_m < reefPoseY_m) {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(14.8);
+            theta = Units.degreesToRadians(54);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          } else {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(302.13);
+            theta = Units.degreesToRadians(306);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          }
+        }
       } else {
-        lockedX_m = Units.inchesToMeters(22.51);
-        lockedY_m = Units.inchesToMeters(302.121);
-        theta = Units.degreesToRadians(306);
-        lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
-        lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
-        lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
-        lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
-        // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
-        return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+        if (poseY_m < reefPoseY_m) {
+          lockedX_m = Units.inchesToMeters(22.51);
+          lockedY_m = Units.inchesToMeters(14.8);
+          theta = Units.degreesToRadians(54);
+          lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+          lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+          lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+          lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+          // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+          return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+        } else {
+          lockedX_m = Units.inchesToMeters(22.51);
+          lockedY_m = Units.inchesToMeters(302.13);
+          theta = Units.degreesToRadians(306);
+          lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+          lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+          lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+          lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+          // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+          return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+        }
       }
     } else {
       if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
@@ -883,26 +922,74 @@ public class Drivetrain extends SubsystemBase {
     lockedX_m = reefPoseX_m;
     lockedY_m = reefPoseY_m;
     if (Robot.masterState.equals(Robot.MasterStates.FEED) && Arm.pickupHeight == 1 || (Robot.isAutonomous && Arm.wristRotation.getDegrees() < -110)) {
-      if (poseY_m < reefPoseY_m) {
-        lockedX_m = Units.inchesToMeters(22.51);
-        lockedY_m = Units.inchesToMeters(14.8);
-        theta = Units.degreesToRadians(54);
-        lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
-        lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
-        lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
-        lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
-        // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
-        return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+      if (!DriverStation.getAlliance().isEmpty()) {
+        if (DriverStation.getAlliance().equals(Optional.of(Alliance.Blue))) {
+          if (poseY_m < reefPoseY_m) {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(14.8);
+            theta = Units.degreesToRadians(54);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          } else {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(308.13);
+            theta = Units.degreesToRadians(306);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          }
+        } else {
+          if (poseY_m < reefPoseY_m) {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(14.8);
+            theta = Units.degreesToRadians(54);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          } else {
+            lockedX_m = Units.inchesToMeters(22.51);
+            lockedY_m = Units.inchesToMeters(302.13);
+            theta = Units.degreesToRadians(306);
+            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+            lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+            // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+            return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+          }
+        }
       } else {
-        lockedX_m = Units.inchesToMeters(30.51);
-        lockedY_m = Units.inchesToMeters(288.2);
-        theta = Units.degreesToRadians(306);
-        lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
-        lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
-        lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
-        lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
-        // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
-        return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+        if (poseY_m < reefPoseY_m) {
+          lockedX_m = Units.inchesToMeters(22.51);
+          lockedY_m = Units.inchesToMeters(14.8);
+          theta = Units.degreesToRadians(54);
+          lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+          lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+          lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+          lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+          // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+          return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+        } else {
+          lockedX_m = Units.inchesToMeters(22.51);
+          lockedY_m = Units.inchesToMeters(302.13);
+          theta = Units.degreesToRadians(306);
+          lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+          lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+          lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
+          lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
+          // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
+          return new Pose2d(lockedX_m, lockedY_m, new Rotation2d(theta));
+        }
       }
     } else {
       if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {

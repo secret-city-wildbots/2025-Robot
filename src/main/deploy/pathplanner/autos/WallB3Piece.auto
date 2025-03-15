@@ -13,7 +13,7 @@
         {
           "type": "named",
           "data": {
-            "name": "strafeAssistScoreRight"
+            "name": "strafeAssistScoreLeft"
           }
         },
         {
@@ -43,7 +43,7 @@
       ]
     }
   },
-  "resetOdom": true,
+  "resetOdom": false,
   "folder": "3PieceLeft",
   "choreoAuto": false
 }

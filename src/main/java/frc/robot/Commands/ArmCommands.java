@@ -118,15 +118,9 @@ public class ArmCommands {
         return
                 Commands.sequence(
                     Commands.runOnce(() -> intake.intake(), intake),
-                    Commands.waitSeconds(timeout),
-                    Commands.either(hold(intake), stop(intake), intake::hasPiece),
-                    Commands.either(
-                        Commands.runOnce(() -> Robot.masterState = MasterStates.STOW),
-                        Commands.none(),
-                        () -> intake.hasPiece() && 
-                        (Robot.masterState.equals(MasterStates.STOW) || 
-                        Robot.masterState.equals(MasterStates.FEED))
-                    )
+                    Commands.waitUntil(() -> Drivetrain.poseAccuracyGetter()).withTimeout(4),
+                    Commands.waitSeconds(2),
+                    Commands.either(hold(intake), stop(intake), intake::hasPiece)
                 );
     }
 
@@ -166,10 +160,10 @@ public class ArmCommands {
                     ),
                     Commands.race(
                         Commands.sequence(
-                            Commands.waitUntil(() -> drivetrain.poseAccuracyGetter()),
+                            Commands.waitUntil(() -> Drivetrain.poseAccuracyGetter()),
                             Commands.waitSeconds(0.5)
                         ),
-                        Commands.waitSeconds(3)
+                        Commands.waitSeconds(4)
                     ),
                     outtake(intake, arm),
                     Commands.sequence(

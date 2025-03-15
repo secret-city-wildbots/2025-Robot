@@ -239,7 +239,7 @@ public class Arm extends SubsystemBase {
         wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
         wristConfig.absoluteEncoder.inverted(true);
 
-        wristConfig.absoluteEncoder.zeroOffset(0.982746);
+        wristConfig.absoluteEncoder.zeroOffset(0.135524);
         wristConfig.absoluteEncoder.positionConversionFactor(198.333);
         // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
@@ -605,15 +605,15 @@ public class Arm extends SubsystemBase {
 
     private void pickupLowAlgae() {
         updateArm(
-                Units.inchesToMeters(0),
-                Rotation2d.fromDegrees(-3.5),
-                Rotation2d.fromDegrees(60));
+                Units.inchesToMeters(2.6),
+                Rotation2d.fromDegrees(-3.7),
+                Rotation2d.fromDegrees(62.1));
     }
 
     private void pickupHighAlgae() {
 
         updateArm(
-                Units.inchesToMeters(12.2),
+                Units.inchesToMeters(14.2),
                 Rotation2d.fromDegrees(-3),
                 Rotation2d.fromDegrees(44));
     }
@@ -628,7 +628,7 @@ public class Arm extends SubsystemBase {
     public void climbInit() {
         updateArm(
                 Units.inchesToMeters(0),
-                Rotation2d.fromDegrees(5),
+                Rotation2d.fromDegrees(0),
                 Rotation2d.fromDegrees(-90));
     }
 

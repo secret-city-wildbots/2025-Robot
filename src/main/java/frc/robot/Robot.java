@@ -340,7 +340,7 @@ public class Robot extends TimedRobot {
   private void registerNamedCommands() {
     NamedCommands.registerCommand("strafeAssistScoreLeft", 
       Commands.parallel(
-        DrivetrainCommands.strafeAssistScoreLeft(drivetrain), 
+          DrivetrainCommands.strafeAssistScoreLeft(drivetrain),
         Commands.sequence(
           Commands.waitSeconds(0.5),
           ArmCommands.scoreL4(arm, intake, drivetrain)
