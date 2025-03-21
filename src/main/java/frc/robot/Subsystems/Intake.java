@@ -5,7 +5,9 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Dashboard;
 import frc.robot.Robot;
 import frc.robot.Utility.ActuatorInterlocks;
@@ -21,7 +23,10 @@ public class Intake extends SubsystemBase {
 
     // Sensors
     public static boolean hasPiece = false;
-    public static boolean hasPiece0;
+    public static boolean hasPiece0 = false;
+    public static boolean intaking;
+    public static boolean outtaking;
+    private Trigger outtakeTrigger = new Trigger(() -> outtaking);
 
     // Motors
     private final TalonFX intake;
@@ -35,9 +40,11 @@ public class Intake extends SubsystemBase {
         intakeConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         intakeConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         intake.getConfigurator().apply(intakeConfig);
+        outtakeTrigger.onFalse(Commands.runOnce(() -> hasPiece = false));
     }
 
     public void updateSensors() {
+        hasPiece0 = hasPiece;
         if (intakeOutput > 0.1) {
             if (intake.getVelocity().getValueAsDouble() < 1 && stallTimer.getTimeMillis() > 500) {
                 hasPiece = true;
@@ -51,17 +58,22 @@ public class Intake extends SubsystemBase {
 
     public void intake() {
         intakeOutput = (Robot.scoreCoral) ? coralIntakeSpeed : algaeIntakeSpeed;
+        intaking = true;
+        outtaking = false;
         Dashboard.intaking.set(true);
     }
 
     public void outtake() {
         intakeOutput = (Robot.scoreCoral) ? coralOuttakeSpeed : algaeOuttakeSpeed;
-        hasPiece = false;
+        intaking = false;
+        outtaking = true;
         Dashboard.outtaking.set(true);
     }
 
     public void stop() {
         intakeOutput = 0.0;
+        intaking = false;
+        outtaking = false;
         Dashboard.intaking.set(false);
         Dashboard.outtaking.set(false);
     }
@@ -70,8 +82,10 @@ public class Intake extends SubsystemBase {
         if (Robot.scoreCoral) {
             intakeOutput = 0.0;
         } else {
-            intakeOutput = 1;
+            intakeOutput = 0.1;
         }
+        intaking = false;
+        outtaking = false;
         Dashboard.intaking.set(false);
         Dashboard.outtaking.set(false);
     }

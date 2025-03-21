@@ -271,7 +271,7 @@ public class Robot extends TimedRobot {
    */
   private void getSensors() {
     drivetrain.updateSensors();
-    arm.updateSensors(manipController);
+    arm.updateSensors();
     intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
