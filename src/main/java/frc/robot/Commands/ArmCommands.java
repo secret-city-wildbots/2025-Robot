@@ -113,13 +113,12 @@ public class ArmCommands {
 
     public static Command autoIntake(
             Intake intake,
-            Arm arm,
-            double timeout) {
+            Arm arm) {
         return
                 Commands.sequence(
                     Commands.runOnce(() -> intake.intake(), intake),
                     Commands.waitUntil(() -> Drivetrain.poseAccuracyGetter()).withTimeout(4),
-                    Commands.waitSeconds(2),
+                    Commands.waitSeconds(1),
                     Commands.either(hold(intake), stop(intake), intake::hasPiece)
                 );
     }

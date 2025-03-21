@@ -58,6 +58,7 @@ public class Robot extends TimedRobot {
   }
 
   public static MasterStates masterState = MasterStates.STOW;
+  public static MasterStates masterState0 = MasterStates.STOW;
   public static boolean scoreRight = false;
   public static boolean scoreCoral = true;
 
@@ -103,7 +104,7 @@ public class Robot extends TimedRobot {
       case "2025_Robot":
         robotLength_m = Units.inchesToMeters(23.75);
         robotWidth_m = Units.inchesToMeters(21.75);
-        robotLengthBumpers_m = Units.inchesToMeters(29.5);
+        robotLengthBumpers_m = Units.inchesToMeters(33.5);
         robotWidthBumpers_m = Units.inchesToMeters(31.5);
         break;
       case "COTS_Testbed":
@@ -296,6 +297,7 @@ public class Robot extends TimedRobot {
      * Right Trigger: SCOR
      * Up joysticks & Left Trigger: CLMB
      */
+    masterState0 = masterState;
     if (manipController.getLeftBumperButtonPressed()) {
       masterState = MasterStates.STOW;
     } else if (manipController.getRightBumperButtonPressed()) {
@@ -358,7 +360,7 @@ public class Robot extends TimedRobot {
     );
     // NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
     NamedCommands.registerCommand("pickupFeeder", 
-        DrivetrainCommands.pickupFeeder(drivetrain, arm, intake).until(() -> intake.hasPiece()));
+        DrivetrainCommands.pickupFeeder(drivetrain, arm, intake));
   }
 
   /**

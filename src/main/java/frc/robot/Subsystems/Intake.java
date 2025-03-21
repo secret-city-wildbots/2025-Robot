@@ -13,14 +13,14 @@ import frc.robot.Utility.ClassHelpers.Timer;
 
 public class Intake extends SubsystemBase {
     // Constants
-    private final double coralIntakeSpeed = 0.3;
+    private final double coralIntakeSpeed = 0.7;
     private final double coralOuttakeSpeed = -0.7;
     private final double algaeIntakeSpeed = 1;
     private final double algaeOuttakeSpeed = -1;
     private final Timer stallTimer = new Timer();
 
     // Sensors
-    public static boolean hasPiece;
+    public static boolean hasPiece = false;
     public static boolean hasPiece0;
 
     // Motors

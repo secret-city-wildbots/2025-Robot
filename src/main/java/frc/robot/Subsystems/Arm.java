@@ -207,7 +207,7 @@ public class Arm extends SubsystemBase {
         extender.setPosition(Units.inchesToMeters(-1.0) * extenderRatio_m_to_rot);
         extenderConfig = new TalonFXConfiguration();
         extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.8;
-        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.5;
+        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.25;
         extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         extenderConfig.Slot0.kP = 0.19;
@@ -239,7 +239,7 @@ public class Arm extends SubsystemBase {
         wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
         wristConfig.absoluteEncoder.inverted(true);
 
-        wristConfig.absoluteEncoder.zeroOffset(0.135524);
+        wristConfig.absoluteEncoder.zeroOffset(0.802191);
         wristConfig.absoluteEncoder.positionConversionFactor(198.333);
         // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
@@ -259,7 +259,7 @@ public class Arm extends SubsystemBase {
                 Commands.runOnce(() -> drivingStow(), this),
                 Commands.runOnce(() -> scoringStow(), this),
                 () -> wristRotation.getDegrees() < 50
-            ).onlyIf(() -> Drivetrain.masterState0.equals(MasterStates.STOW)));
+            ).onlyIf(() -> Robot.masterState0.equals(MasterStates.STOW)));
         Drivetrain.antiTipTrigger.onTrue(ArmCommands.stow(this).onlyIf(() -> !Robot.masterState.equals(MasterStates.CLMB)));
         scoreTrigger.onFalse(
             Commands.either(

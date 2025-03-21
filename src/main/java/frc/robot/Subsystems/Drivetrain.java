@@ -95,7 +95,6 @@ public class Drivetrain extends SubsystemBase {
   public DoubleSolenoid shifter;
 
   // Used for modeDrivebase to check if master states changed
-  public static Robot.MasterStates masterState0 = Robot.masterState;
   public static boolean shiftingEnabled = false;
   private boolean headingLocked = false;
   public static final PIDController strafePID = new PIDController(0.4, 0.001, 0);
@@ -275,6 +274,21 @@ public class Drivetrain extends SubsystemBase {
     LimelightHelpers.setPipelineIndex("limelight-left", 1);
     LimelightHelpers.setLimelightNTDouble("limelight-right", "Throttle", 100.0);
     LimelightHelpers.setPipelineIndex("limelight-right", 1);
+    imuOffset = pigeon.getRotation2d();
+    poseEstimator.resetRotation(getIMURotation());
+    poseEstimator.update(getIMURotation(), new SwerveModulePosition[] {
+      module0.getPosition(),
+      module1.getPosition(),
+      module2.getPosition(),
+      module3.getPosition()
+    });
+    poseEstimator.resetRotation(getIMURotation());
+    poseEstimator.update(getIMURotation(), new SwerveModulePosition[] {
+      module0.getPosition(),
+      module1.getPosition(),
+      module2.getPosition(),
+      module3.getPosition()
+    });
   }
 
   public Command getPathFindingCommand(Pose2d targetPose) {
@@ -555,7 +569,7 @@ public class Drivetrain extends SubsystemBase {
       () -> {
         if (Robot.masterState.equals(MasterStates.STOW) || Robot.masterState.equals(MasterStates.SCOR)) {
           if (Robot.scoreRight) {disableRightLimelight = true; disableLeftLimelight = false;}
-          else {disableLeftLimelight = true; disableRightLimelight = false; System.out.println("HI");}
+          else {disableLeftLimelight = true; disableRightLimelight = false;}
         } else {disableRightLimelight = false; disableLeftLimelight = false;}
         double[] strafeCorrection = getStrafeCorrection(determineGoalPose());
         moduleStateOutputs = kinematics.toSwerveModuleStates(
@@ -570,7 +584,7 @@ public class Drivetrain extends SubsystemBase {
             Robot.driverController.getXButton() || 
             Robot.driverController.getYButton() || 
             Robot.driverController.getRightTriggerAxis() > 0.7 || 
-            ((Robot.masterState.equals(MasterStates.STOW)) && (masterState0 != MasterStates.STOW))), 
+            ((Robot.masterState.equals(MasterStates.STOW)) && (Robot.masterState0 != MasterStates.STOW))), 
       this);
     return outputCommand;
   }
@@ -592,7 +606,7 @@ public class Drivetrain extends SubsystemBase {
             getIMURotation()), 0.001 * Robot.loopTime_ms));
         SwerveDriveKinematics.desaturateWheelSpeeds(moduleStateOutputs, maxGroundSpeed_mPs);
         }, 
-      (interrupt) -> {disableRightLimelight = false; disableLeftLimelight = false;}, 
+      interrupted -> {disableRightLimelight = false; disableLeftLimelight = false;}, 
       () -> (poseAccuracyGetter()), 
       this).withTimeout(4);
     return outputCommand;
@@ -670,7 +684,6 @@ public class Drivetrain extends SubsystemBase {
 
     switch (Robot.masterState) {
       case STOW:
-        masterState0 = MasterStates.STOW;
         if (headingLocked) {
           // if (Math.hypot(reefPoseX_m-poseX_m, reefPoseY_m-poseY_m) < 2.75) {
           //   if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
@@ -702,7 +715,6 @@ public class Drivetrain extends SubsystemBase {
         }
         break;
       case FEED:
-        masterState0 = MasterStates.FEED;
         if (headingLocked) {
           if (Robot.scoreCoral) {
             if (poseY_m < Robot.fieldWidth_m / 2) {
@@ -738,7 +750,6 @@ public class Drivetrain extends SubsystemBase {
         }
         break;
       case SCOR:
-      masterState0 = MasterStates.SCOR;
         if (headingLocked) {
           if (poseX_m < ((-Math.sqrt(3)) * Math.abs(poseY_m - reefPoseY_m) + reefPoseX_m)) {
                 // Bottom sextant
@@ -892,10 +903,10 @@ public class Drivetrain extends SubsystemBase {
         // lockedY_m = 5.206;
       }
       theta = Units.degreesToRadians(theta);
-      lockedX_m += (reefApothem_m + robotSizeX_m + (0.5*0.0254))*Math.cos(theta); // X Position of the center of the face
+      lockedX_m += (reefApothem_m + robotSizeX_m + (-2.0*0.0254))*Math.cos(theta); // X Position of the center of the face
       lockedX_m += coralLocalYOffset_m * Math.sin(theta); // X Position of the scoring location
       lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
-      lockedY_m += (reefApothem_m + robotSizeX_m + (0.5*0.0254))*Math.sin(theta); // Y position of the center of the face
+      lockedY_m += (reefApothem_m + robotSizeX_m + (-2.0*0.0254))*Math.sin(theta); // Y position of the center of the face
       lockedY_m -= coralLocalYOffset_m * Math.cos(theta); // Y position of the scoring location
       lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
       // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
@@ -1026,10 +1037,10 @@ public class Drivetrain extends SubsystemBase {
         // lockedY_m = 5.206;
       }
       theta = Units.degreesToRadians(theta);
-      lockedX_m += (reefApothem_m + robotSizeX_m + (0.5*0.0254))*Math.cos(theta); // X Position of the center of the face
+      lockedX_m += (reefApothem_m + robotSizeX_m + (-3.0*0.0254))*Math.cos(theta); // X Position of the center of the face
       lockedX_m += coralLocalYOffset_m * Math.sin(theta); // X Position of the scoring location
       lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
-      lockedY_m += (reefApothem_m + robotSizeX_m + (0.5*0.0254))*Math.sin(theta); // Y position of the center of the face
+      lockedY_m += (reefApothem_m + robotSizeX_m + (-3.0*0.0254))*Math.sin(theta); // Y position of the center of the face
       lockedY_m -= coralLocalYOffset_m * Math.cos(theta); // Y position of the scoring location
       lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
       // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
