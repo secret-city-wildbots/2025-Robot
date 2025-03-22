@@ -17,7 +17,7 @@ public class ArmCommands {
     }
 
     public static Command stow(Arm arm) {
-        return Commands.runOnce(() -> arm.drivingStow());
+        return Commands.runOnce(() -> arm.drivingStow().schedule());
         // return Commands.print("Oh no! We're tipping!!!! or this is broken, idk?");
     }
 

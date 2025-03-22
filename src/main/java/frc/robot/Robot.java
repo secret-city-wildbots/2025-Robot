@@ -90,6 +90,7 @@ public class Robot extends TimedRobot {
   private static double loopTime0 = System.currentTimeMillis();
 
   public static boolean isEnabled = false;
+  public static boolean isEnabled0 = false;
   public static boolean isAutonomous = false;
   // Dashboard variables
   private double selectedDriver0 = 0;
@@ -203,6 +204,7 @@ public class Robot extends TimedRobot {
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
+    isEnabled0 = isEnabled;
     isEnabled = isAutonomousEnabled() || isTeleopEnabled();
   }
 
@@ -211,11 +213,13 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void disabledPeriodic() {
+    CommandScheduler.getInstance().disable();
     updateOutputs();
   }
 
   @Override
   public void autonomousInit() {
+    CommandScheduler.getInstance().enable();
     autonomousCommand = new PathPlannerAuto(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
 
     if (autonomousCommand != null) {
@@ -234,8 +238,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    CommandScheduler.getInstance().enable();
     CommandScheduler.getInstance().cancelAll();
-    ArmCommands.stow(arm);
+    ArmCommands.stow(arm).schedule();
   }
 
   /**
@@ -250,9 +255,9 @@ public class Robot extends TimedRobot {
 
     if (driverController.getBButtonPressed()) {
       Pose2d goalPose = drivetrain.determineGoalPose();
-      pathfinder = drivetrain.getPathFindingCommand(goalPose);
+      pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
       pathfinder.schedule();
-      drivetrain.getFinalStrafeCorrectionCommand().schedule();
+      drivetrain.getFinalStrafeCorrectionCommand().until(() -> isEnabled && (!isEnabled0)).schedule();
     }
 
     // Check for state updates based on manip inputs

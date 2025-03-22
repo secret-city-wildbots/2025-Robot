@@ -388,20 +388,20 @@ public class Arm extends SubsystemBase {
                         maxBackwardWristAngle_rad, maxForwardWristAngle_rad));
     }
 
-    private void updatePivot(Rotation2d pivotAngle) {
+    public void updatePivot(Rotation2d pivotAngle) {
         pivotOutput = new Rotation2d(
                 MathUtil.clamp(pivotAngle.getRadians(),
                         maxBackwardPivotAngle_rad, maxForwardPivotAngle_rad));
     }
 
-    private void updateWrist(Rotation2d wristAngle) {
+    public void updateWrist(Rotation2d wristAngle) {
         wristOutput = new Rotation2d(
                 MathUtil.clamp(wristAngle.getRadians(),
                         maxBackwardWristAngle_rad, maxForwardWristAngle_rad));
     }
 
 
-    private void updateExtender(double extensionDistance_m) {
+    public void updateExtender(double extensionDistance_m) {
         extenderOutput_m = MathUtil.clamp(extensionDistance_m,
                 -0.5, maxExtensionDistance_m);
     }
@@ -605,11 +605,12 @@ public class Arm extends SubsystemBase {
             retractFromReef().until(() -> closeEnough()),
             scoringCommand.until(() -> hasArrived()),
             Commands.waitUntil(() -> !Intake.hasPiece && Intake.hasPiece0),
-            scoringStow().until(() -> hasArrived())
+            scoringStow().until(() -> closeEnough()),
+            Commands.runOnce(() -> Robot.masterState = MasterStates.FEED)
         );
     }
 
-    private Command scoreL4() {
+    public Command scoreL4() {
         return Commands.sequence(
                 Commands.startEnd(() -> updateExtender(37.6), ()->{}, this).until(() -> closeEnough()),
                 Commands.startEnd(
@@ -723,7 +724,7 @@ public class Arm extends SubsystemBase {
         );
     }
 
-    private Command pickupFeeder() {
+    public Command pickupFeeder() {
         return Commands.either(
                 // Normal movement
                 Commands.startEnd(
