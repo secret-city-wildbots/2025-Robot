@@ -12,32 +12,12 @@ import frc.robot.Subsystems.Intake;
 public class ArmCommands {
     private ArmCommands() {}
 
-    /**
-     * Sends the arm to the stored scoring height
-     * @param arm
-     * @return
-     */
-    public static Command score(
-            Arm arm) {
-        return Commands.runOnce(()->arm.score(), arm);
+    public static Command score(Arm arm) {
+        return Commands.runOnce(() -> arm.score().schedule());
     }
 
-    /**
-     * Sends the arm to the stored pickup height (always feeder(1) for coral)
-     * @param arm
-     * @return
-     */
-    public static Command pickup(
-            Arm arm) {
-            return Commands.sequence(
-                Commands.runOnce(() -> arm.pickupFeeder_init(), arm),
-                Commands.waitUntil(() -> arm.closeEnough()).withTimeout(1),
-                Commands.runOnce(()->arm.pickup(), arm)
-            );
-        }
-
     public static Command stow(Arm arm) {
-        return Commands.runOnce(() -> arm.drivingStow());
+        return Commands.runOnce(() -> arm.drivingStow().schedule());
         // return Commands.print("Oh no! We're tipping!!!! or this is broken, idk?");
     }
 
@@ -52,6 +32,10 @@ public class ArmCommands {
                 Commands.runOnce(arm::climbLift, arm)
             );
         }
+
+    public static Command pickup(Arm arm) {
+        return Commands.runOnce(() -> arm.pickup().schedule());
+    }
 
     /**
      * Commands the intake to pull constantly to hold pieces

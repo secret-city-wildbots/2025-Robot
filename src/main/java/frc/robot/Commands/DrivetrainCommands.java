@@ -55,8 +55,9 @@ public class DrivetrainCommands {
           
           Commands.sequence(
             Commands.waitUntil(() -> arm.closeEnough()),
-            Commands.runOnce(() -> arm.pickupFeeder(), arm),
-            ArmCommands.autoIntake(intake, arm),
+            arm.pickupFeeder().until(() -> arm.closeEnough()),
+            ArmCommands.autoIntake(intake, arm).until(() -> Intake.hasPiece),
+            ArmCommands.stop(intake),
             Commands.runOnce(() -> arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25)), arm),
             Commands.waitUntil(() -> arm.closeEnough()),
             Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(25)), arm)
