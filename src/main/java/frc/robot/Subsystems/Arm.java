@@ -67,9 +67,9 @@ public class Arm extends SubsystemBase {
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
     SparkMaxConfig wristConfig = new SparkMaxConfig();
-    // private double kp0 = 0.0;
-    // private double ki0 = 0.0;
-    // private double kd0 = 0.0;
+    private double kp0 = 0.0;
+    private double ki0 = 0.0;
+    private double kd0 = 0.0;
     
     // Sensor values
     private double extenderPosition_m = 0.0;
@@ -88,6 +88,7 @@ public class Arm extends SubsystemBase {
     private final double wristFFArbitraryScalar = 0.2;
     public static int scoreHeight = 1;
     public static int pickupHeight = 1;
+    private final Trigger driveLBTrigger;
     private final Trigger manipLBTrigger;
     private final Trigger manipATrigger;
     private final Trigger manipXTrigger;
@@ -116,17 +117,18 @@ public class Arm extends SubsystemBase {
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 70.0 * // Neo reduction
-                        (34.0 / 12.0); // Small herringbone to big herringbone
+                wristRatio = 99.16667;
+                // 35.0 * // Neo reduction
+                // (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
-                maxBackwardWristAngle_rad = Units.degreesToRadians(-125);
+                maxBackwardWristAngle_rad = Units.degreesToRadians(-115);
                 break;
             case "COTS_Testbed":
                 // Temp values
                 pivotRatio = (84.0 / 8.0) * // First gear reduction
                         (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
                 maxForwardPivotAngle_rad = Units.degreesToRadians(12);
-                maxBackwardPivotAngle_rad = Units.degreesToRadians(-90);
+                maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
                         (1.0 / 5.25) * // ratio of motor rotations to spool rotations
@@ -135,17 +137,18 @@ public class Arm extends SubsystemBase {
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 70.0 * // Neo reduction
-                        (34.0 / 12.0); // Small herringbone to big herringbone
+                wristRatio = 99.16667;
+                // 35.0 * // Neo reduction
+                // (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
-                maxBackwardWristAngle_rad = Units.degreesToRadians(-125);
+                maxBackwardWristAngle_rad = Units.degreesToRadians(-115);
                 break;
             default:
                 // Temp values
                 pivotRatio = (84.0 / 8.0) * // First gear reduction
                         (18.0 / 1.6); // Capstan reduction, Total reduction: 118.13:1
                 maxForwardPivotAngle_rad = Units.degreesToRadians(12);
-                maxBackwardPivotAngle_rad = Units.degreesToRadians(-90);
+                maxBackwardPivotAngle_rad = Units.degreesToRadians(-110);
 
                 extenderRatio_m_to_rot = 1.0 / Units.inchesToMeters( // Convert to meters for use elsewhere
                         (1.0 / 5.25) * // ratio of motor rotations to spool rotations
@@ -154,10 +157,11 @@ public class Arm extends SubsystemBase {
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 70.0 * // Neo reduction
-                        (34.0 / 12.0); // Small herringbone to big herringbone
+                wristRatio = 99.16667;
+                // 35.0 * // Neo reduction
+                // (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
-                maxBackwardWristAngle_rad = Units.degreesToRadians(-125);
+                maxBackwardWristAngle_rad = Units.degreesToRadians(-115);
                 break;
         }
 
@@ -204,7 +208,7 @@ public class Arm extends SubsystemBase {
         extender = new TalonFX(34);
         extender.setPosition(Units.inchesToMeters(-1.0) * extenderRatio_m_to_rot);
         extenderConfig = new TalonFXConfiguration();
-        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.8;
+        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.4;
         extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.25;
         extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -226,19 +230,19 @@ public class Arm extends SubsystemBase {
         // // Wrist configurations
         wrist = new SparkMax(36, MotorType.kBrushless);
         wristEncoder = wrist.getAbsoluteEncoder();
-        wrist.getEncoder().setPosition(wristEncoder.getPosition() - 198.333);
+        wrist.getEncoder().setPosition(-wristEncoder.getPosition() - wristRatio);
         wristConfig.idleMode(IdleMode.kBrake);
         wristConfig.inverted(true);
-        wristConfig.closedLoop.pid(0.05, 0.0, 0.0);
-        wristConfig.closedLoop.maxOutput(0.5);
-        wristConfig.closedLoop.minOutput(-0.5);
+        wristConfig.closedLoop.pid(0.07, 0.0, 0.0);
+        wristConfig.closedLoop.maxOutput(0.3);
+        wristConfig.closedLoop.minOutput(-0.3);
         wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wristConfig.closedLoop.positionWrappingEnabled(true);
-        wristConfig.closedLoop.positionWrappingInputRange(0, 198.333);
-        wristConfig.absoluteEncoder.inverted(true);
+        wristConfig.closedLoop.positionWrappingInputRange(0, wristRatio);
+        wristConfig.absoluteEncoder.inverted(false);
 
-        wristConfig.absoluteEncoder.zeroOffset(0.802191);
-        wristConfig.absoluteEncoder.positionConversionFactor(198.333);
+        wristConfig.absoluteEncoder.zeroOffset(0.5438459993);
+        wristConfig.absoluteEncoder.positionConversionFactor(wristRatio);
         // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.reverseSoftLimitEnabled(true);
@@ -246,10 +250,14 @@ public class Arm extends SubsystemBase {
         wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
         scoreTrigger.onTrue(Commands.runOnce(() -> score().schedule()));
         feedTrigger.onTrue(Commands.runOnce(() -> pickup().schedule()));
-        climbTrigger.onTrue(Commands.runOnce(() -> climb().schedule()));
+        climbTrigger.onTrue(Commands.runOnce(() -> ArmCommands.climb(this).schedule()));
         coralTrigger = new Trigger(() -> Robot.scoreCoral);
         coralTrigger.onTrue(Commands.runOnce(() -> {scoreHeight = 1; pickupHeight = 1;}));
         coralTrigger.onFalse(Commands.runOnce(() -> {scoreHeight = 6; pickupHeight = 2;}));
+        driveLBTrigger = Robot.driverCommandController.leftBumper();
+        driveLBTrigger.onTrue(
+            Commands.runOnce(() -> ArmCommands.groundPickup(this).schedule())
+        );
         manipLBTrigger = Robot.manipCommandController.leftBumper();
         manipLBTrigger.onTrue(
         Commands.either(
@@ -360,6 +368,7 @@ public class Arm extends SubsystemBase {
         wristFF = getPivotEncoderPosition().plus(wristRotation).getSin() * wristFFArbitraryScalar;
         double realWristRotation_deg = wristRotation.getDegrees();
         if (realWristRotation_deg > 180) {realWristRotation_deg -= 360;}
+        if (realWristRotation_deg < -180) {realWristRotation_deg += 360;}
         Dashboard.wristPosition_deg.set(realWristRotation_deg);
 
         if (getPivotEncoderPosition().getDegrees() < -15) {
@@ -372,6 +381,20 @@ public class Arm extends SubsystemBase {
         Dashboard.extenderTemp_C.set(extender.getDeviceTemp().getValueAsDouble());
         Dashboard.wristTemp_C.set(wrist.getMotorTemperature());
         Dashboard.pivotTemp_C.set(pivot.getDeviceTemp().getValueAsDouble());
+
+        /* PID tuning code START */
+            double kp = Dashboard.freeTuningkP.get();
+            double ki = Dashboard.freeTuningkI.get();
+            double kd = Dashboard.freeTuningkD.get();
+            if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+            wristConfig.closedLoop.pid(kp, ki, kd);
+            wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+            kp0 = kp;
+            ki0 = ki;
+            kd0 = kd;
+            }
+            Dashboard.pidTuningGoalActual.set(new double[] {wristOutput.getDegrees(), wristRotation.getDegrees()});
+        /* PID tuning code END */
     }
 
 
@@ -601,34 +624,35 @@ public class Arm extends SubsystemBase {
                 new Exception("Score type out of range :(").printStackTrace();
                 break;
         }
-        return Commands.sequence(
-            retractFromReef().until(() -> closeEnough()),
+        return 
+        Commands.sequence(
+            retractFromReef().until(() -> closeEnough()).onlyIf(() -> Robot.masterState.equals(MasterStates.SCOR)),
             scoringCommand.until(() -> hasArrived()),
-            Commands.waitUntil(() -> !Intake.hasPiece && Intake.hasPiece0),
+            Commands.waitUntil(() -> Intake.outtaking),
+            Commands.waitUntil(() -> Robot.driverController.getRightTriggerAxis() < 0.7),
             scoringStow().until(() -> closeEnough()),
-            Commands.runOnce(() -> Robot.masterState = MasterStates.FEED)
+            Commands.runOnce(() -> {Robot.masterState0 = Robot.masterState;
+                                    Robot.masterState = MasterStates.FEED;})
         );
     }
 
     public Command scoreL4() {
-        return Commands.sequence(
-                Commands.startEnd(() -> updateExtender(37.6), ()->{}, this).until(() -> closeEnough()),
+        return 
                 Commands.startEnd(
                     () -> updateArm(
                             Units.inchesToMeters(37.6),
-                            Rotation2d.fromDegrees(-5.5),
-                            Rotation2d.fromDegrees(67.2)),
+                            Rotation2d.fromDegrees(-1.9),
+                            Rotation2d.fromDegrees(59.9)),
                     () -> {},
                     this
-                )
         );
     }
 
     private Command scoreL3() {
         return Commands.startEnd(() -> {
             updateArm(
-                0.0,
-                Rotation2d.fromDegrees(-10.5),
+                Units.inchesToMeters(6.8),
+                Rotation2d.fromDegrees(-3.5),
                 Rotation2d.fromDegrees(39));
                 Dashboard.scoringState.set(2);},
             () -> {},
@@ -640,8 +664,8 @@ public class Arm extends SubsystemBase {
             () -> {
                 updateArm(
                     Units.inchesToMeters(0.0),
-                    Rotation2d.fromDegrees(-8),
-                    Rotation2d.fromDegrees(83));
+                    Rotation2d.fromDegrees(5),
+                    Rotation2d.fromDegrees(75));
                 Dashboard.scoringState.set(1);},
             () -> {},
             this
@@ -654,7 +678,7 @@ public class Arm extends SubsystemBase {
                 updateArm(
                     Units.inchesToMeters(0.0),
                     Rotation2d.fromDegrees(-42),
-                    Rotation2d.fromDegrees(-125));
+                    Rotation2d.fromDegrees(-115));
                 Dashboard.scoringState.set(0);},
             () -> {},
             this
@@ -667,7 +691,7 @@ public class Arm extends SubsystemBase {
             () -> updateArm(
                 Units.inchesToMeters(0.0),
                 Rotation2d.fromDegrees(-62),
-                Rotation2d.fromDegrees(-125)),
+                Rotation2d.fromDegrees(-115)),
             () -> {},
             this
         );
@@ -699,6 +723,9 @@ public class Arm extends SubsystemBase {
 
     public Command pickup() {
         Command pickupCommand;
+        if (Robot.scoreCoral) {
+            pickupHeight = 1;
+        }
         switch (pickupHeight) {
             case 1:
                 pickupCommand = pickupFeeder();
@@ -729,9 +756,9 @@ public class Arm extends SubsystemBase {
                 // Normal movement
                 Commands.startEnd(
                 () -> updateArm(
-                        Units.inchesToMeters(-0.5),
-                        Rotation2d.fromDegrees(-11.8),
-                        Rotation2d.fromDegrees(-121)),
+                        Units.inchesToMeters(-0.2),
+                        Rotation2d.fromDegrees(-19.9),
+                        Rotation2d.fromDegrees(-100.9)),
                 () -> {},
                 this),
                 // Stow first when needed
@@ -743,13 +770,13 @@ public class Arm extends SubsystemBase {
                     // Then normal movement
                     Commands.startEnd(
                         () -> updateArm(
-                                Units.inchesToMeters(-0.5),
-                                Rotation2d.fromDegrees(-11.8),
-                                Rotation2d.fromDegrees(-121)),
+                            Units.inchesToMeters(-0.2),
+                            Rotation2d.fromDegrees(-19.9),
+                            Rotation2d.fromDegrees(-100.9)),
                         () -> {},
                         this)   
                 ), 
-                () -> wristRotation.getDegrees() < 45);
+                () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));
     }
 
     private Command pickupLowAlgae() {
@@ -776,15 +803,19 @@ public class Arm extends SubsystemBase {
         );
     }
 
-    public Command groundPickup() {
+    public Command groundPickupCoral() {
         return Commands.either(
                 // Normal movement
-                Commands.startEnd(
-                () -> updateArm(
-                        Units.inchesToMeters(0.0),
-                        Rotation2d.fromDegrees(-74),
-                        Rotation2d.fromDegrees(-125)),
-                () -> {},
+                Commands.run(() -> {
+                    if (!Robot.scoreCoral) {
+                        ArmCommands.groundPickup(this).schedule();
+                    }
+                    updateArm(
+                        Units.inchesToMeters(0.8),
+                        Rotation2d.fromDegrees(-99),
+                        Rotation2d.fromDegrees(-82.7)
+                    );
+                },
                 this),
                 // Stow first when needed
                 Commands.startEnd(
@@ -793,43 +824,79 @@ public class Arm extends SubsystemBase {
                 () -> {},
                 this).until(() -> closeEnough()).andThen(
                     // Then normal movement
-                    Commands.startEnd(
+                    Commands.run(
                         () -> updateArm(
-                                Units.inchesToMeters(0.0),
-                                Rotation2d.fromDegrees(-74),
-                                Rotation2d.fromDegrees(-125)),
-                        () -> {},
+                            Units.inchesToMeters(0.8),
+                            Rotation2d.fromDegrees(-99),
+                            Rotation2d.fromDegrees(-82.7)),
                         this)   
                 ), 
-                () -> wristRotation.getDegrees() < 45);
+                () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));
     }
 
-    public Command climb() {
-        return Commands.sequence(
-            climbInit().until(() -> closeEnough()),
-            Commands.waitUntil(Robot.driverCommandController.a()),
-            climbLift()
-        );
+    public Command groundPickupAlgae() {
+        return Commands.either(
+                // Normal movement
+                Commands.run(() -> {
+                if (Robot.scoreCoral) {
+                    ArmCommands.groundPickup(this).schedule();
+                }
+                updateArm(
+                        Units.inchesToMeters(-0.4),
+                        Rotation2d.fromDegrees(-76.5),
+                        Rotation2d.fromDegrees(-104.1));},
+                this),
+                // Stow first when needed
+                Commands.startEnd(
+                () -> updateWrist(
+                        Rotation2d.fromDegrees(45)),
+                () -> {},
+                this).until(() -> closeEnough()).andThen(
+                    // Then normal movement
+                    Commands.run(
+                        () -> updateArm(
+                            Units.inchesToMeters(-0.4),
+                            Rotation2d.fromDegrees(-76.5),
+                            Rotation2d.fromDegrees(-104.1)),
+                        this)   
+                ), 
+                () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));
     }
 
     public Command climbInit() {
-        return Commands.startEnd(
+        return Commands.runOnce(
             () -> updateArm(
                     Units.inchesToMeters(0.0),
                     Rotation2d.fromDegrees(0),
-                    Rotation2d.fromDegrees(-90)),
-            () -> {},
+                    Rotation2d.fromDegrees(-60)),
+            this
+        );
+    }
+
+    public Command climb2() {
+        return Commands.runOnce(
+            () -> updateArm(
+                    Units.inchesToMeters(10),
+                    Rotation2d.fromDegrees(-30),
+                    Rotation2d.fromDegrees(0)),
             this
         );
     }
 
     public Command climbLift() {
         return Commands.startEnd(
-            () -> updateArm(
-                    Units.inchesToMeters(4),
-                    Rotation2d.fromDegrees(-85),
-                    Rotation2d.fromDegrees(30)),
-            () -> {},
+            () -> {
+                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.5;
+                pivot.getConfigurator().apply(pivotConfig);
+                updateArm(
+                    Units.inchesToMeters(10),
+                    Rotation2d.fromDegrees(-100),
+                    Rotation2d.fromDegrees(90));
+            },
+            () -> {
+                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.1;
+                pivot.getConfigurator().apply(pivotConfig);
+            },
             this
         );
     }

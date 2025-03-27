@@ -3,6 +3,7 @@ package frc.robot.Commands;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.*;
+import frc.robot.Dashboard;
 import frc.robot.Robot;
 import frc.robot.Robot.MasterStates;
 import frc.robot.Subsystems.Arm;
@@ -23,15 +24,21 @@ public class ArmCommands {
 
     public static Command climb(
         Arm arm) {
-            return Commands.sequence(
-                Commands.runOnce(arm::climbInit, arm),
+            return 
+            Commands.sequence(
+                arm.climbInit(),
                 Commands.parallel(
                     Commands.waitUntil(() -> Robot.driverController.getAButtonPressed()),
                     Commands.waitUntil(arm::hasArrived)
                 ),
-                Commands.runOnce(arm::climbLift, arm)
+                arm.climb2(),
+                Commands.parallel(
+                    Commands.waitUntil(() -> Robot.driverController.getAButtonPressed()),
+                    Commands.waitUntil(arm::hasArrived)
+                ),
+                arm.climbLift()
             );
-        }
+    }
 
     public static Command pickup(Arm arm) {
         return Commands.runOnce(() -> arm.pickup().schedule());
@@ -42,9 +49,8 @@ public class ArmCommands {
      * @param intake
      * @return
      */
-    private static Command hold(
-            Intake intake) {
-        return Commands.runOnce(intake::hold, intake);
+    private static Command hold() {
+        return Commands.runOnce(Intake::hold);
     }
 
     /**
@@ -52,17 +58,43 @@ public class ArmCommands {
      * @param intake
      * @return
      */
-    public static Command stop(
-            Intake intake) {
-        return Commands.runOnce(intake::stop, intake);
+    public static Command stop() {
+        return Commands.runOnce(Intake::stop);
     }
 
     public static Command groundPickup(Arm arm) {
-        return Commands.sequence(
-            Commands.runOnce(() -> Robot.scoreCoral = false),
-            Commands.runOnce(arm::scoringStow, arm),
-            Commands.waitUntil(() -> arm.closeEnough()),
-            Commands.runOnce(arm::groundPickup, arm)
+        return 
+        Commands.sequence(
+            Commands.race(
+                Commands.either(
+                    arm.groundPickupCoral().until(() -> Intake.hasPiece && 
+                        Robot.driverController.getLeftTriggerAxis() < 0.7),
+                    arm.groundPickupAlgae().until(() -> Intake.hasPiece && 
+                        Robot.driverController.getLeftTriggerAxis() < 0.7),
+                    () -> Robot.scoreCoral
+                ),
+                Commands.sequence(
+                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() > 0.7),
+                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7)
+                )
+            ),
+            Commands.runOnce(() -> Intake.hold()),
+            Commands.either(
+                Commands.sequence(
+                    Commands.runOnce(() -> {
+                            Robot.masterState0 = Robot.masterState;
+                            Robot.masterState = MasterStates.STOW;
+                        }),    
+                    arm.scoringStow()
+                ),
+                Commands.runOnce(() -> {
+                        Robot.scoreCoral = true;
+                        Dashboard.scoreCoral.set(Robot.scoreCoral);
+                        Robot.masterState0 = Robot.masterState;
+                        Robot.masterState = MasterStates.FEED;
+                    }),
+                () -> Intake.hasPiece
+            )
         );
     }
 
@@ -84,9 +116,10 @@ public class ArmCommands {
                         Commands.waitSeconds(1),
                         Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7)
                     ),
-                    Commands.either(hold(intake), stop(intake), intake::hasPiece),
+                    Commands.either(hold(), stop(), intake::hasPiece),
                     Commands.either(
-                        Commands.runOnce(() -> Robot.masterState = MasterStates.STOW),
+                        Commands.runOnce(() -> {Robot.masterState0 = Robot.masterState;
+                                                Robot.masterState = MasterStates.STOW;}),
                         Commands.none(),
                         () -> intake.hasPiece() && 
                         (Robot.masterState.equals(MasterStates.STOW) || 
@@ -103,7 +136,7 @@ public class ArmCommands {
                     Commands.runOnce(() -> intake.intake(), intake),
                     Commands.waitUntil(() -> Drivetrain.poseAccuracyGetter()).withTimeout(4),
                     Commands.waitSeconds(1),
-                    Commands.either(hold(intake), stop(intake), intake::hasPiece)
+                    Commands.either(hold(), stop(), intake::hasPiece)
                 );
     }
 
@@ -123,8 +156,9 @@ public class ArmCommands {
                         Commands.waitUntil(() -> 
                             (!Robot.driverController.getRightBumperButton() && 
                             (Robot.driverController.getRightTriggerAxis() < 0.7))),
-                        stop(intake),
-                        Commands.runOnce(() -> Robot.masterState = MasterStates.STOW)
+                        stop(),
+                        Commands.runOnce(() -> {Robot.masterState0 = Robot.masterState;
+                                                Robot.masterState = MasterStates.STOW;})
                     );
         }
 
@@ -133,7 +167,7 @@ public class ArmCommands {
             Intake intake,
             Drivetrain drivetrain) {
                 return Commands.sequence(
-                    Commands.runOnce(() -> {Robot.scoreCoral = true; Arm.scoreHeight = 4;}),
+                    Commands.runOnce(() -> {Robot.scoreCoral = true; Dashboard.scoreCoral.set(Robot.scoreCoral); Arm.scoreHeight = 4;}),
                     Commands.sequence(
                         Commands.runOnce(() -> 
                             {arm.updatePivot(Rotation2d.fromDegrees(-5));

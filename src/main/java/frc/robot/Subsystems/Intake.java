@@ -2,6 +2,9 @@ package frc.robot.Subsystems;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.ForwardLimitSourceValue;
+import com.ctre.phoenix6.signals.ForwardLimitTypeValue;
+import com.ctre.phoenix6.signals.ForwardLimitValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
@@ -15,8 +18,8 @@ import frc.robot.Utility.ClassHelpers.Timer;
 
 public class Intake extends SubsystemBase {
     // Constants
-    private final double coralIntakeSpeed = 0.7;
-    private final double coralOuttakeSpeed = -0.7;
+    private final double coralIntakeSpeed = 1;
+    private final double coralOuttakeSpeed = -1;
     private final double algaeIntakeSpeed = 1;
     private final double algaeOuttakeSpeed = -1;
     private final Timer stallTimer = new Timer();
@@ -32,12 +35,16 @@ public class Intake extends SubsystemBase {
     private final TalonFX intake;
 
     // Outputs
-    public double intakeOutput;
+    public static double intakeOutput;
 
     public Intake() {
         intake = new TalonFX(37);
         TalonFXConfiguration intakeConfig = new TalonFXConfiguration();
-        intakeConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+        intakeConfig.HardwareLimitSwitch.ForwardLimitSource = ForwardLimitSourceValue.RemoteCANifier;
+        intakeConfig.HardwareLimitSwitch.ForwardLimitRemoteSensorID = 40;
+        intakeConfig.HardwareLimitSwitch.ForwardLimitEnable = false;
+        intakeConfig.HardwareLimitSwitch.ForwardLimitType = ForwardLimitTypeValue.NormallyClosed;
+        intakeConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         intakeConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         intake.getConfigurator().apply(intakeConfig);
         outtakeTrigger.onFalse(Commands.runOnce(() -> hasPiece = false));
@@ -45,13 +52,28 @@ public class Intake extends SubsystemBase {
 
     public void updateSensors() {
         hasPiece0 = hasPiece;
-        if (intakeOutput > 0.1) {
-            if (intake.getVelocity().getValueAsDouble() < 1 && stallTimer.getTimeMillis() > 500) {
-                hasPiece = true;
+        if (Robot.scoreCoral) {
+            if (intake.getForwardLimit().getValue().equals(ForwardLimitValue.Open) 
+                    && !Dashboard.disableSafeties.get()) {
+                if (stallTimer.getTimeMillis() > 500) {
+                    hasPiece = true;
+                }
+            } else {
+                hasPiece = false;
+                stallTimer.reset();
             }
         } else {
-            stallTimer.reset();
+            if (intakeOutput > 0.1 && intake.getVelocity().getValueAsDouble() < 1 
+                        && !Dashboard.disableSafeties.get()) {
+                if (stallTimer.getTimeMillis() > 500) {
+                    hasPiece = true;
+                }
+            } else {
+                hasPiece = false;
+                stallTimer.reset();
+            }
         }
+
         Dashboard.intakeVelocity_rpm.set(intake.getVelocity().getValueAsDouble() / 60.0);
         Dashboard.intakeTemp_C.set(intake.getDeviceTemp().getValueAsDouble());
     }
@@ -70,7 +92,7 @@ public class Intake extends SubsystemBase {
         Dashboard.outtaking.set(true);
     }
 
-    public void stop() {
+    public static void stop() {
         intakeOutput = 0.0;
         intaking = false;
         outtaking = false;
@@ -78,11 +100,11 @@ public class Intake extends SubsystemBase {
         Dashboard.outtaking.set(false);
     }
 
-    public void hold() {
+    public static void hold() {
         if (Robot.scoreCoral) {
             intakeOutput = 0.0;
         } else {
-            intakeOutput = 0.1;
+            intakeOutput = 1;
         }
         intaking = false;
         outtaking = false;

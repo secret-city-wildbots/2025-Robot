@@ -805,8 +805,11 @@ public class Drivetrain extends SubsystemBase {
             lockedX_m = Units.inchesToMeters(22.51);
             lockedY_m = Units.inchesToMeters(14.8);
             theta = Units.degreesToRadians(54);
-            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
-            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            // Comp values
+            // lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            // lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedX_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.cos(theta);
             lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
             lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
             // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
@@ -815,8 +818,10 @@ public class Drivetrain extends SubsystemBase {
             lockedX_m = Units.inchesToMeters(22.51);
             lockedY_m = Units.inchesToMeters(308.13);
             theta = Units.degreesToRadians(306);
-            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
-            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            // lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            // lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedX_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.cos(theta);
             lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
             lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
             // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
@@ -827,8 +832,10 @@ public class Drivetrain extends SubsystemBase {
             lockedX_m = Units.inchesToMeters(22.51);
             lockedY_m = Units.inchesToMeters(14.8);
             theta = Units.degreesToRadians(54);
-            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
-            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            // lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            // lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            lockedX_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.cos(theta);
             lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
             lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
             // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));
@@ -837,8 +844,10 @@ public class Drivetrain extends SubsystemBase {
             lockedX_m = Units.inchesToMeters(22.51);
             lockedY_m = Units.inchesToMeters(302.13);
             theta = Units.degreesToRadians(306);
-            lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
-            lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            // lockedX_m += (robotSizeX_m - (0.0254 * -6)) * Math.cos(theta);
+            // lockedY_m += (robotSizeX_m - (0.0254 * -6)) * Math.sin(theta);
+            lockedX_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.sin(theta);
+            lockedY_m += (robotSizeX_m - (0.0254 * 0.0)) * Math.cos(theta);
             lockedX_m += maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.sin(theta));
             lockedY_m -= maxStrafeFudge * (-Robot.driverController.getLeftX() * Math.cos(theta));
             // System.out.println("Locked X: " + lockedX_m + ", Locked Y:" + lockedY_m + ", Rotation:" + (Math.PI + theta));

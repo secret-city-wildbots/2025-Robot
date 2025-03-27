@@ -4,6 +4,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.Dashboard;
 import frc.robot.Robot;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Subsystems.Drivetrain;
@@ -32,6 +33,7 @@ public class DrivetrainCommands {
       return Commands.sequence(
         Commands.runOnce(() -> {
           Robot.scoreCoral = true;
+          Dashboard.scoreCoral.set(Robot.scoreCoral);
           Robot.scoreRight = false;
         }, drivetrain),
         drivetrain.getAutoStrafeCorrectionCommand(false)
@@ -42,6 +44,7 @@ public class DrivetrainCommands {
       return Commands.sequence(
         Commands.runOnce(() -> {
           Robot.scoreCoral = true;
+          Dashboard.scoreCoral.set(Robot.scoreCoral);
           Robot.scoreRight = true;
         }, drivetrain),
         drivetrain.getAutoStrafeCorrectionCommand(false)
@@ -57,7 +60,7 @@ public class DrivetrainCommands {
             Commands.waitUntil(() -> arm.closeEnough()),
             arm.pickupFeeder().until(() -> arm.closeEnough()),
             ArmCommands.autoIntake(intake, arm).until(() -> Intake.hasPiece),
-            ArmCommands.stop(intake),
+            ArmCommands.stop(),
             Commands.runOnce(() -> arm.updatePivot(Rotation2d.fromDegrees((Robot.scoreCoral) ? 0:-25)), arm),
             Commands.waitUntil(() -> arm.closeEnough()),
             Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(25)), arm)

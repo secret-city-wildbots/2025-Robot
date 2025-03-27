@@ -22,7 +22,6 @@ import frc.robot.Subsystems.Intake;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.util.Units;
 
 import java.io.File;
@@ -254,9 +253,9 @@ public class Robot extends TimedRobot {
       // tofSensor.identifySensor();
 
     if (driverController.getBButtonPressed()) {
-      Pose2d goalPose = drivetrain.determineGoalPose();
-      pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
-      pathfinder.schedule();
+      // Pose2d goalPose = drivetrain.determineGoalPose();
+      // pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
+      // pathfinder.schedule();
       drivetrain.getFinalStrafeCorrectionCommand().until(() -> isEnabled && (!isEnabled0)).schedule();
     }
 

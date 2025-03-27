@@ -95,6 +95,7 @@ public class Dashboard {
     public static DoubleSubscriber freeTuningkD;
     public static StringSubscriber testActuatorName;
     public static BooleanSubscriber disableFusionDisabled;
+    public static BooleanSubscriber disableSafeties;
 
     /**
      * Creates an object for storing dashboard publishers and subscribers
@@ -179,5 +180,6 @@ public class Dashboard {
         freeTuningkD = table.getDoubleTopic("Free_Tuning_PID_D").subscribe(0);
         testActuatorName = table.getStringTopic("Test_Actuator_Name").subscribe("");
         disableFusionDisabled = table.getBooleanTopic("Disable_Fusion_While_Disabled").subscribe(true);
+        disableSafeties = table.getBooleanTopic("Master_Safety_Override").subscribe(true);
     }
 }
