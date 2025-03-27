@@ -17,11 +17,13 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.ArmCommands;
 import frc.robot.Commands.DrivetrainCommands;
+import frc.robot.LED.StripIDs;
 import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Subsystems.Intake;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.util.Units;
 
 import java.io.File;
@@ -108,7 +110,7 @@ public class Robot extends TimedRobot {
         robotWidth_m = Units.inchesToMeters(21.75);
         robotLengthBumpers_m = Units.inchesToMeters(33.5);
         robotWidthBumpers_m = Units.inchesToMeters(31.5);
-        ledStrips = new LED[] {new LED(14,1,1,0)};
+        ledStrips = new LED[] {new LED(24,1,StripIDs.EXT,0)};
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23.75);
@@ -117,7 +119,7 @@ public class Robot extends TimedRobot {
         robotWidthBumpers_m = Units.inchesToMeters(31.5);
         break;
       case "Linguini":
-        ledStrips = new LED[] {new LED(19,1,1,0)};
+        ledStrips = new LED[] {new LED(24,1,StripIDs.EXT,0)};
       default:
         robotLength_m = Units.inchesToMeters(23.75);
         robotWidth_m = Units.inchesToMeters(21.75);
@@ -153,7 +155,7 @@ public class Robot extends TimedRobot {
     Dashboard.currentDriverProfileSetpoints
         .set(SwerveUtils.readDriverProfiles(legalDrivers[(int) Dashboard.selectedDriver.get()]).toDoubleArray());
     Dashboard.legalActuatorNames.set(actuatorNames);
-    //Dashboard.legalAutoPlayNames.set(legalAutoPlays);
+    Dashboard.legalAutoPlayNames.set(legalAutoPlays);
     Dashboard.legalDrivers.set(legalDrivers);
     Dashboard.robotLengthBumpers.set(Units.metersToInches(robotLengthBumpers_m));
     Dashboard.robotWidthBumpers.set(Units.metersToInches(robotWidthBumpers_m));
@@ -204,14 +206,12 @@ public class Robot extends TimedRobot {
       double[] setpoints = Dashboard.newDriverProfileSetpoints.get();
       SwerveUtils.updateDriverProfile(setpoints);
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
-    }
-
-    drivetrain.determineGoalPose();
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
     isEnabled0 = isEnabled;
     isEnabled = isAutonomousEnabled() || isTeleopEnabled();
+    }
   }
 
   /**
@@ -260,14 +260,11 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() { 
     isAutonomous = false;
-      // double distance = tofSensor.getRange();
-      // // System.out.println("Distance: " + distance + " mm");
-      // tofSensor.identifySensor();
 
     if (driverController.getBButtonPressed()) {
-      // Pose2d goalPose = drivetrain.determineGoalPose();
-      // pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
-      // pathfinder.schedule();
+      Pose2d goalPose = drivetrain.determineGoalPose();
+      pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
+      pathfinder.schedule();
       drivetrain.getFinalStrafeCorrectionCommand().until(() -> isEnabled && (!isEnabled0)).schedule();
     }
 
