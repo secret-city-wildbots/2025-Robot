@@ -3,25 +3,25 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.803,
-        "y": 5.293
+        "x": 7.1374,
+        "y": 6.731
       },
       "prevControl": null,
       "nextControl": {
-        "x": 4.283046091073236,
-        "y": 4.976535934670722
+        "x": 6.887635960411235,
+        "y": 6.720140693930922
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 1.287,
-        "y": 6.94
+        "x": 7.1374,
+        "y": 6.731
       },
       "prevControl": {
-        "x": 1.8449443400018095,
-        "y": 6.5529701468779
+        "x": 7.4201500000000005,
+        "y": 6.731
       },
       "nextControl": null,
       "isLocked": false,
@@ -31,14 +31,7 @@
   "rotationTargets": [],
   "constraintZones": [],
   "pointTowardsZones": [],
-  "eventMarkers": [
-    {
-      "name": "pickupFeeder",
-      "waypointRelativePos": 0.7,
-      "endWaypointRelativePos": null,
-      "command": null
-    }
-  ],
+  "eventMarkers": [],
   "globalConstraints": {
     "maxVelocity": 2.0,
     "maxAcceleration": 2.0,
@@ -48,14 +41,14 @@
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0,
-    "rotation": -54.0
+    "velocity": 0.0,
+    "rotation": 180.0
   },
   "reversed": false,
-  "folder": "ToFeederL",
+  "folder": null,
   "idealStartingState": {
     "velocity": 0,
-    "rotation": -59.99999999999999
+    "rotation": 180.0
   },
   "useDefaultConstraints": true
 }

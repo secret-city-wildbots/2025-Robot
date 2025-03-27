@@ -22,29 +22,24 @@ import frc.robot.Subsystems.Intake;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Optional;
 
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 
-import com.playingwithfusion.TimeOfFlight;
-
 public class Robot extends TimedRobot {
   // Subsystems and major objects
   public static XboxController driverController;
   public static CommandXboxController driverCommandController;
-  private final XboxController manipController;
+  public static XboxController manipController;
   public static CommandXboxController manipCommandController;
   private final Drivetrain drivetrain;
-  // private final Arm arm;
-  // private final Intake intake;
+  private final Arm arm;
+  private final Intake intake;
   private final Compressor compressor;
   private final LED led;
   private Command autonomousCommand;
@@ -62,6 +57,7 @@ public class Robot extends TimedRobot {
   }
 
   public static MasterStates masterState = MasterStates.STOW;
+  public static MasterStates masterState0 = MasterStates.STOW;
   public static boolean scoreRight = false;
   public static boolean scoreCoral = true;
 
@@ -82,8 +78,8 @@ public class Robot extends TimedRobot {
   public static final String robotProfile = FileHelpers.readFile("/home/lvuser/calibrations/RobotProfile.txt");
   private final String[] actuatorNames = { "No_Test", "Compressor_(p)", "Drive_0_(p)", "Drive_1_(p)", "Drive_2_(p)",
       "Drive_3_(p)",
-      "Azimuth_0_(p)", "Azimuth_1_(p)", "Azimuth_2_(p)", "Azimuth_3_(p)", "Swerve_0_Shifter_(b)",
-      "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)", "Drivetrain_(p)", "Wrist_(p)", "Pivot_(p)", "Extender_(p)", "Intake_(p)"};
+      "Azimuth_0_(p)", "Azimuth_1_(p)", "Azimuth_2_(p)", "Azimuth_3_(p)", "Swerve_Shifter_(b)", 
+      "Drivetrain_(p)", "Wrist_(p)", "Pivot_(p)", "Extender_(p)", "Intake_(p)"};
   public static final String[] legalDrivers = { "Devin", "Reed", "Driver 3", "Driver 4", "Driver 5", "Programmers",
       "Kidz" };
   public final String[] legalAutoPlays;
@@ -92,36 +88,36 @@ public class Robot extends TimedRobot {
   public static double loopTime_ms = 20;
   private static double loopTime0 = System.currentTimeMillis();
 
+  public static boolean isEnabled = false;
+  public static boolean isEnabled0 = false;
+  public static boolean isAutonomous = false;
   // Dashboard variables
   private double selectedDriver0 = 0;
-
-  // TOF Test
-  private TimeOfFlight tofSensor;
-  private final int tofSensorID = 7;
 
   /**
    * This is called when the robot is initalized
    */
   public Robot() {
+    // CameraServer.startAutomaticCapture();
     // Set major constants using profiles
     switch (Robot.robotProfile) {
       case "2025_Robot":
-        robotLength_m = Units.inchesToMeters(23);
-        robotWidth_m = Units.inchesToMeters(23);
-        robotLengthBumpers_m = Units.inchesToMeters(35);
-        robotWidthBumpers_m = Units.inchesToMeters(35);
+        robotLength_m = Units.inchesToMeters(23.75);
+        robotWidth_m = Units.inchesToMeters(21.75);
+        robotLengthBumpers_m = Units.inchesToMeters(33.5);
+        robotWidthBumpers_m = Units.inchesToMeters(31.5);
         break;
       case "COTS_Testbed":
-        robotLength_m = Units.inchesToMeters(23);
-        robotWidth_m = Units.inchesToMeters(23);
-        robotLengthBumpers_m = Units.inchesToMeters(35);
-        robotWidthBumpers_m = Units.inchesToMeters(35);
+        robotLength_m = Units.inchesToMeters(23.75);
+        robotWidth_m = Units.inchesToMeters(21.75);
+        robotLengthBumpers_m = Units.inchesToMeters(29.5);
+        robotWidthBumpers_m = Units.inchesToMeters(31.5);
         break;
       default:
-        robotLength_m = Units.inchesToMeters(23);
-        robotWidth_m = Units.inchesToMeters(23);
-        robotLengthBumpers_m = Units.inchesToMeters(35);
-        robotWidthBumpers_m = Units.inchesToMeters(35);
+        robotLength_m = Units.inchesToMeters(23.75);
+        robotWidth_m = Units.inchesToMeters(21.75);
+        robotLengthBumpers_m = Units.inchesToMeters(29.5);
+        robotWidthBumpers_m = Units.inchesToMeters(31.5);
     }
     
     // Set up subsystems and major objects
@@ -131,13 +127,13 @@ public class Robot extends TimedRobot {
     manipCommandController = new CommandXboxController(1);
     manipController = new XboxController(1);
     drivetrain = new Drivetrain();
-    // arm = new Arm();
-    // intake = new Intake();
+    arm = new Arm();
+    intake = new Intake();
     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
-    legalAutoPlays = new String[Filesystem.getDeployDirectory().listFiles()[0].listFiles()[2].listFiles().length];
+    legalAutoPlays = new String[new File((Filesystem.getDeployDirectory().toString().concat("/pathplanner/autos"))).listFiles().length];
     int i = 0;
-    for (File file : Filesystem.getDeployDirectory().listFiles()[0].listFiles()[2].listFiles()) {
+    for (File file : new File((Filesystem.getDeployDirectory().toString().concat("/pathplanner/autos"))).listFiles()) {
       legalAutoPlays[i] = file.getName().substring(0, file.getName().length() - 5);
       i += 1;
     }
@@ -175,8 +171,6 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     getSensors();
     FollowPathCommand.warmupCommand().schedule();
-
-    tofSensor = new TimeOfFlight(tofSensorID);
   }
 
   /**
@@ -187,11 +181,11 @@ public class Robot extends TimedRobot {
     // Start by updating all sensor values
     getSensors();
 
-    CommandScheduler.getInstance().run();
-
     updateMasterState();
 
-    boolean[] confirmedStates = new boolean[5];
+    CommandScheduler.getInstance().run();
+
+    boolean[] confirmedStates = new boolean[]{false, false, false, false};
     confirmedStates[masterState.ordinal()] = true;
     Dashboard.confirmedMasterStates.set(confirmedStates);
     Dashboard.isAutonomous.set(isAutonomous());
@@ -209,6 +203,8 @@ public class Robot extends TimedRobot {
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
+    isEnabled0 = isEnabled;
+    isEnabled = isAutonomousEnabled() || isTeleopEnabled();
   }
 
   /**
@@ -216,12 +212,13 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void disabledPeriodic() {
+    CommandScheduler.getInstance().disable();
     updateOutputs();
   }
 
   @Override
   public void autonomousInit() {
-    System.out.println(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
+    CommandScheduler.getInstance().enable();
     autonomousCommand = new PathPlannerAuto(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
 
     if (autonomousCommand != null) {
@@ -235,23 +232,31 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     updateOutputs();
+    isAutonomous = isAutonomous();
+  }
+
+  @Override
+  public void teleopInit() {
+    CommandScheduler.getInstance().enable();
+    CommandScheduler.getInstance().cancelAll();
+    ArmCommands.stow(arm).schedule();
   }
 
   /**
    * This is called every loop cycle while the robot is enabled in TeleOp mode
    */
   @Override
-  public void teleopPeriodic() {  
-    @SuppressWarnings("unused")
-      double distance = tofSensor.getRange();
-      // System.out.println("Distance: " + distance + " mm");
-      tofSensor.identifySensor();
+  public void teleopPeriodic() { 
+    isAutonomous = false;
+      // double distance = tofSensor.getRange();
+      // // System.out.println("Distance: " + distance + " mm");
+      // tofSensor.identifySensor();
 
     if (driverController.getBButtonPressed()) {
-      Pose2d goalPose = drivetrain.determineGoalPose();
-      pathfinder = drivetrain.getPathFindingCommand(goalPose);
-      pathfinder.schedule();
-      drivetrain.getFinalStrafeCorrectionCommand().schedule();
+      // Pose2d goalPose = drivetrain.determineGoalPose();
+      // pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
+      // pathfinder.schedule();
+      drivetrain.getFinalStrafeCorrectionCommand().until(() -> isEnabled && (!isEnabled0)).schedule();
     }
 
     // Check for state updates based on manip inputs
@@ -270,8 +275,8 @@ public class Robot extends TimedRobot {
    */
   private void getSensors() {
     drivetrain.updateSensors();
-    // arm.updateSensors(manipController);
-    // intake.updateSensors();
+    arm.updateSensors();
+    intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -281,8 +286,8 @@ public class Robot extends TimedRobot {
   private void updateOutputs() {
     drivetrain.updateOutputs(isAutonomous());
     led.updateOutputs();
-    // arm.updateOutputs();
-    // intake.updateOutputs();
+    arm.updateOutputs();
+    intake.updateOutputs();
   }
 
   /**
@@ -296,6 +301,7 @@ public class Robot extends TimedRobot {
      * Right Trigger: SCOR
      * Up joysticks & Left Trigger: CLMB
      */
+    masterState0 = masterState;
     if (manipController.getLeftBumperButtonPressed()) {
       masterState = MasterStates.STOW;
     } else if (manipController.getRightBumperButtonPressed()) {
@@ -308,8 +314,10 @@ public class Robot extends TimedRobot {
 
     if (manipController.getRawButtonPressed(7)) {
       scoreCoral = true;
+      Dashboard.scoreCoral.set(scoreCoral);
     } else if (manipController.getRawButtonPressed(8)) {
       scoreCoral = false;
+      Dashboard.scoreCoral.set(scoreCoral);
     }
 
     if (manipController.getRightStickButtonPressed()) {
@@ -336,11 +344,27 @@ public class Robot extends TimedRobot {
    * Use this method to register named commands for path planner.
    */
   private void registerNamedCommands() {
-    NamedCommands.registerCommand("strafeAssistScoreLeft", DrivetrainCommands.strafeAssistScoreLeft(drivetrain));
-    NamedCommands.registerCommand("strafeAssistFeeder", Commands.print("strafeAssistFeeder"));
-    NamedCommands.registerCommand("strafeAssistScoreRight", Commands.print("strafeAssistScoreRight"));
-    NamedCommands.registerCommand("scoreL4", Commands.print("scoreL4"));
-    NamedCommands.registerCommand("pickupFeeder", Commands.print("pickupFeeder"));
+    NamedCommands.registerCommand("strafeAssistScoreLeft", 
+      Commands.parallel(
+          DrivetrainCommands.strafeAssistScoreLeft(drivetrain),
+        Commands.sequence(
+          Commands.waitSeconds(0.5),
+          ArmCommands.scoreL4(arm, intake, drivetrain)
+        )
+      )
+    );
+    NamedCommands.registerCommand("strafeAssistScoreRight", 
+      Commands.parallel(
+        DrivetrainCommands.strafeAssistScoreRight(drivetrain), 
+        Commands.sequence(
+          Commands.waitSeconds(0.5),
+          ArmCommands.scoreL4(arm, intake, drivetrain)
+        )
+      )
+    );
+    // NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
+    NamedCommands.registerCommand("pickupFeeder", 
+        DrivetrainCommands.pickupFeeder(drivetrain, arm, intake));
   }
 
   /**
@@ -348,8 +372,8 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-    // driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
-    // driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
-    // driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
+    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
+    driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
+    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
   }
 }
