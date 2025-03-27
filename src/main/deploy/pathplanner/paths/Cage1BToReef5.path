@@ -3,25 +3,25 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 8.014,
-        "y": 5.125
+        "x": 7.145,
+        "y": 4.815
       },
       "prevControl": null,
       "nextControl": {
-        "x": 6.983936586366734,
-        "y": 5.204983528362505
+        "x": 6.9764116050892016,
+        "y": 4.999602148149475
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 5.23575,
-        "y": 5.3315
+        "x": 5.226639344262295,
+        "y": 5.343647540983607
       },
       "prevControl": {
-        "x": 6.165270580887359,
-        "y": 4.760084590315816
+        "x": 6.193200148315322,
+        "y": 4.573062166740851
       },
       "nextControl": null,
       "isLocked": false,
@@ -31,14 +31,7 @@
   "rotationTargets": [],
   "constraintZones": [],
   "pointTowardsZones": [],
-  "eventMarkers": [
-    {
-      "name": "scoreL4",
-      "waypointRelativePos": 0.7,
-      "endWaypointRelativePos": null,
-      "command": null
-    }
-  ],
+  "eventMarkers": [],
   "globalConstraints": {
     "maxVelocity": 2.0,
     "maxAcceleration": 2.0,
@@ -55,7 +48,7 @@
   "folder": "Starting Paths to Reef 5",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 179.1319485502545
+    "rotation": 180.0
   },
   "useDefaultConstraints": true
 }

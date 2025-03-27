@@ -7,67 +7,25 @@
         {
           "type": "path",
           "data": {
-            "pathName": "WallBToReef5"
+            "pathName": "WallBStartingLocation"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "strafeAssistScoreRight"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Reef5ToFeederL"
+            "name": "strafeAssistScoreLeft"
           }
         },
         {
           "type": "named",
           "data": {
-            "name": "strafeAssistFeeder"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "FeederLToReef6"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "strafeAssistScoreRight"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Reef6ToFeederL"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "strafeAssistFeeder"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "FeederLToReef6"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "strafeAssistScoreRight"
+            "name": "pickupFeeder"
           }
         }
       ]
     }
   },
-  "resetOdom": true,
+  "resetOdom": false,
   "folder": "3PieceLeft",
   "choreoAuto": false
 }
