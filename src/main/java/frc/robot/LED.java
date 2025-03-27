@@ -17,7 +17,15 @@ public class LED {
 
     public final int numberOfLEDs;
     public final int numStrips;
-    public final int id;
+
+    public static enum StripIDs {
+        AFRAME,
+        EXT
+    };
+
+    public final StripIDs id;
+
+    public final double[][] teamColors = {{255,0,153}, {71,143,205}, {118,255,3}, {247,235,18}};
 
     private final double[] oceanHSV = {180, 1, 1};
     private final double[] darkSkyHSV = {239, 0.94, 0.19};
@@ -74,7 +82,7 @@ public class LED {
      * Creates a new LED object to control LED outputs
      * count * numStrips = total LED's
      */
-    public LED(int count, int numStrips, int id, int port) {
+    public LED(int count, int numStrips, StripIDs id, int startLed) {
         numberOfLEDs = count;
         this.numStrips = numStrips;
         this.id = id;
@@ -82,13 +90,20 @@ public class LED {
         ledBuffer = new AddressableLEDBuffer(numberOfLEDs * numStrips);
         priorLedBuffer = new AddressableLEDBuffer(numberOfLEDs * numStrips);
 
-        m_led = new AddressableLED(port);
+        m_led = new AddressableLED(0);
 
         m_led.setLength(numberOfLEDs * numStrips);
 
         for (int i = 0; i < numberOfLEDs; i++) {
-            double[] grb = LEDHelpers.rgbtogrb(255, 0, 255);
-            ledBuffer.setRGB(i, (int) grb[0], (int) grb[1], (int) grb[2]);
+            if (i <= numberOfLEDs/4) {
+                LEDHelpers.setLED(ledBuffer, i, teamColors[0]);
+            } else if (i < numberOfLEDs/2 && i > numberOfLEDs/4) {
+                LEDHelpers.setLED(ledBuffer, i, teamColors[1]);
+            } else if (i < numberOfLEDs/3*4 && i > numberOfLEDs/2) {
+                LEDHelpers.setLED(ledBuffer, i, teamColors[2]);
+            } else {
+                LEDHelpers.setLED(ledBuffer, i, teamColors[3]);
+            }
         }
 
         m_led.setData(ledBuffer);
@@ -118,7 +133,7 @@ public class LED {
         }
 
         //update LED strip specific states
-        if (id == 1) {
+        if (id == StripIDs.EXT) {
             switch (Robot.masterState) {
                 case CLMB:
                     LEDArmGameState = LEDArmGameStates.CLIMB;
@@ -132,87 +147,96 @@ public class LED {
         switch (ledState) {
             case NORMAL:
                 // Normal
-                if (id == 1) {
-                    switch (LEDArmGameState) {
-                        case NORMAL:
-                            double[] bgRGB;
-                            switch (Robot.masterState) {
-                                case STOW:
-                                    bgRGB = LEDHelpers.hsvToRgb(scoreBackgroundHSV);
-                                    if (atPos) {
-                                        animationIndex2+=0.1; // 1/2 second per toggle of LED
-                                        if (animationIndex2 > 2) {
-                                            animationIndex2 = 0;
+                switch (id) {
+                    case EXT:
+                        switch (LEDArmGameState) {
+                            case NORMAL:
+                                double[] bgRGB;
+                                switch (Robot.masterState) {
+                                    case SCOR:
+                                        bgRGB = LEDHelpers.hsvToRgb(scoreBackgroundHSV);
+                                        if (atPos) {
+                                            animationIndex2+=0.1; // 1/2 second per toggle of LED
+                                            if (animationIndex2 > 2) {
+                                                animationIndex2 = 0;
+                                            }
+                                        } else {
+                                            animationIndex2 = -1;
+                                        }
+                                        break;
+                                    case FEED:
+                                        bgRGB = LEDHelpers.hsvToRgb(feedBackgroundHSV);
+                                        if (atPos) {
+                                            animationIndex2+=0.1; // 1/2 second per toggle of LED
+                                            if (animationIndex2 > 2) {
+                                                animationIndex2 = 0;
+                                            }
+                                        } else {
+                                            animationIndex2 = -1;
+                                        }
+                                        break;
+                                    default:
+                                        bgRGB = LEDHelpers.hsvToRgb(stowBackgroundHSV);
+                                        animationIndex2 = -1;
+                                }
+
+                                if (animationIndex2 > 1) {
+                                    bgRGB = new double[] {0,0,0};
+                                }
+
+                                //update chaser state
+                                //TODO
+                                boolean swerveFaults = Drivetrain.driveFaults[0] || Drivetrain.driveFaults[1] || Drivetrain.driveFaults[2] || Drivetrain.driveFaults[3] || Drivetrain.azimuthFaults[0] || Drivetrain.azimuthFaults[1] || Drivetrain.azimuthFaults[2] || Drivetrain.azimuthFaults[3];
+                                if (Robot.loopTime_ms > 50 || swerveFaults) { //critical conditions
+                                    chaserState = ChaserStates.CRITICAL;
+                                } else if (Robot.loopTime_ms > 30) { //warning conditions
+                                    chaserState = ChaserStates.WARNING;
+                                } else { //if none are met, chaser is nominal
+                                    chaserState = ChaserStates.NOMINAL;
+                                }
+
+                                //update chaser color based on chaser state
+                                double[] chaserRGB;
+                                switch (chaserState) {
+                                    case CRITICAL:
+                                        chaserRGB = LEDHelpers.hsvToRgb(criticalChaserHSV);
+                                        break;
+                                    case WARNING:
+                                        chaserRGB = LEDHelpers.hsvToRgb(warningChaserHSV);
+                                        break;
+                                    default:
+                                        chaserRGB = LEDHelpers.hsvToRgb(nominalChaserHSV);
+                                        break;
+                                }
+
+                                // set all LED's to the bg color, except the chaser which is chaserRGB
+                                for (int i = 0; i < ledBuffer.getLength(); i++) {
+                                    if (i == Math.floor(animationIndex) || i < 2) {
+                                        LEDHelpers.setLED(ledBuffer, i, chaserRGB);
+                                        if (i > 2) {
+                                            LEDHelpers.setLED(ledBuffer, i-1, new double[] {0,0,0});
                                         }
                                     } else {
-                                        animationIndex2 = -1;
+                                        LEDHelpers.setLED(ledBuffer, i, bgRGB);
                                     }
-                                    break;
-                                case FEED:
-                                    bgRGB = LEDHelpers.hsvToRgb(feedBackgroundHSV);
-                                    animationIndex2 = -1;
-                                    break;
-                                default:
-                                    bgRGB = LEDHelpers.hsvToRgb(stowBackgroundHSV);
-                                    animationIndex2 = -1;
-                            }
-
-                            if (animationIndex2 > 1) {
-                                bgRGB = new double[] {0,0,0};
-                            }
-
-                            //update chaser state
-                            //TODO
-                            boolean swerveFaults = Drivetrain.driveFaults[0] || Drivetrain.driveFaults[1] || Drivetrain.driveFaults[2] || Drivetrain.driveFaults[3] || Drivetrain.azimuthFaults[0] || Drivetrain.azimuthFaults[1] || Drivetrain.azimuthFaults[2] || Drivetrain.azimuthFaults[3];
-                            if (Robot.loopTime_ms > 50 || swerveFaults) { //critical conditions
-                                chaserState = ChaserStates.CRITICAL;
-                            } else if (Robot.loopTime_ms > 30) { //warning conditions
-                                chaserState = ChaserStates.WARNING;
-                            } else { //if none are met, chaser is nominal
-                                chaserState = ChaserStates.NOMINAL;
-                            }
-
-                            //update chaser color based on chaser state
-                            double[] chaserRGB;
-                            switch (chaserState) {
-                                case CRITICAL:
-                                    chaserRGB = LEDHelpers.hsvToRgb(criticalChaserHSV);
-                                    break;
-                                case WARNING:
-                                    chaserRGB = LEDHelpers.hsvToRgb(warningChaserHSV);
-                                    break;
-                                default:
-                                    chaserRGB = LEDHelpers.hsvToRgb(nominalChaserHSV);
-                                    break;
-                            }
-
-                            // set all LED's to the bg color, except the chaser which is chaserRGB
-                            for (int i = 0; i < ledBuffer.getLength(); i++) {
-                                if (i == Math.floor(animationIndex) || i < 2) {
-                                    LEDHelpers.setLED(ledBuffer, i, chaserRGB);
-                                    if (i > 2) {
-                                        LEDHelpers.setLED(ledBuffer, i-1, new double[] {0,0,0});
-                                    }
-                                } else {
-                                    LEDHelpers.setLED(ledBuffer, i, bgRGB);
                                 }
-                            }
 
-                            animationIndex += 0.5;
-                            if (animationIndex >= numberOfLEDs) {
-                                animationIndex = 2;
-                            }
-                            break;
-                        case CLIMB:
-                            for (int i = 0; i < ledBuffer.getLength(); i++) {
-                                double t = time - (160 * 1000);
-                                double[] hsv = (i > ((4*Math.sin(Math.PI*t/2000))+(t/1000))/20*ledBuffer.getLength()) ? darkSkyHSV:oceanHSV; //makes a nice wave effect
-                                double[] rgb = LEDHelpers.hsvToRgb(hsv);
-                                LEDHelpers.setLED(ledBuffer, 0, rgb);
-                            }
-                    }
-                } else if (id == 2) {
-
+                                animationIndex += 0.5;
+                                if (animationIndex >= numberOfLEDs) {
+                                    animationIndex = 2;
+                                }
+                                break;
+                            case CLIMB:
+                                for (int i = 0; i < ledBuffer.getLength(); i++) {
+                                    double t = time - (160 * 1000);
+                                    double[] hsv = (i > ((4*Math.sin(Math.PI*t/2000))+(t/1000))/20*ledBuffer.getLength()) ? darkSkyHSV:oceanHSV; //makes a nice wave effect
+                                    double[] rgb = LEDHelpers.hsvToRgb(hsv);
+                                    LEDHelpers.setLED(ledBuffer, 0, rgb);
+                                }
+                        }
+                        break;
+                    case AFRAME:
+                        break;
                 }
                 break;
             case PARTY:

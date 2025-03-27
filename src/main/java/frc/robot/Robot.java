@@ -17,11 +17,13 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Commands.ArmCommands;
 import frc.robot.Commands.DrivetrainCommands;
+import frc.robot.LED.StripIDs;
 import frc.robot.Subsystems.Drivetrain;
 import frc.robot.Subsystems.Intake;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
+import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
@@ -42,9 +44,9 @@ public class Robot extends TimedRobot {
   public static CommandXboxController driverCommandController;
   private final XboxController manipController;
   public static CommandXboxController manipCommandController;
-  private final Drivetrain drivetrain;
-  private final Arm arm;
-  private final Intake intake;
+  //private final Drivetrain drivetrain;
+  //private final Arm arm;
+  //private final Intake intake;
   private final Compressor compressor;
   private LED[] ledStrips = null;
   private Command autonomousCommand;
@@ -86,7 +88,7 @@ public class Robot extends TimedRobot {
       "Swerve_1_Shifter_(b)", "Swerve_2_Shifter_(b)", "Swerve_3_Shifter_(b)", "Drivetrain_(p)", "Wrist_(p)", "Pivot_(p)", "Extender_(p)", "Intake_(p)"};
   public static final String[] legalDrivers = { "Devin", "Reed", "Driver 3", "Driver 4", "Driver 5", "Programmers",
       "Kidz" };
-  public final String[] legalAutoPlays;
+  //public final String[] legalAutoPlays;
 
   // Looptime tracking
   public static double loopTime_ms = 20;
@@ -105,6 +107,8 @@ public class Robot extends TimedRobot {
    * This is called when the robot is initalized
    */
   public Robot() {
+    CameraServer.startAutomaticCapture();
+
     // Set major constants using profiles
     switch (Robot.robotProfile) {
       case "2025_Robot":
@@ -112,7 +116,7 @@ public class Robot extends TimedRobot {
         robotWidth_m = Units.inchesToMeters(23);
         robotLengthBumpers_m = Units.inchesToMeters(35);
         robotWidthBumpers_m = Units.inchesToMeters(35);
-        ledStrips = new LED[] {new LED(14,1,1,0)};
+        ledStrips = new LED[] {new LED(24,1,StripIDs.EXT,0)};
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23);
@@ -121,7 +125,7 @@ public class Robot extends TimedRobot {
         robotWidthBumpers_m = Units.inchesToMeters(35);
         break;
       case "Linguini":
-        ledStrips = new LED[] {new LED(19,1,1,0)};
+        ledStrips = new LED[] {new LED(24,1,StripIDs.EXT,0)};
       default:
         robotLength_m = Units.inchesToMeters(23);
         robotWidth_m = Units.inchesToMeters(23);
@@ -135,18 +139,18 @@ public class Robot extends TimedRobot {
      driverCommandController = new CommandXboxController(0);
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
-    drivetrain = new Drivetrain();
-     arm = new Arm();
-    intake = new Intake();
+    //drivetrain = new Drivetrain();
+     //arm = new Arm();
+    //intake = new Intake();
     compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
-    legalAutoPlays = new String[Filesystem.getDeployDirectory().listFiles()[0].listFiles()[2].listFiles().length];
+    /*legalAutoPlays = new String[Filesystem.getDeployDirectory().listFiles()[0].listFiles()[2].listFiles().length];
     int i = 0;
     for (File file : Filesystem.getDeployDirectory().listFiles()[0].listFiles()[2].listFiles()) {
       legalAutoPlays[i] = file.getName().substring(0, file.getName().length() - 5);
       i += 1;
     }
-    Arrays.sort(legalAutoPlays);
+    Arrays.sort(legalAutoPlays);*/
 
     // Send major constants to the Dashboard
     if (DriverStation.getAlliance().isPresent()) {
@@ -212,7 +216,7 @@ public class Robot extends TimedRobot {
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
     }
 
-    drivetrain.determineGoalPose();
+    //drivetrain.determineGoalPose();
 
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
@@ -228,8 +232,8 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousInit() {
-    System.out.println(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
-    autonomousCommand = new PathPlannerAuto(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
+    //System.out.println(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
+    //autonomousCommand = new PathPlannerAuto(legalAutoPlays[(int)Dashboard.selectedAutoPlay.get()]);
     if (startTime == 0) {
       startTime = System.currentTimeMillis();
     }
@@ -263,12 +267,12 @@ public class Robot extends TimedRobot {
       double distance = tofSensor.getRange();
       tofSensor.identifySensor();
 
-    if (driverController.getBButtonPressed()) {
+    /*if (driverController.getBButtonPressed()) {
       Pose2d goalPose = drivetrain.determineGoalPose();
       pathfinder = drivetrain.getPathFindingCommand(goalPose);
       pathfinder.schedule();
       drivetrain.getFinalStrafeCorrectionCommand().schedule();
-    }
+    }*/
 
     elapsedTime = System.currentTimeMillis() - startTime;
 
@@ -284,9 +288,9 @@ public class Robot extends TimedRobot {
    * 
    */
   private void getSensors() {
-    drivetrain.updateSensors();
-    arm.updateSensors(manipController);
-    intake.updateSensors();
+    //drivetrain.updateSensors();
+    //arm.updateSensors(manipController);
+    //intake.updateSensors();
     Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
@@ -294,15 +298,15 @@ public class Robot extends TimedRobot {
    * 
    */
   private void updateOutputs() {
-    drivetrain.updateOutputs(isAutonomous());
+    //drivetrain.updateOutputs(isAutonomous());
     if (ledStrips.length > 0) {
       for (int i = 0; i < ledStrips.length; i++) {
         ledStrips[i].updateLED(driverController, false, elapsedTime, true);//arm.hasArrived() && drivetrain.poseAccuracyGetter());
         ledStrips[i].updateOutputs();
       }
     }
-    arm.updateOutputs();
-    intake.updateOutputs();
+    //arm.updateOutputs();
+    //intake.updateOutputs();
   }
 
   /**
@@ -345,18 +349,18 @@ public class Robot extends TimedRobot {
   }
 
   private void configureDefaultCommands() {
-    drivetrain.setDefaultCommand(
+    /*drivetrain.setDefaultCommand(
         DrivetrainCommands.drive(
             drivetrain,
             driverController,
-            manipController));
+            manipController));*/
   }
 
   /**
    * Use this method to register named commands for path planner.
    */
   private void registerNamedCommands() {
-    NamedCommands.registerCommand("strafeAssistScoreLeft", DrivetrainCommands.strafeAssistScoreLeft(drivetrain));
+    //NamedCommands.registerCommand("strafeAssistScoreLeft", DrivetrainCommands.strafeAssistScoreLeft(drivetrain));
     NamedCommands.registerCommand("strafeAssistFeeder", Commands.print("strafeAssistFeeder"));
     NamedCommands.registerCommand("strafeAssistScoreRight", Commands.print("strafeAssistScoreRight"));
     NamedCommands.registerCommand("scoreL4", Commands.print("scoreL4"));
@@ -368,8 +372,8 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm, drivetrain));
+    /*driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm, drivetrain));
     driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm, drivetrain));
-    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
+    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));*/
   }
 }
