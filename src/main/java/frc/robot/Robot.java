@@ -111,7 +111,7 @@ public class Robot extends TimedRobot {
         robotWidth_m = Units.inchesToMeters(21.75);
         robotLengthBumpers_m = Units.inchesToMeters(33.5);
         robotWidthBumpers_m = Units.inchesToMeters(31.5);
-        ledStrips = new LED[] {new LED(24,1,StripIDs.EXT,0)};
+        ledStrips = new LED[] {new LED(22,1,StripIDs.EXT,0)};
         break;
       case "COTS_Testbed":
         robotLength_m = Units.inchesToMeters(23.75);
@@ -120,7 +120,7 @@ public class Robot extends TimedRobot {
         robotWidthBumpers_m = Units.inchesToMeters(31.5);
         break;
       case "Linguini":
-        ledStrips = new LED[] {new LED(24,1,StripIDs.EXT,0)};
+        ledStrips = new LED[] {new LED(22,1,StripIDs.EXT,0)};
       default:
         robotLength_m = Units.inchesToMeters(23.75);
         robotWidth_m = Units.inchesToMeters(21.75);
@@ -296,7 +296,7 @@ public class Robot extends TimedRobot {
     drivetrain.updateOutputs(isAutonomous());
     if (ledStrips.length > 0) {
       for (int i = 0; i < ledStrips.length; i++) {
-        ledStrips[i].updateLED(driverController, false, elapsedTime, true);//arm.hasArrived() && drivetrain.poseAccuracyGetter());
+        ledStrips[i].updateLED(driverController, false, elapsedTime, arm.closeEnough() && Drivetrain.poseAccuracyGetter());
         ledStrips[i].updateOutputs();
       }
     }
