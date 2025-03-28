@@ -32,6 +32,7 @@ public class DrivetrainCommands {
     public static Command strafeAssistScoreLeft(Drivetrain drivetrain) {
       return Commands.sequence(
         Commands.runOnce(() -> {
+          Robot.scoreCoral0 = Robot.scoreCoral;
           Robot.scoreCoral = true;
           Dashboard.scoreCoral.set(Robot.scoreCoral);
           Robot.scoreRight = false;
@@ -43,6 +44,7 @@ public class DrivetrainCommands {
     public static Command strafeAssistScoreRight(Drivetrain drivetrain) {
       return Commands.sequence(
         Commands.runOnce(() -> {
+          Robot.scoreCoral0 = Robot.scoreCoral;
           Robot.scoreCoral = true;
           Dashboard.scoreCoral.set(Robot.scoreCoral);
           Robot.scoreRight = true;
@@ -57,7 +59,6 @@ public class DrivetrainCommands {
           drivetrain.getAutoStrafeCorrectionCommand(true),
           
           Commands.sequence(
-            Commands.waitUntil(() -> arm.closeEnough()),
             arm.pickupFeeder().until(() -> arm.closeEnough()),
             ArmCommands.autoIntake(intake, arm).until(() -> Intake.hasPiece),
             ArmCommands.stop(),

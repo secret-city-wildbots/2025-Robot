@@ -66,24 +66,18 @@ public class ArmCommands {
     public static Command groundPickup(Arm arm) {
         return 
         Commands.sequence(
-            Commands.race(
-                Commands.either(
-                    arm.groundPickupCoral().until(() -> Intake.hasPiece && 
-                        Robot.driverController.getLeftTriggerAxis() < 0.7),
-                    arm.groundPickupAlgae().until(() -> Intake.hasPiece && 
-                        Robot.driverController.getLeftTriggerAxis() < 0.7),
-                    () -> Robot.scoreCoral
-                ),
-                Commands.sequence(
-                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() > 0.7),
-                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7)
-                )
+            Commands.either(
+                arm.groundPickupCoral().until(() -> arm.closeEnough()),
+                arm.groundPickupAlgae().until(() -> arm.closeEnough()),
+                () -> Robot.scoreCoral
             ),
             Commands.either(
                 LED.hasPieceBlink(), //blink LEDs when robot has piece
                 Commands.startEnd(() -> {}, () -> {}),
                 () -> Intake.hasPiece
             ),
+            Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() > 0.7),
+            Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7),
             Commands.runOnce(() -> Intake.hold()),
             Commands.either(
                 Commands.sequence(
@@ -94,6 +88,7 @@ public class ArmCommands {
                     arm.scoringStow()
                 ),
                 Commands.runOnce(() -> {
+                        Robot.scoreCoral0 = Robot.scoreCoral;
                         Robot.scoreCoral = true;
                         Dashboard.scoreCoral.set(Robot.scoreCoral);
                         Robot.masterState0 = Robot.masterState;
@@ -101,7 +96,7 @@ public class ArmCommands {
                     }),
                 () -> Intake.hasPiece
             )
-        );
+        ).until(() -> Robot.scoreCoral != Robot.scoreCoral0).handleInterrupt(() -> groundPickup(arm));
     }
 
     /**
@@ -156,7 +151,11 @@ public class ArmCommands {
             Intake intake,
             Arm arm) {
             return Commands.sequence(
-                        Commands.waitUntil(() -> arm.hasArrived() && Drivetrain.poseAccuracyGetter() || Robot.driverController.getRightBumperButton()),
+                        Commands.waitUntil(() -> 
+                        (Robot.driverController.getRightTriggerAxis() > 0.7 
+                            && arm.hasArrived() 
+                            && Drivetrain.poseAccuracyGetter()) 
+                        || Robot.driverController.getRightBumperButton()),
                         Commands.runOnce(() -> intake.outtake(), intake),
                         Commands.waitSeconds(0.5),
                         Commands.waitUntil(() -> 
@@ -168,18 +167,28 @@ public class ArmCommands {
                     );
         }
 
+    public static Command autoOuttake(
+        Intake intake,
+        Arm arm) {
+        return Commands.sequence(
+                    Commands.runOnce(() -> intake.outtake(), intake),
+                    Commands.waitSeconds(0.5),
+                    stop()
+                );
+    }
+
     public static Command scoreL4(
             Arm arm,
             Intake intake,
             Drivetrain drivetrain) {
                 return Commands.sequence(
-                    Commands.runOnce(() -> {Robot.scoreCoral = true; Dashboard.scoreCoral.set(Robot.scoreCoral); Arm.scoreHeight = 4;}),
+                    Commands.runOnce(() -> {Robot.scoreCoral0 = Robot.scoreCoral; Robot.scoreCoral = true; Dashboard.scoreCoral.set(Robot.scoreCoral); Arm.scoreHeight = 4;}),
                     Commands.sequence(
                         Commands.runOnce(() -> 
-                            {arm.updatePivot(Rotation2d.fromDegrees(-5));
-                            arm.updateExtender(Units.inchesToMeters(37.1));}),
+                            {arm.updatePivot(Rotation2d.fromDegrees(-1.9));
+                            arm.updateExtender(Units.inchesToMeters(37.6));}),
                         Commands.waitUntil(() -> arm.closeEnough()),
-                        Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(67)))
+                        Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(59.9)))
                     ),
                     Commands.race(
                         Commands.sequence(
@@ -188,14 +197,14 @@ public class ArmCommands {
                         ),
                         Commands.waitSeconds(4)
                     ),
-                    outtake(intake, arm),
+                    autoOuttake(intake, arm),
                     Commands.sequence(
                         Commands.runOnce(() -> {
                             arm.updatePivot(Rotation2d.fromDegrees(-25));
                             arm.updateWrist(Rotation2d.fromDegrees(25));
                         }, arm),
                         Commands.waitUntil(() -> arm.closeEnough()),
-                        Commands.runOnce(() -> arm.updateExtender(0.0))
+                        Commands.runOnce(() -> arm.updateExtender(-0.2))
                     )
                 );
             }
