@@ -62,6 +62,7 @@ public class Robot extends TimedRobot {
   public static MasterStates masterState0 = MasterStates.STOW;
   public static boolean scoreRight = false;
   public static boolean scoreCoral = true;
+  public static boolean scoreCoral0 = true;
 
   // Major constants
   private final String codeVersion = "2025-Robot v1.1_dev";
@@ -326,9 +327,11 @@ public class Robot extends TimedRobot {
     }
 
     if (manipController.getRawButtonPressed(7)) {
+      scoreCoral0 = scoreCoral;
       scoreCoral = true;
       Dashboard.scoreCoral.set(scoreCoral);
     } else if (manipController.getRawButtonPressed(8)) {
+      scoreCoral0 = scoreCoral;
       scoreCoral = false;
       Dashboard.scoreCoral.set(scoreCoral);
     }

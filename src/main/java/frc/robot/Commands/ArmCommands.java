@@ -65,19 +65,13 @@ public class ArmCommands {
     public static Command groundPickup(Arm arm) {
         return 
         Commands.sequence(
-            Commands.race(
-                Commands.either(
-                    arm.groundPickupCoral().until(() -> Intake.hasPiece && 
-                        Robot.driverController.getLeftTriggerAxis() < 0.7),
-                    arm.groundPickupAlgae().until(() -> Intake.hasPiece && 
-                        Robot.driverController.getLeftTriggerAxis() < 0.7),
-                    () -> Robot.scoreCoral
-                ),
-                Commands.sequence(
-                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() > 0.7),
-                    Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7)
-                )
+            Commands.either(
+                arm.groundPickupCoral().until(() -> arm.closeEnough()),
+                arm.groundPickupAlgae().until(() -> arm.closeEnough()),
+                () -> Robot.scoreCoral
             ),
+            Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() > 0.7),
+            Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7),
             Commands.runOnce(() -> Intake.hold()),
             Commands.either(
                 Commands.sequence(
@@ -88,6 +82,7 @@ public class ArmCommands {
                     arm.scoringStow()
                 ),
                 Commands.runOnce(() -> {
+                        Robot.scoreCoral0 = Robot.scoreCoral;
                         Robot.scoreCoral = true;
                         Dashboard.scoreCoral.set(Robot.scoreCoral);
                         Robot.masterState0 = Robot.masterState;
@@ -95,7 +90,7 @@ public class ArmCommands {
                     }),
                 () -> Intake.hasPiece
             )
-        );
+        ).until(() -> Robot.scoreCoral != Robot.scoreCoral0).handleInterrupt(() -> groundPickup(arm));
     }
 
     /**
@@ -181,7 +176,7 @@ public class ArmCommands {
             Intake intake,
             Drivetrain drivetrain) {
                 return Commands.sequence(
-                    Commands.runOnce(() -> {Robot.scoreCoral = true; Dashboard.scoreCoral.set(Robot.scoreCoral); Arm.scoreHeight = 4;}),
+                    Commands.runOnce(() -> {Robot.scoreCoral0 = Robot.scoreCoral; Robot.scoreCoral = true; Dashboard.scoreCoral.set(Robot.scoreCoral); Arm.scoreHeight = 4;}),
                     Commands.sequence(
                         Commands.runOnce(() -> 
                             {arm.updatePivot(Rotation2d.fromDegrees(-1.9));

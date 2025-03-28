@@ -809,17 +809,15 @@ public class Arm extends SubsystemBase {
     public Command groundPickupCoral() {
         return Commands.either(
                 // Normal movement
-                Commands.run(() -> {
-                    if (!Robot.scoreCoral) {
-                        ArmCommands.groundPickup(this).schedule();
-                    }
-                    updateArm(
-                        Units.inchesToMeters(0.8),
-                        Rotation2d.fromDegrees(-99),
-                        Rotation2d.fromDegrees(-82.7)
-                    );
-                },
-                this),
+                Commands.runOnce(
+                    () -> {
+                        Robot.masterState0 = Robot.masterState;
+                        Robot.masterState = MasterStates.STOW;
+                        updateArm(
+                            Units.inchesToMeters(0.8),
+                            Rotation2d.fromDegrees(-99),
+                            Rotation2d.fromDegrees(-82.7));},
+                        this),
                 // Stow first when needed
                 Commands.startEnd(
                 () -> updateWrist(
@@ -827,11 +825,10 @@ public class Arm extends SubsystemBase {
                 () -> {},
                 this).until(() -> closeEnough()).andThen(
                     // Then normal movement
-                    Commands.run(
+                    Commands.runOnce(
                         () -> {
-                            if (!Robot.scoreCoral) {
-                                ArmCommands.groundPickup(this).schedule();
-                            }
+                            Robot.masterState0 = Robot.masterState;
+                            Robot.masterState = MasterStates.STOW;
                             updateArm(
                             Units.inchesToMeters(0.8),
                             Rotation2d.fromDegrees(-99),
@@ -844,10 +841,9 @@ public class Arm extends SubsystemBase {
     public Command groundPickupAlgae() {
         return Commands.either(
                 // Normal movement
-                Commands.run(() -> {
-                if (Robot.scoreCoral) {
-                    ArmCommands.groundPickup(this).schedule();
-                }
+                Commands.runOnce(() -> {
+                    Robot.masterState0 = Robot.masterState;
+                    Robot.masterState = MasterStates.STOW;
                 updateArm(
                         Units.inchesToMeters(-0.4),
                         Rotation2d.fromDegrees(-76.5),
@@ -860,11 +856,10 @@ public class Arm extends SubsystemBase {
                 () -> {},
                 this).until(() -> closeEnough()).andThen(
                     // Then normal movement
-                    Commands.run(
+                    Commands.runOnce(
                         () -> {
-                            if (Robot.scoreCoral) {
-                                ArmCommands.groundPickup(this).schedule();
-                            }
+                            Robot.masterState0 = Robot.masterState;
+                            Robot.masterState = MasterStates.STOW;
                             updateArm(
                             Units.inchesToMeters(-0.4),
                             Rotation2d.fromDegrees(-76.5),
