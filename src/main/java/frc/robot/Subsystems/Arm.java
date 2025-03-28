@@ -67,9 +67,9 @@ public class Arm extends SubsystemBase {
     private final SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
     SparkMaxConfig wristConfig = new SparkMaxConfig();
-    private double kp0 = 0.0;
-    private double ki0 = 0.0;
-    private double kd0 = 0.0;
+    // private double kp0 = 0.0;
+    // private double ki0 = 0.0;
+    // private double kd0 = 0.0;
     
     // Sensor values
     private double extenderPosition_m = 0.0;
@@ -346,10 +346,13 @@ public class Arm extends SubsystemBase {
     public boolean closeEnough() {
         boolean hasArrived = false;
         if ((Math.abs(getPivotEncoderPosition().getRadians() - pivotOutput.getRadians())) < closeEnoughAngleError_rad) {
+            System.out.println("pivot");
             if ((Math.abs(extenderPosition_m - extenderOutput_m)) < closeEnoughExtensionError_m) {
+                System.out.println("extender");
                 double realWristRotation_rad = wristRotation.getRadians();
                 if (realWristRotation_rad > Math.PI) {realWristRotation_rad -= Math.PI * 2;}
                 if ((Math.abs(realWristRotation_rad - wristOutput.getRadians())) < closeEnoughAngleError_rad) {
+                    System.out.println("wrist");
                     hasArrived = true;
                 }
             }
@@ -383,17 +386,17 @@ public class Arm extends SubsystemBase {
         Dashboard.pivotTemp_C.set(pivot.getDeviceTemp().getValueAsDouble());
 
         /* PID tuning code START */
-            double kp = Dashboard.freeTuningkP.get();
-            double ki = Dashboard.freeTuningkI.get();
-            double kd = Dashboard.freeTuningkD.get();
-            if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
-            wristConfig.closedLoop.pid(kp, ki, kd);
-            wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
-            kp0 = kp;
-            ki0 = ki;
-            kd0 = kd;
-            }
-            Dashboard.pidTuningGoalActual.set(new double[] {wristOutput.getDegrees(), wristRotation.getDegrees()});
+            // double kp = Dashboard.freeTuningkP.get();
+            // double ki = Dashboard.freeTuningkI.get();
+            // double kd = Dashboard.freeTuningkD.get();
+            // if ((kp0 != kp) || (ki0 != ki) || (kd0 != kd)) {
+            // wristConfig.closedLoop.pid(kp, ki, kd);
+            // wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+            // kp0 = kp;
+            // ki0 = ki;
+            // kd0 = kd;
+            // }
+            // Dashboard.pidTuningGoalActual.set(new double[] {wristOutput.getDegrees(), wristRotation.getDegrees()});
         /* PID tuning code END */
     }
 
@@ -509,7 +512,7 @@ public class Arm extends SubsystemBase {
                 pivotFollowerConfigs[i].MotorOutput.NeutralMode = NeutralModeValue.Coast;
                 pivotFollowers[i].getConfigurator().apply(pivotFollowerConfigs[i]);
             }
-        } else if (((!unlockPivot) && unlockPivot0) || (!unlockButton.get() && unlockButton0)) {
+        } else if (((!unlockPivot) && unlockPivot0) || (!unlockButton.get() && unlockButton0) || (Robot.isEnabled && !Robot.isEnabled0)) {
             pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
             pivot.getConfigurator().apply(pivotConfig);
             for (int i = 0; i < 3; i++) {
@@ -525,7 +528,7 @@ public class Arm extends SubsystemBase {
             extender.getConfigurator().apply(extenderConfig);
             extenderFollowerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
             extenderFollower.getConfigurator().apply(extenderFollowerConfig);
-        } else if (((!unlockExtender) && unlockExtender0) || (!unlockButton.get() && unlockButton0)) {
+        } else if (((!unlockExtender) && unlockExtender0) || (!unlockButton.get() && unlockButton0) || (Robot.isEnabled && !Robot.isEnabled0)) {
             extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
             extender.getConfigurator().apply(extenderConfig);
             extenderFollowerConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -537,7 +540,7 @@ public class Arm extends SubsystemBase {
         if ((unlockWrist && (!unlockWrist0)) || (unlockButton.get() && !unlockButton0)) {
             wristConfig.idleMode(IdleMode.kCoast);
             wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-        } else if (((!unlockWrist) && unlockWrist0) || (!unlockButton.get() && unlockButton0)) {
+        } else if (((!unlockWrist) && unlockWrist0) || (!unlockButton.get() && unlockButton0) || (Robot.isEnabled && !Robot.isEnabled0)) {
             wristConfig.idleMode(IdleMode.kBrake);
             wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
         }
@@ -825,10 +828,14 @@ public class Arm extends SubsystemBase {
                 this).until(() -> closeEnough()).andThen(
                     // Then normal movement
                     Commands.run(
-                        () -> updateArm(
+                        () -> {
+                            if (!Robot.scoreCoral) {
+                                ArmCommands.groundPickup(this).schedule();
+                            }
+                            updateArm(
                             Units.inchesToMeters(0.8),
                             Rotation2d.fromDegrees(-99),
-                            Rotation2d.fromDegrees(-82.7)),
+                            Rotation2d.fromDegrees(-82.7));},
                         this)   
                 ), 
                 () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));
@@ -854,10 +861,14 @@ public class Arm extends SubsystemBase {
                 this).until(() -> closeEnough()).andThen(
                     // Then normal movement
                     Commands.run(
-                        () -> updateArm(
+                        () -> {
+                            if (Robot.scoreCoral) {
+                                ArmCommands.groundPickup(this).schedule();
+                            }
+                            updateArm(
                             Units.inchesToMeters(-0.4),
                             Rotation2d.fromDegrees(-76.5),
-                            Rotation2d.fromDegrees(-104.1)),
+                            Rotation2d.fromDegrees(-104.1));},
                         this)   
                 ), 
                 () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));

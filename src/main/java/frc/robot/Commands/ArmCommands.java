@@ -150,7 +150,11 @@ public class ArmCommands {
             Intake intake,
             Arm arm) {
             return Commands.sequence(
-                        Commands.waitUntil(() -> arm.hasArrived() && Drivetrain.poseAccuracyGetter() || Robot.driverController.getRightBumperButton()),
+                        Commands.waitUntil(() -> 
+                        (Robot.driverController.getRightTriggerAxis() > 0.7 
+                            && arm.hasArrived() 
+                            && Drivetrain.poseAccuracyGetter()) 
+                        || Robot.driverController.getRightBumperButton()),
                         Commands.runOnce(() -> intake.outtake(), intake),
                         Commands.waitSeconds(0.5),
                         Commands.waitUntil(() -> 
@@ -162,6 +166,16 @@ public class ArmCommands {
                     );
         }
 
+    public static Command autoOuttake(
+        Intake intake,
+        Arm arm) {
+        return Commands.sequence(
+                    Commands.runOnce(() -> intake.outtake(), intake),
+                    Commands.waitSeconds(0.5),
+                    stop()
+                );
+    }
+
     public static Command scoreL4(
             Arm arm,
             Intake intake,
@@ -170,10 +184,10 @@ public class ArmCommands {
                     Commands.runOnce(() -> {Robot.scoreCoral = true; Dashboard.scoreCoral.set(Robot.scoreCoral); Arm.scoreHeight = 4;}),
                     Commands.sequence(
                         Commands.runOnce(() -> 
-                            {arm.updatePivot(Rotation2d.fromDegrees(-5));
-                            arm.updateExtender(Units.inchesToMeters(37.1));}),
+                            {arm.updatePivot(Rotation2d.fromDegrees(-1.9));
+                            arm.updateExtender(Units.inchesToMeters(37.6));}),
                         Commands.waitUntil(() -> arm.closeEnough()),
-                        Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(67)))
+                        Commands.runOnce(() -> arm.updateWrist(Rotation2d.fromDegrees(59.9)))
                     ),
                     Commands.race(
                         Commands.sequence(
@@ -182,14 +196,14 @@ public class ArmCommands {
                         ),
                         Commands.waitSeconds(4)
                     ),
-                    outtake(intake, arm),
+                    autoOuttake(intake, arm),
                     Commands.sequence(
                         Commands.runOnce(() -> {
                             arm.updatePivot(Rotation2d.fromDegrees(-25));
                             arm.updateWrist(Rotation2d.fromDegrees(25));
                         }, arm),
                         Commands.waitUntil(() -> arm.closeEnough()),
-                        Commands.runOnce(() -> arm.updateExtender(0.0))
+                        Commands.runOnce(() -> arm.updateExtender(-0.2))
                     )
                 );
             }

@@ -206,12 +206,12 @@ public class Robot extends TimedRobot {
       double[] setpoints = Dashboard.newDriverProfileSetpoints.get();
       SwerveUtils.updateDriverProfile(setpoints);
       Dashboard.currentDriverProfileSetpoints.set(setpoints);
-
+    }
     updateLoopTime();
     Dashboard.loopTime.set(loopTime_ms);
     isEnabled0 = isEnabled;
     isEnabled = isAutonomousEnabled() || isTeleopEnabled();
-    }
+    
   }
 
   /**

@@ -57,7 +57,6 @@ public class DrivetrainCommands {
           drivetrain.getAutoStrafeCorrectionCommand(true),
           
           Commands.sequence(
-            Commands.waitUntil(() -> arm.closeEnough()),
             arm.pickupFeeder().until(() -> arm.closeEnough()),
             ArmCommands.autoIntake(intake, arm).until(() -> Intake.hasPiece),
             ArmCommands.stop(),
