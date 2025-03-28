@@ -21,6 +21,24 @@
           "data": {
             "name": "pickupFeeder"
           }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreLeft"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "pickupFeeder"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreRight"
+          }
         }
       ]
     }
