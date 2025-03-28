@@ -131,7 +131,7 @@ public class LED {
         // If driver presses up d-pad, increment LED state
         if ((driverController.getPOV() < 45 || driverController.getPOV() > 315) && driverController.getPOV() >= 0) {
             if (!LEDStateEdge) {
-                ledState = (ledState.equals(LEDStates.CHOOSEHUE)) ? LEDStates.NORMAL : LEDStates.values()[ledState.ordinal() + 1];
+                ledState = (ledState.equals(LEDStates.IDLE)) ? LEDStates.NORMAL : LEDStates.values()[ledState.ordinal() + 1];
                 LEDStateEdge = true;
             }
         } else {
@@ -283,15 +283,20 @@ public class LED {
                 break;
             case IDLE:
                 for (int i = 0; i < numberOfLEDs; i++) {
-                    if (i <= numberOfLEDs/4) {
-                        LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[0]);
-                    } else if (i <= numberOfLEDs/2 && i > numberOfLEDs/4) {
-                        LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[1]);
-                    } else if (i <= numberOfLEDs/4*3 && i > numberOfLEDs/2) {
-                        LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[2]);
+                    int LED = (int) Math.floor((i+animationIndex) % numberOfLEDs);
+                    if (LED <= numberOfLEDs/4) {
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[0]);
+                    } else if (LED <= numberOfLEDs/2 && LED > numberOfLEDs/4) {
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[1]);
+                    } else if (LED <= numberOfLEDs/4*3 && LED > numberOfLEDs/2) {
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[2]);
                     } else {
-                        LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[3]);
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[3]);
                     }
+                }
+                animationIndex += 0.5;
+                if (animationIndex > numberOfLEDs) {
+                    animationIndex = 0;
                 }
         }
 
