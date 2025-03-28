@@ -4,6 +4,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.*;
 import frc.robot.Dashboard;
+import frc.robot.LED;
 import frc.robot.Robot;
 import frc.robot.Robot.MasterStates;
 import frc.robot.Subsystems.Arm;
@@ -77,6 +78,11 @@ public class ArmCommands {
                     Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() > 0.7),
                     Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7)
                 )
+            ),
+            Commands.either(
+                LED.hasPieceBlink(), //blink LEDs when robot has piece
+                Commands.startEnd(() -> {}, () -> {}),
+                () -> Intake.hasPiece
             ),
             Commands.runOnce(() -> Intake.hold()),
             Commands.either(
