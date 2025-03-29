@@ -18,8 +18,10 @@ import frc.robot.Utility.ClassHelpers.Timer;
 
 public class Intake extends SubsystemBase {
     // Constants
-    private final double coralIntakeSpeed = 1;
+    private final double coralIntakeSpeed = 0.6;
     private final double coralOuttakeSpeed = -1;
+    private final double coralIntakeTopSpeed = 1;
+    private final double coralOuttakeTopSpeed = -1;
     private final double algaeIntakeSpeed = 1;
     private final double algaeOuttakeSpeed = -1;
     private final Timer stallTimer = new Timer();
@@ -33,18 +35,21 @@ public class Intake extends SubsystemBase {
 
     // Motors
     private final TalonFX intake;
+    private final TalonFX intakeTop;
 
     // Outputs
-    public static double intakeOutput;
+    public static double intakeOutput = 0;
+    public static double intakeTopOutput = 0;
 
     public Intake() {
         intake = new TalonFX(37);
+        intakeTop = new TalonFX(38);
         TalonFXConfiguration intakeConfig = new TalonFXConfiguration();
         intakeConfig.HardwareLimitSwitch.ForwardLimitSource = ForwardLimitSourceValue.RemoteCANifier;
         intakeConfig.HardwareLimitSwitch.ForwardLimitRemoteSensorID = 40;
         intakeConfig.HardwareLimitSwitch.ForwardLimitEnable = false;
         intakeConfig.HardwareLimitSwitch.ForwardLimitType = ForwardLimitTypeValue.NormallyClosed;
-        intakeConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        intakeConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive; //TODO
         intakeConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         intake.getConfigurator().apply(intakeConfig);
         outtakeTrigger.onFalse(Commands.runOnce(() -> hasPiece = false));
@@ -55,7 +60,7 @@ public class Intake extends SubsystemBase {
         if (Robot.scoreCoral) {
             if (intake.getForwardLimit().getValue().equals(ForwardLimitValue.Open) 
                     && !Dashboard.disableSafeties.get()) {
-                if (stallTimer.getTimeMillis() > 500) {
+                if (stallTimer.getTimeMillis() > 100) {
                     hasPiece = true;
                 }
             } else {
@@ -79,14 +84,16 @@ public class Intake extends SubsystemBase {
     }
 
     public void intake() {
-        intakeOutput = (Robot.scoreCoral) ? coralIntakeSpeed : algaeIntakeSpeed;
+        intakeOutput = (Robot.scoreCoral) ? coralIntakeSpeed : 0.0;
+        intakeTopOutput = (Robot.scoreCoral) ? coralIntakeTopSpeed : algaeIntakeSpeed;
         intaking = true;
         outtaking = false;
         Dashboard.intaking.set(true);
     }
 
     public void outtake() {
-        intakeOutput = (Robot.scoreCoral) ? coralOuttakeSpeed : algaeOuttakeSpeed;
+        intakeOutput = (Robot.scoreCoral) ? coralOuttakeSpeed : 0.0;
+        intakeTopOutput = (Robot.scoreCoral) ? coralOuttakeTopSpeed : algaeOuttakeSpeed;
         intaking = false;
         outtaking = true;
         Dashboard.outtaking.set(true);
@@ -94,6 +101,7 @@ public class Intake extends SubsystemBase {
 
     public static void stop() {
         intakeOutput = 0.0;
+        intakeTopOutput = 0.0;
         intaking = false;
         outtaking = false;
         Dashboard.intaking.set(false);
@@ -103,8 +111,10 @@ public class Intake extends SubsystemBase {
     public static void hold() {
         if (Robot.scoreCoral) {
             intakeOutput = 0.0;
+            intakeTopOutput = 0.0;
         } else {
-            intakeOutput = 1;
+            intakeOutput = 0.0;
+            intakeTopOutput = 1.0;
         }
         intaking = false;
         outtaking = false;
@@ -126,5 +136,6 @@ public class Intake extends SubsystemBase {
 
     public void updateOutputs() {
         ActuatorInterlocks.testActuatorInterlocks(intake, "Intake_(p)", intakeOutput);
+        ActuatorInterlocks.testActuatorInterlocks(intakeTop, "Intake_Top_(p)", intakeTopOutput);
     }
 }

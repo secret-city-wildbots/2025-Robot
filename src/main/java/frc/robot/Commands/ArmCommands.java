@@ -113,8 +113,8 @@ public class ArmCommands {
         return
                 Commands.sequence(
                     Commands.runOnce(() -> intake.intake(), intake),
-                    Commands.parallel(
-                        Commands.waitSeconds(1),
+                    Commands.race(
+                        Commands.waitUntil(intake::hasPiece),
                         Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7)
                     ),
                     Commands.either(hold(), stop(), intake::hasPiece),

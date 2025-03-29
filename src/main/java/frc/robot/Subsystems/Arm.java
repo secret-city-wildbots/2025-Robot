@@ -64,9 +64,8 @@ public class Arm extends SubsystemBase {
     private final TalonFX extenderFollower;
     TalonFXConfiguration extenderFollowerConfig;
 
-    private final SparkMax wrist;
-    private final SparkAbsoluteEncoder wristEncoder;
-    SparkMaxConfig wristConfig = new SparkMaxConfig();
+    private final TalonFX wrist;
+    TalonFXConfiguration wristConfig = new TalonFXConfiguration();
     // private double kp0 = 0.0;
     // private double ki0 = 0.0;
     // private double kd0 = 0.0;
@@ -115,7 +114,7 @@ public class Arm extends SubsystemBase {
                                 Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
                                 * 2.0 // Two stages moving together doubles movement
                 );
-                maxExtensionDistance_m = Units.inchesToMeters(43);
+                maxExtensionDistance_m = Units.inchesToMeters(4); //43
 
                 wristRatio = 99.16667;
                 // 35.0 * // Neo reduction
@@ -155,7 +154,7 @@ public class Arm extends SubsystemBase {
                                 Math.PI * 1.432 // Spool diameter (in) -> circumference (in)
                                 * 2.0 // Two stages moving together doubles movement
                 );
-                maxExtensionDistance_m = Units.inchesToMeters(43);
+                maxExtensionDistance_m = Units.inchesToMeters(4);
 
                 wristRatio = 99.16667;
                 // 35.0 * // Neo reduction
@@ -228,26 +227,20 @@ public class Arm extends SubsystemBase {
         extenderFollower.setControl(new Follower(34, false));
 
         // // Wrist configurations
-        wrist = new SparkMax(36, MotorType.kBrushless);
-        wristEncoder = wrist.getAbsoluteEncoder();
-        wrist.getEncoder().setPosition(-wristEncoder.getPosition() - wristRatio);
-        wristConfig.idleMode(IdleMode.kBrake);
-        wristConfig.inverted(true);
-        wristConfig.closedLoop.pid(0.07, 0.0, 0.0);
-        wristConfig.closedLoop.maxOutput(0.3);
-        wristConfig.closedLoop.minOutput(-0.3);
-        wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
-        wristConfig.closedLoop.positionWrappingEnabled(true);
-        wristConfig.closedLoop.positionWrappingInputRange(0, wristRatio);
-        wristConfig.absoluteEncoder.inverted(false);
-
-        wristConfig.absoluteEncoder.zeroOffset(0.5438459993);
-        wristConfig.absoluteEncoder.positionConversionFactor(wristRatio);
+        wrist = new TalonFX(36);
+        wristConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        wristConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        wristConfig.Slot0.kP = 0.00001;
+        wristConfig.Slot0.kI = 0.0;
+        wristConfig.Slot0.kD = 0.0;
+        pivotConfig.MotorOutput.PeakForwardDutyCycle = 0.3;
+        pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
         // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.reverseSoftLimitEnabled(true);
         // wristConfig.softLimit.forwardSoftLimitEnabled(true);
-        wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        wrist.getConfigurator().apply(wristConfig);
+
         scoreTrigger.onTrue(Commands.runOnce(() -> score().schedule()));
         feedTrigger.onTrue(Commands.runOnce(() -> pickup().schedule()));
         climbTrigger.onTrue(Commands.runOnce(() -> ArmCommands.climb(this).schedule()));
@@ -367,7 +360,7 @@ public class Arm extends SubsystemBase {
         extenderPosition_m = extender.getPosition().getValueAsDouble() / extenderRatio_m_to_rot;
         Dashboard.extenderPosition_in.set(Units.metersToInches(extenderPosition_m));
 
-        wristRotation = Rotation2d.fromRotations(wristEncoder.getPosition() / wristRatio);
+        wristRotation = Rotation2d.fromRotations(wrist.getRotorPosition().getValueAsDouble() / wristRatio);
         wristFF = getPivotEncoderPosition().plus(wristRotation).getSin() * wristFFArbitraryScalar;
         double realWristRotation_deg = wristRotation.getDegrees();
         if (realWristRotation_deg > 180) {realWristRotation_deg -= 360;}
@@ -382,7 +375,7 @@ public class Arm extends SubsystemBase {
         Dashboard.pivotPosition_deg.set(getPivotEncoderPosition().getDegrees());
 
         Dashboard.extenderTemp_C.set(extender.getDeviceTemp().getValueAsDouble());
-        Dashboard.wristTemp_C.set(wrist.getMotorTemperature());
+        Dashboard.wristTemp_C.set(wrist.getDeviceTemp().getValueAsDouble());
         Dashboard.pivotTemp_C.set(pivot.getDeviceTemp().getValueAsDouble());
 
         /* PID tuning code START */
@@ -538,11 +531,11 @@ public class Arm extends SubsystemBase {
         // Wrist
         boolean unlockWrist = Dashboard.unlockWrist.get();
         if ((unlockWrist && (!unlockWrist0)) || (unlockButton.get() && !unlockButton0)) {
-            wristConfig.idleMode(IdleMode.kCoast);
-            wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+            wristConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+            wrist.getConfigurator().apply(wristConfig);
         } else if (((!unlockWrist) && unlockWrist0) || (!unlockButton.get() && unlockButton0) || (Robot.isEnabled && !Robot.isEnabled0)) {
-            wristConfig.idleMode(IdleMode.kBrake);
-            wrist.configure(wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+            wristConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+            wrist.getConfigurator().apply(wristConfig);
         }
         unlockWrist0 = unlockWrist;
 
