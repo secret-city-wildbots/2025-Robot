@@ -4,7 +4,6 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.*;
 import frc.robot.Dashboard;
-import frc.robot.LED;
 import frc.robot.Robot;
 import frc.robot.Robot.MasterStates;
 import frc.robot.Subsystems.Arm;
@@ -70,11 +69,6 @@ public class ArmCommands {
                 arm.groundPickupCoral().until(() -> arm.closeEnough()),
                 arm.groundPickupAlgae().until(() -> arm.closeEnough()),
                 () -> Robot.scoreCoral
-            ),
-            Commands.either(
-                LED.hasPieceBlink(), //blink LEDs when robot has piece
-                Commands.startEnd(() -> {}, () -> {}),
-                () -> Intake.hasPiece
             ),
             Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() > 0.7),
             Commands.waitUntil(() -> Robot.driverController.getLeftTriggerAxis() < 0.7),
@@ -200,7 +194,7 @@ public class ArmCommands {
                     autoOuttake(intake, arm),
                     Commands.sequence(
                         Commands.runOnce(() -> {
-                            arm.updatePivot(Rotation2d.fromDegrees(-25));
+                            arm.updatePivot(Rotation2d.fromDegrees(-10));
                             arm.updateWrist(Rotation2d.fromDegrees(25));
                         }, arm),
                         Commands.waitUntil(() -> arm.closeEnough()),

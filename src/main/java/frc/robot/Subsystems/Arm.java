@@ -56,7 +56,7 @@ public class Arm extends SubsystemBase {
     private TalonFXConfiguration pivotConfig;
     private TalonFXConfiguration[] pivotFollowerConfigs;
     private final DutyCycleEncoder pivotEncoder = new DutyCycleEncoder(0, 1, 0);
-    private final double pivotEncoderOffset_rot = 0.332;
+    private final double pivotEncoderOffset_rot = 0.498666556;
     private final PIDController pivotPID = new PIDController(8.0, 0.0, 0.0);
 
     private final TalonFX extender;
@@ -117,11 +117,11 @@ public class Arm extends SubsystemBase {
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 99.16667;
-                // 35.0 * // Neo reduction
+                wristRatio = 102.0;
+                // 36.0 * // Neo reduction
                 // (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
-                maxBackwardWristAngle_rad = Units.degreesToRadians(-115);
+                maxBackwardWristAngle_rad = Units.degreesToRadians(-112);
                 break;
             case "COTS_Testbed":
                 // Temp values
@@ -137,11 +137,11 @@ public class Arm extends SubsystemBase {
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 99.16667;
-                // 35.0 * // Neo reduction
+                wristRatio = 102.0;
+                // 36.0 * // Neo reduction
                 // (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
-                maxBackwardWristAngle_rad = Units.degreesToRadians(-115);
+                maxBackwardWristAngle_rad = Units.degreesToRadians(-112);
                 break;
             default:
                 // Temp values
@@ -157,11 +157,11 @@ public class Arm extends SubsystemBase {
                 );
                 maxExtensionDistance_m = Units.inchesToMeters(43);
 
-                wristRatio = 99.16667;
-                // 35.0 * // Neo reduction
+                wristRatio = 102.0;
+                // 36.0 * // Neo reduction
                 // (34.0 / 12.0); // Small herringbone to big herringbone
                 maxForwardWristAngle_rad = Units.degreesToRadians(112);
-                maxBackwardWristAngle_rad = Units.degreesToRadians(-115);
+                maxBackwardWristAngle_rad = Units.degreesToRadians(-112);
                 break;
         }
 
@@ -172,8 +172,8 @@ public class Arm extends SubsystemBase {
         pivot.getMotorVoltage().setUpdateFrequency(50);
         pivot.getTorqueCurrent().setUpdateFrequency(50);
         pivotConfig = new TalonFXConfiguration();
-        pivotConfig.MotorOutput.PeakForwardDutyCycle = 0.1;
-        pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.1;
+        pivotConfig.MotorOutput.PeakForwardDutyCycle = 0.2;
+        pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.2;
         pivotConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = Units.radiansToRotations(maxForwardPivotAngle_rad)
@@ -208,8 +208,8 @@ public class Arm extends SubsystemBase {
         extender = new TalonFX(34);
         extender.setPosition(Units.inchesToMeters(-1.0) * extenderRatio_m_to_rot);
         extenderConfig = new TalonFXConfiguration();
-        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.4;
-        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.25;
+        extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.8;
+        extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.4;
         extenderConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         extenderConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         extenderConfig.Slot0.kP = 0.19;
@@ -227,21 +227,21 @@ public class Arm extends SubsystemBase {
         extenderFollower.getConfigurator().apply(extenderFollowerConfig);
         extenderFollower.setControl(new Follower(34, false));
 
-        // // Wrist configurations
+        // Wrist configurations
         wrist = new SparkMax(36, MotorType.kBrushless);
         wristEncoder = wrist.getAbsoluteEncoder();
-        wrist.getEncoder().setPosition(-wristEncoder.getPosition() - wristRatio);
+        wrist.getEncoder().setPosition(wristEncoder.getPosition() - wristRatio);
         wristConfig.idleMode(IdleMode.kBrake);
         wristConfig.inverted(true);
         wristConfig.closedLoop.pid(0.07, 0.0, 0.0);
-        wristConfig.closedLoop.maxOutput(0.3);
-        wristConfig.closedLoop.minOutput(-0.3);
+        wristConfig.closedLoop.maxOutput(0.5);
+        wristConfig.closedLoop.minOutput(-0.5);
         wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wristConfig.closedLoop.positionWrappingEnabled(true);
         wristConfig.closedLoop.positionWrappingInputRange(0, wristRatio);
-        wristConfig.absoluteEncoder.inverted(false);
+        wristConfig.absoluteEncoder.inverted(true);
 
-        wristConfig.absoluteEncoder.zeroOffset(0.5438459993);
+        wristConfig.absoluteEncoder.zeroOffset(0.5901415);
         wristConfig.absoluteEncoder.positionConversionFactor(wristRatio);
         // wristConfig.softLimit.reverseSoftLimit(Units.radiansToRotations(maxBackwardWristAngle_rad)*wristRatio);
         // wristConfig.softLimit.forwardSoftLimit(Units.radiansToRotations(maxForwardWristAngle_rad)*wristRatio);
@@ -346,13 +346,10 @@ public class Arm extends SubsystemBase {
     public boolean closeEnough() {
         boolean hasArrived = false;
         if ((Math.abs(getPivotEncoderPosition().getRadians() - pivotOutput.getRadians())) < closeEnoughAngleError_rad) {
-            System.out.println("pivot");
             if ((Math.abs(extenderPosition_m - extenderOutput_m)) < closeEnoughExtensionError_m) {
-                System.out.println("extender");
                 double realWristRotation_rad = wristRotation.getRadians();
                 if (realWristRotation_rad > Math.PI) {realWristRotation_rad -= Math.PI * 2;}
                 if ((Math.abs(realWristRotation_rad - wristOutput.getRadians())) < closeEnoughAngleError_rad) {
-                    System.out.println("wrist");
                     hasArrived = true;
                 }
             }
@@ -553,7 +550,7 @@ public class Arm extends SubsystemBase {
         return Commands.startEnd(
             () -> updateArm(
                 Units.inchesToMeters(0.0),
-                Rotation2d.fromDegrees(-25),
+                Rotation2d.fromDegrees(-10),
                 Rotation2d.fromDegrees(80)),
             () -> {},
             this
@@ -564,13 +561,13 @@ public class Arm extends SubsystemBase {
         return
         Commands.sequence(
             Commands.startEnd(() -> {
-                updatePivot(Rotation2d.fromDegrees(-25));
+                updatePivot(Rotation2d.fromDegrees(-10));
                 updateWrist(Rotation2d.fromDegrees(25));
             }, ()->{}, this).until(() -> closeEnough()),
             Commands.startEnd(
                 () -> updateArm(
                         Units.inchesToMeters(0.0),
-                        Rotation2d.fromDegrees(-25),
+                        Rotation2d.fromDegrees(-10),
                         Rotation2d.fromDegrees(25)),
                 () -> {},
                 this
@@ -582,7 +579,7 @@ public class Arm extends SubsystemBase {
         return 
         Commands.sequence(
             Commands.startEnd(
-                () -> updatePivot(Rotation2d.fromDegrees((pickupHeight < 1.5) ? 0:-25)), 
+                () -> updatePivot(Rotation2d.fromDegrees((pickupHeight < 1.5) ? 0:-10)), 
                 () -> {}, 
                 this).until(() -> closeEnough()),
             Commands.startEnd(() -> updateWrist(Rotation2d.fromDegrees(0)), 
@@ -643,9 +640,9 @@ public class Arm extends SubsystemBase {
         return 
                 Commands.startEnd(
                     () -> updateArm(
-                            Units.inchesToMeters(37.6),
-                            Rotation2d.fromDegrees(-1.9),
-                            Rotation2d.fromDegrees(59.9)),
+                            Units.inchesToMeters(37.1),
+                            Rotation2d.fromDegrees(-2),
+                            Rotation2d.fromDegrees(81.5)),
                     () -> {},
                     this
         );
@@ -654,9 +651,9 @@ public class Arm extends SubsystemBase {
     private Command scoreL3() {
         return Commands.startEnd(() -> {
             updateArm(
-                Units.inchesToMeters(6.8),
-                Rotation2d.fromDegrees(-3.5),
-                Rotation2d.fromDegrees(39));
+                Units.inchesToMeters(11.6),
+                Rotation2d.fromDegrees(-2.7),
+                Rotation2d.fromDegrees(79.3));
                 Dashboard.scoringState.set(2);},
             () -> {},
             this);
@@ -666,9 +663,9 @@ public class Arm extends SubsystemBase {
         return Commands.startEnd(
             () -> {
                 updateArm(
-                    Units.inchesToMeters(0.0),
-                    Rotation2d.fromDegrees(5),
-                    Rotation2d.fromDegrees(75));
+                    Units.inchesToMeters(-0.2),
+                    Rotation2d.fromDegrees(0.5),
+                    Rotation2d.fromDegrees(90));
                 Dashboard.scoringState.set(1);},
             () -> {},
             this
@@ -716,7 +713,7 @@ public class Arm extends SubsystemBase {
     private Command retractFromReef() {
         return Commands.startEnd(
             () -> {
-                updatePivot(Rotation2d.fromDegrees(-25));
+                updatePivot(Rotation2d.fromDegrees(-10));
                 updateWrist(Rotation2d.fromDegrees(25));
             },
             () -> {},
@@ -750,6 +747,12 @@ public class Arm extends SubsystemBase {
         return Commands.sequence(
             pickupCommand.until(() -> hasArrived()),
             Commands.waitUntil(() -> Intake.hasPiece),
+            Commands.runOnce(
+                () -> {
+                    Robot.masterState0 = Robot.masterState;
+                    Robot.masterState = MasterStates.STOW;
+                }
+            ),
             carefulStow()
         );
     }
@@ -759,9 +762,9 @@ public class Arm extends SubsystemBase {
                 // Normal movement
                 Commands.startEnd(
                 () -> updateArm(
-                        Units.inchesToMeters(-0.2),
-                        Rotation2d.fromDegrees(-19.9),
-                        Rotation2d.fromDegrees(-100.9)),
+                        Units.inchesToMeters(-0.3),
+                        Rotation2d.fromDegrees(-18.5),
+                        Rotation2d.fromDegrees(-103)),
                 () -> {},
                 this),
                 // Stow first when needed
@@ -773,9 +776,9 @@ public class Arm extends SubsystemBase {
                     // Then normal movement
                     Commands.startEnd(
                         () -> updateArm(
-                            Units.inchesToMeters(-0.2),
-                            Rotation2d.fromDegrees(-19.9),
-                            Rotation2d.fromDegrees(-100.9)),
+                            Units.inchesToMeters(-0.3),
+                            Rotation2d.fromDegrees(-18.5),
+                            Rotation2d.fromDegrees(-103)),
                         () -> {},
                         this)   
                 ), 
@@ -814,9 +817,9 @@ public class Arm extends SubsystemBase {
                         Robot.masterState0 = Robot.masterState;
                         Robot.masterState = MasterStates.STOW;
                         updateArm(
-                            Units.inchesToMeters(0.8),
+                            Units.inchesToMeters(-0.4),
                             Rotation2d.fromDegrees(-99),
-                            Rotation2d.fromDegrees(-82.7));},
+                            Rotation2d.fromDegrees(-72));},
                         this),
                 // Stow first when needed
                 Commands.startEnd(
@@ -830,9 +833,9 @@ public class Arm extends SubsystemBase {
                             Robot.masterState0 = Robot.masterState;
                             Robot.masterState = MasterStates.STOW;
                             updateArm(
-                            Units.inchesToMeters(0.8),
-                            Rotation2d.fromDegrees(-99),
-                            Rotation2d.fromDegrees(-82.7));},
+                                Units.inchesToMeters(-0.4),
+                                Rotation2d.fromDegrees(-99),
+                                Rotation2d.fromDegrees(-73));},
                         this)   
                 ), 
                 () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));
@@ -845,9 +848,9 @@ public class Arm extends SubsystemBase {
                     Robot.masterState0 = Robot.masterState;
                     Robot.masterState = MasterStates.STOW;
                 updateArm(
-                        Units.inchesToMeters(-0.4),
-                        Rotation2d.fromDegrees(-76.5),
-                        Rotation2d.fromDegrees(-104.1));},
+                    Units.inchesToMeters(0.1),
+                    Rotation2d.fromDegrees(-70),
+                    Rotation2d.fromDegrees(-100));},
                 this),
                 // Stow first when needed
                 Commands.startEnd(
@@ -861,9 +864,9 @@ public class Arm extends SubsystemBase {
                             Robot.masterState0 = Robot.masterState;
                             Robot.masterState = MasterStates.STOW;
                             updateArm(
-                            Units.inchesToMeters(-0.4),
-                            Rotation2d.fromDegrees(-76.5),
-                            Rotation2d.fromDegrees(-104.1));},
+                                Units.inchesToMeters(0.1),
+                                Rotation2d.fromDegrees(-70),
+                                Rotation2d.fromDegrees(-100));},
                         this)   
                 ), 
                 () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));
