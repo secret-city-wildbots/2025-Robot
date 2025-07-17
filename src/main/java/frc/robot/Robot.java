@@ -39,10 +39,10 @@ public class Robot extends TimedRobot {
   public static XboxController manipController;
   public static CommandXboxController manipCommandController;
   private final Drivetrain drivetrain;
-  private final Arm arm;
-  private final Intake intake;
-  private final Compressor compressor;
-  private LED[] ledStrips = null;
+  //private final Arm arm;
+  //private final Intake intake;
+  //private final Compressor compressor;
+  private LED[] ledStrips = {};
   private Command autonomousCommand;
   Command pathfinder;
     
@@ -134,9 +134,9 @@ public class Robot extends TimedRobot {
      manipCommandController = new CommandXboxController(1);
      manipController = new XboxController(1);
     drivetrain = new Drivetrain();
-    arm = new Arm();
-    intake = new Intake();
-    compressor = new Compressor(2, PneumaticsModuleType.REVPH);
+    //arm = new Arm();
+    //intake = new Intake();
+    //compressor = new Compressor(2, PneumaticsModuleType.REVPH);
 
     legalAutoPlays = new String[new File((Filesystem.getDeployDirectory().toString().concat("/pathplanner/autos"))).listFiles().length];
     int i = 0;
@@ -163,7 +163,7 @@ public class Robot extends TimedRobot {
     Dashboard.fieldLength.set(Units.metersToInches(fieldLength_m));
     
     // Configure compressor
-    compressor.enableAnalog(100, 120);
+    //compressor.enableAnalog(100, 120);
 
     // Configure CommandBased
     configureDefaultCommands();
@@ -248,7 +248,7 @@ public class Robot extends TimedRobot {
   public void teleopInit() {
     CommandScheduler.getInstance().enable();
     CommandScheduler.getInstance().cancelAll();
-    ArmCommands.stow(arm).schedule();
+    //ArmCommands.stow(arm).schedule();
     if (startTime == 0) {
       startTime = System.currentTimeMillis();
     }
@@ -283,9 +283,9 @@ public class Robot extends TimedRobot {
    */
   private void getSensors() {
     drivetrain.updateSensors();
-    arm.updateSensors();
-    intake.updateSensors();
-    Dashboard.pressureTransducer.set(compressor.getPressure());
+    //arm.updateSensors();
+    //intake.updateSensors();
+    //Dashboard.pressureTransducer.set(compressor.getPressure());
   }
 
   /**
@@ -295,12 +295,12 @@ public class Robot extends TimedRobot {
     drivetrain.updateOutputs(isAutonomous());
     if (ledStrips.length > 0) {
       for (int i = 0; i < ledStrips.length; i++) {
-        ledStrips[i].updateLED(driverController, false, elapsedTime, arm.closeEnough() && Drivetrain.poseAccuracyGetter());
+        ledStrips[i].updateLED(driverController, false, elapsedTime, Drivetrain.poseAccuracyGetter());
         ledStrips[i].updateOutputs();
       }
     }
-    arm.updateOutputs();
-    intake.updateOutputs();
+    //arm.updateOutputs();
+    //intake.updateOutputs();
   }
 
   /**
@@ -363,8 +363,8 @@ public class Robot extends TimedRobot {
       Commands.parallel(
           DrivetrainCommands.strafeAssistScoreLeft(drivetrain),
         Commands.sequence(
-          Commands.waitSeconds(0.5),
-          ArmCommands.scoreL4(arm, intake, drivetrain)
+          Commands.waitSeconds(0.5)
+          //ArmCommands.scoreL4(arm, intake, drivetrain)
         )
       )
     );
@@ -372,14 +372,14 @@ public class Robot extends TimedRobot {
       Commands.parallel(
         DrivetrainCommands.strafeAssistScoreRight(drivetrain), 
         Commands.sequence(
-          Commands.waitSeconds(0.5),
-          ArmCommands.scoreL4(arm, intake, drivetrain)
+          Commands.waitSeconds(0.5)
+          //ArmCommands.scoreL4(arm, intake, drivetrain)
         )
       )
     );
     // NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
-    NamedCommands.registerCommand("pickupFeeder", 
-        DrivetrainCommands.pickupFeeder(drivetrain, arm, intake));
+    //NamedCommands.registerCommand("pickupFeeder", 
+    //    DrivetrainCommands.pickupFeeder(drivetrain, arm, intake));
   }
 
   /**
@@ -387,8 +387,8 @@ public class Robot extends TimedRobot {
    * created by passing XBoxController into a new JoystickButton
    */
   private void configureButtonBindings() {
-    driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
-    driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
-    driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
+    //driverCommandController.axisGreaterThan(3, 0.7).onTrue(ArmCommands.outtake(intake, arm));
+    //driverCommandController.rightBumper().onTrue(ArmCommands.outtake(intake, arm));
+    //driverCommandController.axisGreaterThan(2, 0.7).onTrue(ArmCommands.intake(intake, arm));
   }
 }
