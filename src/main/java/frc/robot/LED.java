@@ -2,165 +2,302 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
+import edu.wpi.first.wpilibj.RobotController;
+import frc.robot.Utility.ClassHelpers.Timer;
 import edu.wpi.first.wpilibj.XboxController;
-
+import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.Subsystems.Drivetrain;
+import frc.robot.Subsystems.Intake;
 import frc.robot.Utility.LEDHelpers;
-import frc.robot.Utility.ClassHelpers.BlinkLight;
 
 public class LED {
-    private int locateLED = 0;
-    private float chosenHue = 0;
+    private float chosenHue = 250;
 
-    private final AddressableLED m_led = new AddressableLED(9);
-    private final AddressableLEDBuffer m_ledBuffer;
+    private final AddressableLED m_led;
+    private final AddressableLEDBuffer ledBuffer;
     private AddressableLEDBuffer priorLedBuffer;
-    private final int numberOfLEDs;
 
-    private final float stowBackground = 300;
-    private final float nominalChaser = 120;
-    private final float humanControl = 120;
-    private final float robotControl = 14;
+    public final int numberOfLEDs;
+    public final int numStrips;
 
-    private final String nominalChaserGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(nominalChaser, 1, 1));
-    private final String humanControlGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(humanControl, 1, 1));
-    private final String robotControlGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(robotControl, 1, 1));
+    public final double[][] teamColorsRGB = {{255,0,153}, {71,143,205}, {118,255,3}, {247,235,18}};
 
-    enum LEDStates {
+    private final double[] oceanHSV = {180, 1, 1};
+    private final double[] darkSkyHSV = {239, 1, 0.19};
+    private final double[] stowBackgroundHSV = {oceanHSV[0], 1, 0.5};
+    private final double[] scoreBackgroundHSV = {330, 1, 0.6};
+    private final double[] feedBackgroundHSV = {240, 1, 0.4};
+    private final double[] nominalChaserHSV = {120, 1, 1};
+    private final double[] warningChaserHSV = {50, 1, 1};
+    private final double[] criticalChaserHSV = {10, 1, 1};
+
+    public static enum LEDStates {
         NORMAL,
         PARTY,
-        LOCATE,
-        CHOOSEHUE
+        CHOOSEHUE,
+        IDLE
+    };
+
+    public static enum ChaserStates {
+        NOMINAL,
+        WARNING,
+        CRITICAL
+    };
+
+    public static enum LEDGripperGameStates { //TODO
+        NORMAL, //all four team colors slowly sliding
+        INTAKING, //alternating magenta and green chaser with trail going inward
+        OUTTAKING, //alternating magenta and green chaser with trail going outward
+        CORAL, //solid white and yellow
+        ALGAE, //solid teal
+        LOCKED_CORAL, //flashing white and yellow
+        LOCKED_ALGAE, //flashing teal
+        CLIMB //slowly go from black to ocean color over course of endgame
+    };
+
+    public static enum LEDArmGameStates {
+        NORMAL, //solid blue with 3 indicator LEDs at top and upward chaser. Green if nothings wrong, yellow warnings (yellow master alarms), red for critical errors (master alarms)
+        CLIMB //same as gripper
     }
 
-    private double chaserStatus = 0;
+    public LEDGripperGameStates LEDGripperGameState = LEDGripperGameStates.NORMAL;
+
+    public LEDArmGameStates LEDArmGameState = LEDArmGameStates.NORMAL;
+
+    public ChaserStates chaserState = ChaserStates.NOMINAL;
+
+    private double animationIndex = 0;
+    private double animationIndex2 = 0;
+
+    private boolean LEDStateEdge = false;
+
+    private Timer batteryCriticalTimer = new Timer();
+    private Timer batteryWarningTimer = new Timer();
+    private Timer loopTimeTimer = new Timer();
+
+    public static Timer hasPieceFlash = new Timer();
 
     private LEDStates ledState = LEDStates.NORMAL; // default to normal
-    @SuppressWarnings("unused")
-    private final BlinkLight blinkyBoi250 = new BlinkLight(250);
-    @SuppressWarnings("unused")
-    private final BlinkLight blinkyBoi50 = new BlinkLight(50);
 
     /**
      * Creates a new LED object to control LED outputs
+     * count * numStrips = total LED's
      */
-    public LED() {
-        switch (Robot.robotProfile) {
-            case "2025_Robot":
-                numberOfLEDs = 20;
-                break;
-            case "COTS_Testbed":
-                numberOfLEDs = 20;
-                break;
-            default:
-                numberOfLEDs = 20;
-        }
-        m_ledBuffer = new AddressableLEDBuffer(numberOfLEDs);
-        priorLedBuffer = new AddressableLEDBuffer(numberOfLEDs);
+    public LED(int count, int numStrips, int startLed) {
+        numberOfLEDs = count;
+        this.numStrips = numStrips;
 
-        m_led.setLength(numberOfLEDs);
+        ledBuffer = new AddressableLEDBuffer(numberOfLEDs * numStrips);
+        priorLedBuffer = new AddressableLEDBuffer(numberOfLEDs * numStrips);
+
+        m_led = new AddressableLED(0);
+
+        m_led.setLength(numberOfLEDs * numStrips);
+
+        for (int i = 0; i < numberOfLEDs; i++) {
+            if (i <= numberOfLEDs/4) {
+                LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[0]);
+            } else if (i <= numberOfLEDs/2 && i > numberOfLEDs/4) {
+                LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[1]);
+            } else if (i <= numberOfLEDs/4*3 && i > numberOfLEDs/2) {
+                LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[2]);
+            } else {
+                LEDHelpers.setLED(ledBuffer, i, teamColorsRGB[3]);
+            }
+        }
+
+        m_led.setData(ledBuffer);
+        //m_led.setBitTiming(300, 600, 900, 600);
+        m_led.start();
+    }
+
+    public static Command hasPieceBlink() {
+        return Commands.startEnd(
+            () -> {
+                LED.hasPieceFlash.reset();
+            },
+            () -> {}
+        );
     }
 
     /**
      * Updates the LED state based on driver inputs and robot states
      * 
-     * @param driverController)
+     * @param driverController
      */
-    public void updateLED(XboxController driverController, boolean isAutonomous) {
+    public void updateLED(XboxController driverController, boolean isAutonomous, double time, boolean atPos) {
         // If driver presses up d-pad, increment LED state
-        if (driverController.getPOV() < 45 || driverController.getPOV() > 315) {
-            ledState = (ledState.equals(LEDStates.CHOOSEHUE)) ? LEDStates.values()[ledState.ordinal() + 1] : LEDStates.NORMAL;
+        if ((driverController.getPOV() < 45 || driverController.getPOV() > 315) && driverController.getPOV() >= 0) {
+            if (!LEDStateEdge) {
+                ledState = (ledState.equals(LEDStates.IDLE)) ? LEDStates.NORMAL : LEDStates.values()[ledState.ordinal() + 1];
+                LEDStateEdge = true;
+            }
+        } else {
+            LEDStateEdge = false;
         }
 
         // remember previous LED buffer
-        for (var i = 0; i < m_ledBuffer.getLength(); i++) {
-            priorLedBuffer.setRGB(i, m_ledBuffer.getRed(i), m_ledBuffer.getGreen(i), m_ledBuffer.getBlue(i));
+        for (var i = 0; i < ledBuffer.getLength(); i++) {
+            priorLedBuffer.setRGB(i, ledBuffer.getRed(i), ledBuffer.getGreen(i), ledBuffer.getBlue(i));
+        }
+
+        //update LED strip specific states
+        switch (Robot.masterState) {
+            case CLMB:
+                LEDArmGameState = LEDArmGameStates.CLIMB;
+                break;
+            default:
+                LEDArmGameState = LEDArmGameStates.NORMAL;
         }
 
         // Depending on current LED state, send a new output to the LEDs
         switch (ledState) {
             case NORMAL:
                 // Normal
-                String rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
-                switch (Robot.masterState) {
-                    case STOWED:
-                        break;
-                    default:
-                        rgb = LEDHelpers.hsvToRgb(stowBackground, 1, 1);
-                        break;
-                }
-                var normalGrbVal = LEDHelpers.rgbtogrb(rgb);
+                switch (LEDArmGameState) {
+                    case NORMAL:
+                        double[] bgRGB;
+                        switch (Robot.masterState) {
+                            case SCOR:
+                                bgRGB = scoreBackgroundHSV;
+                                if (atPos) {
+                                    animationIndex2+=0.1; // 1/2 second per toggle of LED
+                                    if (animationIndex2 > 2) {
+                                        animationIndex2 = 0;
+                                    }
+                                } else {
+                                    animationIndex2 = -1;
+                                }
+                                break;
+                            case FEED:
+                                bgRGB = feedBackgroundHSV;
+                                break;
+                            default:
+                                bgRGB = stowBackgroundHSV;
+                                animationIndex2 = -1;
+                        }
 
-                // Set background color and chaser
-                for (var i = 0; i < m_ledBuffer.getLength() - 3; i++) {
-                    if (chaserStatus == i) {
-                        m_ledBuffer.setRGB(i,
-                                Integer.parseInt(nominalChaserGRB.substring(0,3)),
-                                Integer.parseInt(nominalChaserGRB.substring(3,6)),
-                                Integer.parseInt(nominalChaserGRB.substring(6,9)));
-                    } else {
-                        m_ledBuffer.setRGB(i,
-                                Integer.parseInt(normalGrbVal.substring(0,3)),
-                                Integer.parseInt(normalGrbVal.substring(3,6)),
-                                Integer.parseInt(normalGrbVal.substring(6,9)));
-                    }
-                }
-                m_ledBuffer.setRGB(numberOfLEDs - 3, 0, 0, 0);
+                        if (LED.hasPieceFlash.getTimeMillis() < 1000) {
+                            if (Intake.hasPiece) {
+                                animationIndex2+=0.2; // 1/4 second per toggle of LED
+                                if (animationIndex2 > 2) {
+                                    animationIndex2 = 0;
+                                }
+                            } else {
+                                animationIndex2 = -1;
+                            }
+                        }
 
-                // Set the final 2 lights to show robot control mode
-                if (!isAutonomous) {
-                    m_ledBuffer.setRGB(numberOfLEDs - 2,
-                            Integer.parseInt(humanControlGRB.substring(0,3)),
-                            Integer.parseInt(humanControlGRB.substring(3,6)),
-                            Integer.parseInt(humanControlGRB.substring(6,9)));
-                    m_ledBuffer.setRGB(numberOfLEDs - 1,
-                            Integer.parseInt(humanControlGRB.substring(0,3)),
-                            Integer.parseInt(humanControlGRB.substring(3,6)),
-                            Integer.parseInt(humanControlGRB.substring(6,9)));
-                } else {
-                    m_ledBuffer.setRGB(numberOfLEDs - 2,
-                            Integer.parseInt(robotControlGRB.substring(0,3)),
-                            Integer.parseInt(robotControlGRB.substring(3,6)),
-                            Integer.parseInt(robotControlGRB.substring(6,9)));
-                    m_ledBuffer.setRGB(numberOfLEDs - 1,
-                            Integer.parseInt(robotControlGRB.substring(0,3)),
-                            Integer.parseInt(robotControlGRB.substring(3,6)),
-                            Integer.parseInt(robotControlGRB.substring(6,9)));
+                        if (animationIndex2 > -0.5) {
+                            bgRGB[2] *= Math.min(Math.max((animationIndex2 + ((animationIndex2 > 1) ? -2:0)) * ((animationIndex2 > 1) ? -1:1),0),1); //blinking animation
+                        }
+                        bgRGB = LEDHelpers.hsvToRgb(bgRGB);
+
+                        //update timers
+                        if (RobotController.getBatteryVoltage() > 9) {
+                            batteryCriticalTimer.reset();
+                        }
+                        if (RobotController.getBatteryVoltage() > 10) {
+                            batteryWarningTimer.reset();
+                        }
+                        if (Robot.loopTime_ms < 50) {
+                            loopTimeTimer.reset();
+                        }
+
+                        //update chaser state
+                        //TODO
+                        boolean swerveFaults = Drivetrain.driveFaults[0] || Drivetrain.driveFaults[1] || Drivetrain.driveFaults[2] || Drivetrain.driveFaults[3] || Drivetrain.azimuthFaults[0] || Drivetrain.azimuthFaults[1] || Drivetrain.azimuthFaults[2] || Drivetrain.azimuthFaults[3];
+                        if (loopTimeTimer.getTimeMillis() > 1000 || swerveFaults || batteryCriticalTimer.getTimeMillis() > 1000) { //critical conditions
+                            chaserState = ChaserStates.CRITICAL;
+                        } else if (Robot.loopTime_ms > 100 || batteryWarningTimer.getTimeMillis() > 1000) { //warning conditions
+                            chaserState = ChaserStates.WARNING;
+                        } else { //if none are met, chaser is nominal
+                            chaserState = ChaserStates.NOMINAL;
+                        }
+
+                        //update chaser color based on chaser state
+                        double[] chaserRGB;
+                        switch (chaserState) {
+                            case CRITICAL:
+                                chaserRGB = LEDHelpers.hsvToRgb(criticalChaserHSV);
+                                break;
+                            case WARNING:
+                                chaserRGB = LEDHelpers.hsvToRgb(warningChaserHSV);
+                                break;
+                            default:
+                                chaserRGB = LEDHelpers.hsvToRgb(nominalChaserHSV);
+                                break;
+                        }
+
+                        // set all LED's to the bg color, except the chaser which is chaserRGB
+                        for (int i = 0; i < ledBuffer.getLength(); i++) {
+                            if (i == Math.floor(animationIndex)) {
+                                LEDHelpers.setLED(ledBuffer, i, chaserRGB);
+                                if (i > 1) {
+                                    LEDHelpers.setLED(ledBuffer, i-1, new double[] {0,0,0});
+                                }
+                            } else {
+                                LEDHelpers.setLED(ledBuffer, i, bgRGB);
+                            }
+                        }
+
+                        //make front of A-frame white when robot is in score
+                        if (Robot.masterState == Robot.MasterStates.SCOR) {
+                            for (int i = numberOfLEDs/2+1; i < numberOfLEDs; i++) {
+                                LEDHelpers.setLED(ledBuffer, i, new double[] {0,0,0.5});
+                            }
+                        }
+
+                        animationIndex += 0.5;
+                        if (animationIndex > numberOfLEDs) {
+                            animationIndex = 1;
+                        }
+                        break;
+                    case CLIMB:
+                        for (int i = 0; i < ledBuffer.getLength(); i++) {
+                            double t = time - (160 * 1000);
+                            double[] hsv = (i > ((4*Math.sin(Math.PI*t/2000))+(t/1000))/20*ledBuffer.getLength()) ? darkSkyHSV:oceanHSV; //makes a nice wave effect
+                            double[] rgb = LEDHelpers.hsvToRgb(hsv);
+                            LEDHelpers.setLED(ledBuffer, 0, rgb);
+                        }
                 }
-                chaserStatus += 1;
-                chaserStatus %= numberOfLEDs - 3;
                 break;
             case PARTY:
                 // Party mode
-                for (var i = 0; i < m_ledBuffer.getLength(); i++) {
-
-                    var partyGrbVal = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb((int)(360 / numberOfLEDs * i + chaserStatus)%360, 1, 1));
-
-                    // Sets the specified LED to the HSV values
-                    m_ledBuffer.setRGB(i, (i * 20) + Integer.parseInt(partyGrbVal.substring(0,3)),
-                            (i * 20) + Integer.parseInt(partyGrbVal.substring(3,6)),
-                            (i * 20) + Integer.parseInt(partyGrbVal.substring(6,9)));
+                for (int i = 0; i < ledBuffer.getLength(); i++) {
+                    LEDHelpers.setLED(ledBuffer, i, LEDHelpers.hsvToRgb((((double) i)/ledBuffer.getLength())*360 + animationIndex, 1, 0.75 - (Math.sin(animationIndex/180*Math.PI)/4)));
                 }
-                // Increment chaser (Chaser is a double so that increments don't have to be
-                // integers)
-                chaserStatus += 2;
-                chaserStatus %= 360;
-                break;
-            case LOCATE:
-                m_ledBuffer.setRGB(locateLED,
-                        Integer.parseInt(nominalChaserGRB.substring(0,3)),
-                        Integer.parseInt(nominalChaserGRB.substring(3,6)),
-                        Integer.parseInt(nominalChaserGRB.substring(6,9)));
+                animationIndex += 5;
+                if (animationIndex > 360) {
+                    animationIndex = 0;
+                }
                 break;
             case CHOOSEHUE:
-                String chooseGRB = LEDHelpers.rgbtogrb(LEDHelpers.hsvToRgb(chosenHue, 1, 1));
-                for (var i = 0; i < m_ledBuffer.getLength(); i++) {
+                double[] chooseRGB = LEDHelpers.hsvToRgb(chosenHue, 1, 1);
+                for (var i = 0; i < ledBuffer.getLength(); i++) {
                     // Sets the specified LED to the HSV values
-                    m_ledBuffer.setRGB(i,
-                            Integer.parseInt(chooseGRB.substring(0,3)),
-                            Integer.parseInt(chooseGRB.substring(3,6)),
-                            Integer.parseInt(chooseGRB.substring(6,9)));
+                    LEDHelpers.setLED(ledBuffer, i, chooseRGB);
                 }
                 break;
+            case IDLE:
+                for (int i = 0; i < numberOfLEDs; i++) {
+                    int LED = (int) Math.floor((i+animationIndex) % numberOfLEDs);
+                    if (LED <= numberOfLEDs/4) {
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[0]);
+                    } else if (LED <= numberOfLEDs/2 && LED > numberOfLEDs/4) {
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[1]);
+                    } else if (LED <= numberOfLEDs/4*3 && LED > numberOfLEDs/2) {
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[2]);
+                    } else {
+                        LEDHelpers.setLED(ledBuffer, LED, teamColorsRGB[3]);
+                    }
+                }
+                animationIndex += 0.5;
+                if (animationIndex > numberOfLEDs) {
+                    animationIndex = 0;
+                }
         }
 
     }
@@ -169,8 +306,16 @@ public class LED {
      * Sends stored values in the LED object to leds
      */
     public void updateOutputs() {
-        if (m_ledBuffer != priorLedBuffer) {
-            m_led.setData(m_ledBuffer);
+        if (ledBuffer != priorLedBuffer) { 
+            if (numStrips > 1) { // code for multiple strips in one pwm port
+                for (int i = 0; i < numberOfLEDs; i++) {
+                    Color color = ledBuffer.getLED(i);
+                    for (int i2 = 1; i2 < numStrips; i2++) {
+                        LEDHelpers.setLED(ledBuffer, i+(i2*(numberOfLEDs)), color);
+                    }
+                }
+            }
+            m_led.setData(ledBuffer);
         }
     }
 }

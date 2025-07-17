@@ -1,0 +1,49 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "WallBStartingLocation"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreLeft"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "pickupFeeder"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreLeft"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "pickupFeeder"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "strafeAssistScoreRight"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": false,
+  "folder": "3PieceLeft",
+  "choreoAuto": false
+}

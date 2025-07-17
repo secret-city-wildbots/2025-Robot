@@ -5,8 +5,9 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.wpilibj.XboxController;
 import frc.robot.Dashboard;
 import frc.robot.Robot;
 import frc.robot.Subsystems.Drivetrain;
@@ -131,12 +132,11 @@ public class SwerveUtils {
    * Scales and caps raw joystick outputs based on current selected driver profile
    * settings
    * 
-   * @param driverController
    * @param isAutonomous
    * 
    * @return Scaled joystick outputs
    */
-  public static double[] swerveScaleStrafe(XboxController driverController, boolean isAutonomous) {
+  public static double[] swerveScaleStrafe (boolean isAutonomous) {
 
     // Getting driver profile settings
     String profile = Robot.legalDrivers[(int) Dashboard.selectedDriver.get(0.0)];
@@ -146,11 +146,11 @@ public class SwerveUtils {
     double strafeMax = ((isAutonomous) ? 1 : currentProfile.strafeMax);
 
     // Negate and swap raw joystick outputs to work with FRC field orientation
-    double rawX = -1 * driverController.getLeftY();
-    double rawY = -1 * driverController.getLeftX();
+    double rawX = -1 * Robot.driverController.getLeftY();
+    double rawY = -1 * Robot.driverController.getLeftX();
 
     // Disable joystick outputs while within deadband
-    double joystickSaturation = Math.sqrt((rawX * rawX) + (rawY * rawY));
+    double joystickSaturation = Math.hypot(rawX, rawY);
     if (joystickSaturation <= deadband) {
       return new double[] { 0.0, 0.0 };
     }
@@ -179,15 +179,14 @@ public class SwerveUtils {
    * profile
    * settings
    * 
-   * @param driverController
    * @param isAutonomous
    * @return Scaled rotate joystick command
    */
-  public static double swerveScaleRotate(XboxController driverController, boolean isAutonomous) {
+  public static double swerveScaleRotate(boolean isAutonomous) {
     String profile = Robot.legalDrivers[(int) Dashboard.selectedDriver.get(0.0)];
     DriverProfile currentProfile = SwerveUtils.readDriverProfiles(profile);
     double deadband = (isAutonomous) ? 0.01 : currentProfile.rotateDeadband;
-    double rawY = -driverController.getRightX();
+    double rawY = -Robot.driverController.getRightX();
     double joystickSaturation = Math.abs(rawY);
     if (joystickSaturation <= deadband) {
       return 0.0;
@@ -201,8 +200,36 @@ public class SwerveUtils {
    * This funciton is not complete and needs mto be made
    * but i cant be bothered to do it rn
    */
-  public static double[] assistStrafe(double[] joysticks, double[] lockedXY, PIDController strafePID) {
-    return joysticks;
+  public static double[] assistStrafe(double[] joysticks, double[] lockedXY, Pose2d robotPose) {
+    boolean xAssist = lockedXY[0] == lockedXY[0];
+    boolean yAssist = lockedXY[1] == lockedXY[1];
+    double robotXPose = robotPose.getX();
+    double robotYPose = robotPose.getY();
+    PIDController strafePID = Drivetrain.strafePID;
+    if (xAssist) {
+      if (yAssist) {
+        // Assist in both x and y
+        double assistedX;
+        double assistedY;
+        double distance = Math.hypot(lockedXY[0] - robotXPose, lockedXY[1] - robotYPose);
+        double output = -strafePID.calculate(distance);
+        Rotation2d angle = new Rotation2d(lockedXY[0] - robotXPose, lockedXY[1] - robotYPose);
+        assistedX = Math.cos(angle.getRadians()) * output;
+        assistedY = Math.sin(angle.getRadians()) * output;
+        return new double[] {assistedX, assistedY};
+      } else {
+        // Assist in only x
+        double assistedX = strafePID.calculate(lockedXY[0] - robotXPose);
+        return new double[]{assistedX, joysticks[1]};
+      }
+    } else if (yAssist) {
+      // Assist in only y
+      double assistedY = strafePID.calculate(lockedXY[1] - robotYPose);
+      return new double[]{joysticks[0], assistedY};
+    } else {
+      // No assist
+      return joysticks;
+    }
   }
 
   /**
