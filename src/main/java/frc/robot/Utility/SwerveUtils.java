@@ -186,7 +186,7 @@ public class SwerveUtils {
     String profile = Robot.legalDrivers[(int) Dashboard.selectedDriver.get(0.0)];
     DriverProfile currentProfile = SwerveUtils.readDriverProfiles(profile);
     double deadband = (isAutonomous) ? 0.01 : currentProfile.rotateDeadband;
-    double rawY = -Robot.driverController.getRightX();
+    double rawY = Robot.driverController.getRightX();
     double joystickSaturation = Math.abs(rawY);
     if (joystickSaturation <= deadband) {
       return 0.0;
