@@ -32,14 +32,15 @@ public class Intake extends SubsystemBase {
     private Trigger outtakeTrigger = new Trigger(() -> outtaking);
 
     // Motors
-    private final TalonFX intake;
+    public static TalonFX intake;
+    public static TalonFXConfiguration intakeConfig;
 
     // Outputs
     public static double intakeOutput;
 
     public Intake() {
         intake = new TalonFX(37);
-        TalonFXConfiguration intakeConfig = new TalonFXConfiguration();
+        intakeConfig = new TalonFXConfiguration();
         intakeConfig.HardwareLimitSwitch.ForwardLimitSource = ForwardLimitSourceValue.RemoteCANifier;
         intakeConfig.HardwareLimitSwitch.ForwardLimitRemoteSensorID = 40;
         intakeConfig.HardwareLimitSwitch.ForwardLimitEnable = false;

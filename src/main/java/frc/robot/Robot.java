@@ -22,7 +22,6 @@ import frc.robot.Subsystems.Intake;
 import frc.robot.Subsystems.Arm;
 import frc.robot.Utility.FileHelpers;
 import frc.robot.Utility.SwerveUtils;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.util.Units;
 
 import java.io.File;
@@ -31,6 +30,8 @@ import java.util.Arrays;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 import com.pathplanner.lib.commands.PathPlannerAuto;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
 
 public class Robot extends TimedRobot {
   // Subsystems and major objects
@@ -90,7 +91,7 @@ public class Robot extends TimedRobot {
   public static double loopTime_ms = 20;
   private static double loopTime0 = System.currentTimeMillis();
   public double startTime = 0;
-  public double elapsedTime = 0;
+  public static double elapsedTime = 0;
 
   public static boolean isEnabled = false;
   public static boolean isEnabled0 = false;
@@ -178,6 +179,7 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     getSensors();
     FollowPathCommand.warmupCommand().schedule();
+    compressor.enableAnalog(100, 120);
   }
 
   /**
@@ -261,10 +263,10 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() { 
     isAutonomous = false;
 
-    if (driverController.getBButtonPressed()) {
-      Pose2d goalPose = drivetrain.determineGoalPose();
-      pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
-      pathfinder.schedule();
+    if (driverController.getBButtonPressed() && (!masterState.equals(MasterStates.CLMB))) {
+      // Pose2d goalPose = drivetrain.determineGoalPose();
+      // pathfinder = drivetrain.getPathFindingCommand(goalPose).until(() -> isEnabled && (!isEnabled0));
+      // pathfinder.schedule();
       drivetrain.getFinalStrafeCorrectionCommand().until(() -> isEnabled && (!isEnabled0)).schedule();
     }
 
@@ -295,7 +297,7 @@ public class Robot extends TimedRobot {
     drivetrain.updateOutputs(isAutonomous());
     if (ledStrips.length > 0) {
       for (int i = 0; i < ledStrips.length; i++) {
-        ledStrips[i].updateLED(driverController, false, elapsedTime, arm.closeEnough() && Drivetrain.poseAccuracyGetter());
+        ledStrips[i].updateLED(false, elapsedTime, arm.closeEnough() && Drivetrain.poseAccuracyGetter());
         ledStrips[i].updateOutputs();
       }
     }
@@ -329,10 +331,22 @@ public class Robot extends TimedRobot {
       scoreCoral0 = scoreCoral;
       scoreCoral = true;
       Dashboard.scoreCoral.set(scoreCoral);
+      Arm.extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.8;
+      Arm.extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.4;
+      Arm.extender.getConfigurator().apply(Arm.extenderConfig);
+      Arm.wristConfig.closedLoop.maxOutput(0.6);
+      Arm.wristConfig.closedLoop.minOutput(-0.6);
+      Arm.wrist.configure(Arm.wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
     } else if (manipController.getRawButtonPressed(8)) {
       scoreCoral0 = scoreCoral;
       scoreCoral = false;
       Dashboard.scoreCoral.set(scoreCoral);
+      Arm.extenderConfig.MotorOutput.PeakForwardDutyCycle = 0.4;
+      Arm.extenderConfig.MotorOutput.PeakReverseDutyCycle = -0.2;
+      Arm.extender.getConfigurator().apply(Arm.extenderConfig);
+      Arm.wristConfig.closedLoop.maxOutput(0.3);
+      Arm.wristConfig.closedLoop.minOutput(-0.3);
+      Arm.wrist.configure(Arm.wristConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
     }
 
     if (manipController.getRightStickButtonPressed()) {
@@ -363,7 +377,7 @@ public class Robot extends TimedRobot {
       Commands.parallel(
           DrivetrainCommands.strafeAssistScoreLeft(drivetrain),
         Commands.sequence(
-          Commands.waitSeconds(0.5),
+          Commands.waitUntil(() -> Drivetrain.poseDistanceGetter_m() < 1),
           ArmCommands.scoreL4(arm, intake, drivetrain)
         )
       )
@@ -372,14 +386,14 @@ public class Robot extends TimedRobot {
       Commands.parallel(
         DrivetrainCommands.strafeAssistScoreRight(drivetrain), 
         Commands.sequence(
-          Commands.waitSeconds(0.5),
+          Commands.waitUntil(() -> Drivetrain.poseDistanceGetter_m() < 1),
           ArmCommands.scoreL4(arm, intake, drivetrain)
         )
       )
     );
     // NamedCommands.registerCommand("scoreL4", ArmCommands.scoreL4(arm, intake));
     NamedCommands.registerCommand("pickupFeeder", 
-        DrivetrainCommands.pickupFeeder(drivetrain, arm, intake));
+        DrivetrainCommands.pickupFeeder(drivetrain, arm, intake).until(intake::hasPiece));
   }
 
   /**

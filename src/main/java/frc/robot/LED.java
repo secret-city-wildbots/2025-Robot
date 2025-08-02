@@ -127,8 +127,9 @@ public class LED {
      * 
      * @param driverController
      */
-    public void updateLED(XboxController driverController, boolean isAutonomous, double time, boolean atPos) {
+    public void updateLED(boolean isAutonomous, double time, boolean atPos) {
         // If driver presses up d-pad, increment LED state
+        XboxController driverController = Robot.driverController;
         if ((driverController.getPOV() < 45 || driverController.getPOV() > 315) && driverController.getPOV() >= 0) {
             if (!LEDStateEdge) {
                 ledState = (ledState.equals(LEDStates.IDLE)) ? LEDStates.NORMAL : LEDStates.values()[ledState.ordinal() + 1];
@@ -257,7 +258,7 @@ public class LED {
                         break;
                     case CLIMB:
                         for (int i = 0; i < ledBuffer.getLength(); i++) {
-                            double t = time - (160 * 1000);
+                            double t = Robot.elapsedTime - (160 * 1000);
                             double[] hsv = (i > ((4*Math.sin(Math.PI*t/2000))+(t/1000))/20*ledBuffer.getLength()) ? darkSkyHSV:oceanHSV; //makes a nice wave effect
                             double[] rgb = LEDHelpers.hsvToRgb(hsv);
                             LEDHelpers.setLED(ledBuffer, 0, rgb);
