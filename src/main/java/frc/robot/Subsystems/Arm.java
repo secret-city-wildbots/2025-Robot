@@ -26,7 +26,6 @@ import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.Command.InterruptionBehavior;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 // import frc.robot.Dashboard;
 import frc.robot.Dashboard;
@@ -217,7 +216,7 @@ public class Arm extends SubsystemBase {
         extenderConfig.Slot0.kI = 0.0;
         extenderConfig.Slot0.kD = 0.0;
         extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = maxExtensionDistance_m * extenderRatio_m_to_rot;
-        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = Units.inchesToMeters(-1) * extenderRatio_m_to_rot;
+        extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitThreshold = Units.inchesToMeters(-0.5) * extenderRatio_m_to_rot;
         extenderConfig.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
         extenderConfig.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
         extender.getConfigurator().apply(extenderConfig);
@@ -235,8 +234,8 @@ public class Arm extends SubsystemBase {
         wristConfig.idleMode(IdleMode.kBrake);
         wristConfig.inverted(true);
         wristConfig.closedLoop.pid(0.07, 0.0, 0.0);
-        wristConfig.closedLoop.maxOutput(0.6);
-        wristConfig.closedLoop.minOutput(-0.6);
+        wristConfig.closedLoop.maxOutput(0.5);
+        wristConfig.closedLoop.minOutput(-0.5);
         wristConfig.closedLoop.feedbackSensor(ClosedLoopConfig.FeedbackSensor.kAbsoluteEncoder);
         wristConfig.closedLoop.positionWrappingEnabled(true);
         wristConfig.closedLoop.positionWrappingInputRange(0, wristRatio);
@@ -249,25 +248,25 @@ public class Arm extends SubsystemBase {
         // wristConfig.softLimit.reverseSoftLimitEnabled(true);
         // wristConfig.softLimit.forwardSoftLimitEnabled(true);
         wrist.configure(wristConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-        scoreTrigger.onTrue(Commands.runOnce(() -> score().schedule(), this));
-        feedTrigger.onTrue(Commands.runOnce(() -> pickup().schedule(), this));
+        scoreTrigger.onTrue(Commands.runOnce(() -> score().schedule()));
+        feedTrigger.onTrue(Commands.runOnce(() -> pickup().schedule()));
         climbTrigger.onTrue(Commands.runOnce(() -> ArmCommands.climb(this).schedule()));
         coralTrigger = new Trigger(() -> Robot.scoreCoral);
-        coralTrigger.onTrue(Commands.runOnce(() -> {scoreHeight = 1; pickupHeight = 1;}, this));
-        coralTrigger.onFalse(Commands.runOnce(() -> {scoreHeight = 6; pickupHeight = 2;}, this));
+        coralTrigger.onTrue(Commands.runOnce(() -> {scoreHeight = 1; pickupHeight = 1;}));
+        coralTrigger.onFalse(Commands.runOnce(() -> {scoreHeight = 6; pickupHeight = 2;}));
         driveLBTrigger = Robot.driverCommandController.leftBumper();
         driveLBTrigger.onTrue(
-            Commands.runOnce(() -> {ArmCommands.groundPickup(this).schedule();}, this)
+            Commands.runOnce(() -> ArmCommands.groundPickup(this).schedule())
         );
         manipLBTrigger = Robot.manipCommandController.leftBumper();
         manipLBTrigger.onTrue(
         Commands.either(
             Commands.either(
-                Commands.runOnce(() -> drivingStow().schedule(), this),
-                Commands.runOnce(() -> scoringStow().schedule(), this),
+                Commands.runOnce(() -> drivingStow().schedule()),
+                Commands.runOnce(() -> scoringStow().schedule()),
                 () -> wristRotation.getDegrees() < 50
             ),
-            Commands.runOnce(()-> carefulStow().schedule(), this),
+            Commands.runOnce(()-> carefulStow().schedule()),
             () -> !Robot.masterState0.equals(MasterStates.FEED)
         ));
         manipATrigger = Robot.manipCommandController.a();
@@ -372,9 +371,10 @@ public class Arm extends SubsystemBase {
         if (realWristRotation_deg < -180) {realWristRotation_deg += 360;}
         Dashboard.wristPosition_deg.set(realWristRotation_deg);
 
-        pivotFF = 0.0;
-        pivotFF = -0.001*Dashboard.freeTuningVariable.get()*((24.3125*getPivotEncoderPosition().getSin()) + 
-            (7*(wristRotation.plus(Rotation2d.fromDegrees(17)).plus(getPivotEncoderPosition())).getSin()));
+        if (getPivotEncoderPosition().getDegrees() < -15) {
+            pivotFF = -getPivotEncoderPosition().getSin()*0.016;
+            // pivotFF = 0.0;
+        }
 
         Dashboard.pivotPosition_deg.set(getPivotEncoderPosition().getDegrees());
 
@@ -404,7 +404,7 @@ public class Arm extends SubsystemBase {
                         maxBackwardPivotAngle_rad, maxForwardPivotAngle_rad));
 
         extenderOutput_m = MathUtil.clamp(extensionDistance_m,
-                -1, maxExtensionDistance_m);
+                -0.5, maxExtensionDistance_m);
 
         wristOutput = new Rotation2d(
                 MathUtil.clamp(wristAngle.getRadians(),
@@ -426,7 +426,7 @@ public class Arm extends SubsystemBase {
 
     public void updateExtender(double extensionDistance_m) {
         extenderOutput_m = MathUtil.clamp(extensionDistance_m,
-                -1, maxExtensionDistance_m);
+                -0.5, maxExtensionDistance_m);
     }
 
     boolean unlockExtender0 = false;
@@ -471,7 +471,7 @@ public class Arm extends SubsystemBase {
         if (Dashboard.overrideExtender.get()) {
             ActuatorInterlocks.testActuatorInterlocks(extender, "Extender_(p)", 0.0);
         }
-        finalextenderOutput = MathUtil.clamp(finalextenderOutput, Units.inchesToMeters(-1), maxExtensionDistance_m);
+        finalextenderOutput = MathUtil.clamp(finalextenderOutput, Units.inchesToMeters(-0.5), maxExtensionDistance_m);
         ActuatorInterlocks.testActuatorInterlocks(
                 extender, "Extender_(p)",
                 finalextenderOutput * extenderRatio_m_to_rot, 0.03);
@@ -626,32 +626,23 @@ public class Arm extends SubsystemBase {
         }
         return 
         Commands.sequence(
-            retractFromReef().onlyIf(() -> Robot.masterState.equals(MasterStates.SCOR) && scoreHeight < 4.5).until(() -> closeEnough()),
+            retractFromReef().until(() -> closeEnough()).onlyIf(() -> Robot.masterState.equals(MasterStates.SCOR)),
             scoringCommand.until(() -> hasArrived()),
             Commands.waitUntil(() -> Intake.outtaking),
-            Commands.waitUntil(() -> Robot.driverController.getRightTriggerAxis() < 0.7 && !Robot.driverController.getRightBumperButton()),
+            Commands.waitUntil(() -> Robot.driverController.getRightTriggerAxis() < 0.7),
             scoringStow().until(() -> closeEnough()),
             Commands.runOnce(() -> {Robot.masterState0 = Robot.masterState;
-                                    Robot.masterState = MasterStates.FEED;}),
-            Commands.runOnce(() -> {
-            Intake.intakeConfig.MotorOutput.PeakForwardDutyCycle = 1;
-            Intake.intakeConfig.MotorOutput.PeakReverseDutyCycle = -1;
-            Intake.intake.getConfigurator().apply(Intake.intakeConfig);
-            })
-        ).withInterruptBehavior(InterruptionBehavior.kCancelSelf).handleInterrupt(() -> {
-            Intake.intakeConfig.MotorOutput.PeakForwardDutyCycle = 1;
-            Intake.intakeConfig.MotorOutput.PeakReverseDutyCycle = -1;
-            Intake.intake.getConfigurator().apply(Intake.intakeConfig);
-        });
+                                    Robot.masterState = MasterStates.FEED;})
+        );
     }
 
     public Command scoreL4() {
         return 
                 Commands.startEnd(
                     () -> updateArm(
-                            Units.inchesToMeters(40.7),
-                            Rotation2d.fromDegrees(1),
-                            Rotation2d.fromDegrees(95.5)),
+                            Units.inchesToMeters(37.1),
+                            Rotation2d.fromDegrees(-2),
+                            Rotation2d.fromDegrees(81.5)),
                     () -> {},
                     this
         );
@@ -660,9 +651,9 @@ public class Arm extends SubsystemBase {
     private Command scoreL3() {
         return Commands.startEnd(() -> {
             updateArm(
-                Units.inchesToMeters(13.8),
-                Rotation2d.fromDegrees(-2.3),
-                Rotation2d.fromDegrees(83.5));
+                Units.inchesToMeters(11.6),
+                Rotation2d.fromDegrees(-2.7),
+                Rotation2d.fromDegrees(79.3));
                 Dashboard.scoringState.set(2);},
             () -> {},
             this);
@@ -672,10 +663,10 @@ public class Arm extends SubsystemBase {
         return Commands.startEnd(
             () -> {
                 updateArm(
-                    Units.inchesToMeters(0.0),
-                    Rotation2d.fromDegrees(1),
+                    Units.inchesToMeters(-0.2),
+                    Rotation2d.fromDegrees(0.5),
                     Rotation2d.fromDegrees(90));
-                Dashboard.scoringState.set(1);},
+                    Dashboard.scoringState.set(1);},
             () -> {},
             this
         );
@@ -684,14 +675,11 @@ public class Arm extends SubsystemBase {
     private Command scoreL1() {
         return Commands.startEnd(
             () -> {
-                Intake.intakeConfig.MotorOutput.PeakForwardDutyCycle = 0.4;
-                Intake.intakeConfig.MotorOutput.PeakReverseDutyCycle = -0.4;
-                Intake.intake.getConfigurator().apply(Intake.intakeConfig);
                 updateArm(
                     Units.inchesToMeters(0.0),
-                    Rotation2d.fromDegrees(-44),
+                    Rotation2d.fromDegrees(-42),
                     Rotation2d.fromDegrees(-115));
-                Dashboard.scoringState.set(0);},
+                    Dashboard.scoringState.set(0);},
             () -> {},
             this
         );
@@ -699,32 +687,24 @@ public class Arm extends SubsystemBase {
     }
 
     private Command scoreProcessor() {
-        return 
-        Commands.startEnd(
-            () -> {
-                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.3;
-                pivot.getConfigurator().apply(pivotConfig);
-                updateArm(
-                    Units.inchesToMeters(0.0),
-                    Rotation2d.fromDegrees(-63),
-                    Rotation2d.fromDegrees(-75));},
-            () -> {
-                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.6;
-                pivot.getConfigurator().apply(pivotConfig);
-            },
+        return Commands.startEnd(
+            () -> updateArm(
+                Units.inchesToMeters(0.0),
+                Rotation2d.fromDegrees(-62),
+                Rotation2d.fromDegrees(-115)),
+            () -> {},
             this
         );
     }
 
     private Command scoreBarge() {
         return Commands.sequence(
-            Commands.startEnd(() -> updatePivot(Rotation2d.fromDegrees(-4)), ()->{}, this).until(() -> closeEnough()),
-            Commands.startEnd(() -> updateExtender(40.3), ()->{}, this).until(() -> closeEnough()),
+            Commands.startEnd(() -> updateExtender(42), ()->{}, this).until(() -> closeEnough()),
             Commands.startEnd(
             () -> updateArm(
-                Units.inchesToMeters(40.3),
-                Rotation2d.fromDegrees(-4),
-                Rotation2d.fromDegrees(-47)),
+                Units.inchesToMeters(42),
+                Rotation2d.fromDegrees(0),
+                Rotation2d.fromDegrees(-25)),
             () -> {},
             this)
         );
@@ -782,9 +762,9 @@ public class Arm extends SubsystemBase {
                 // Normal movement
                 Commands.startEnd(
                 () -> updateArm(
-                        Units.inchesToMeters(-0.5), //extender
-                        Rotation2d.fromDegrees(-21.6), 
-                        Rotation2d.fromDegrees(-96.3)), //wrist
+                        Units.inchesToMeters(-0.3),
+                        Rotation2d.fromDegrees(-18.5),
+                        Rotation2d.fromDegrees(-103)),
                 () -> {},
                 this),
                 // Stow first when needed
@@ -796,9 +776,9 @@ public class Arm extends SubsystemBase {
                     // Then normal movement
                     Commands.startEnd(
                         () -> updateArm(
-                            Units.inchesToMeters(-0.5),
-                            Rotation2d.fromDegrees(-17),
-                            Rotation2d.fromDegrees(-101)),
+                            Units.inchesToMeters(-0.3),
+                            Rotation2d.fromDegrees(-18.5),
+                            Rotation2d.fromDegrees(-103)),
                         () -> {},
                         this)   
                 ), 
@@ -806,82 +786,45 @@ public class Arm extends SubsystemBase {
     }
 
     private Command pickupLowAlgae() {
-        return Commands.either(
-                // Normal movement
-                Commands.startEnd(
-                () -> updateArm(
-                    Units.inchesToMeters(3),
-                    Rotation2d.fromDegrees(4.2),
-                    Rotation2d.fromDegrees(96)),
-                () -> {},
-                this),
-                // Stow first when needed
-                Commands.startEnd(
-                () -> updateWrist(
-                        Rotation2d.fromDegrees(45)),
-                () -> {},
-                this).until(() -> closeEnough()).andThen(
-                    // Then normal movement
-                    Commands.startEnd(
-                        () -> updateArm(
-                            Units.inchesToMeters(3),
-                            Rotation2d.fromDegrees(4.2),
-                            Rotation2d.fromDegrees(96)),
-                        () -> {},
-                        this)   
-                ), 
-                () -> MathUtil.angleModulus(wristRotation.getRadians()) > (Math.PI / 4.0));
+        return Commands.startEnd(
+            () -> updateArm(
+                    Units.inchesToMeters(2.6),
+                    Rotation2d.fromDegrees(-3.7),
+                    Rotation2d.fromDegrees(62.1)),
+            () -> {},
+            this
+        );
     }
 
     private Command pickupHighAlgae() {
-        return Commands.either(
-                // Normal movement
-                Commands.startEnd(
-                () -> updateArm(
-                    Units.inchesToMeters(20.5),
-                    Rotation2d.fromDegrees(4.5),
-                    Rotation2d.fromDegrees(102.2)),
-                () -> {},
-                this),
-                // Stow first when needed
-                Commands.startEnd(
-                () -> updateWrist(
-                        Rotation2d.fromDegrees(45)),
-                () -> {},
-                this).until(() -> closeEnough()).andThen(
-                    // Then normal movement
-                    Commands.startEnd(
-                        () -> updateArm(
-                            Units.inchesToMeters(20.5),
-                            Rotation2d.fromDegrees(4.5),
-                            Rotation2d.fromDegrees(102.2)),
-                        () -> {},
-                        this)   
-                ), 
-                () -> MathUtil.angleModulus(wristRotation.getRadians()) > (Math.PI / 4.0));
+        return Commands.sequence(
+            Commands.startEnd(() -> updateExtender(14.2), ()->{}, this).until(() -> closeEnough()),
+            Commands.startEnd(
+            () -> updateArm(
+                    Units.inchesToMeters(14.2),
+                    Rotation2d.fromDegrees(-3),
+                    Rotation2d.fromDegrees(44)),
+            () -> {},
+            this)
+        );
     }
 
     public Command groundPickupCoral() {
         return Commands.either(
                 // Normal movement
-                Commands.startEnd(() -> updateExtender(0.0), ()->{})
-                    .until(() -> extenderPosition_m < 0.0254)
-                    .andThen(
                 Commands.runOnce(
                     () -> {
                         Robot.masterState0 = Robot.masterState;
                         Robot.masterState = MasterStates.STOW;
                         updateArm(
-                            Units.inchesToMeters(-1),
-                            Rotation2d.fromDegrees(-98),
+                            Units.inchesToMeters(-0.4),
+                            Rotation2d.fromDegrees(-99),
                             Rotation2d.fromDegrees(-72));},
-                        this)
-                ),
+                        this),
                 // Stow first when needed
                 Commands.startEnd(
-                () -> {
-                    updateWrist(Rotation2d.fromDegrees(45));
-                    updateExtender(0.0);},
+                () -> updateWrist(
+                        Rotation2d.fromDegrees(45)),
                 () -> {},
                 this).until(() -> closeEnough()).andThen(
                     // Then normal movement
@@ -890,9 +833,9 @@ public class Arm extends SubsystemBase {
                             Robot.masterState0 = Robot.masterState;
                             Robot.masterState = MasterStates.STOW;
                             updateArm(
-                                Units.inchesToMeters(-1),
-                                Rotation2d.fromDegrees(-98),
-                                Rotation2d.fromDegrees(-72));},
+                                Units.inchesToMeters(-0.4),
+                                Rotation2d.fromDegrees(-99),
+                                Rotation2d.fromDegrees(-73));},
                         this)   
                 ), 
                 () -> MathUtil.angleModulus(wristRotation.getRadians()) < (Math.PI / 4.0));
@@ -933,27 +876,26 @@ public class Arm extends SubsystemBase {
         return Commands.runOnce(
             () -> updateArm(
                     Units.inchesToMeters(0.0),
-                    Rotation2d.fromDegrees(-12),
-                    Rotation2d.fromDegrees(-85)),
+                    Rotation2d.fromDegrees(0),
+                    Rotation2d.fromDegrees(-60)),
             this
         );
     }
 
     public Command climb2() {
         return Commands.runOnce(
-            () -> updatePivot(Rotation2d.fromDegrees(-30))).until(this::closeEnough).andThen(
-            Commands.runOnce(
             () -> updateArm(
                     Units.inchesToMeters(10),
                     Rotation2d.fromDegrees(-30),
-                    Rotation2d.fromDegrees(0)), this
-        ));
+                    Rotation2d.fromDegrees(0)),
+            this
+        );
     }
 
     public Command climbLift() {
         return Commands.startEnd(
             () -> {
-                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.2;
+                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.5;
                 pivot.getConfigurator().apply(pivotConfig);
                 updateArm(
                     Units.inchesToMeters(10),
@@ -961,7 +903,7 @@ public class Arm extends SubsystemBase {
                     Rotation2d.fromDegrees(90));
             },
             () -> {
-                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.6;
+                pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.1;
                 pivot.getConfigurator().apply(pivotConfig);
             },
             this

@@ -18,7 +18,7 @@ import frc.robot.Utility.ClassHelpers.Timer;
 
 public class Intake extends SubsystemBase {
     // Constants
-    private final double coralIntakeSpeed = 1;
+    private final double coralIntakeSpeed = 0.5;
     private final double coralOuttakeSpeed = -1;
     private final double algaeIntakeSpeed = 1;
     private final double algaeOuttakeSpeed = -1;
