@@ -59,14 +59,14 @@ public class Arm extends SubsystemBase {
     private final double pivotEncoderOffset_rot = 0.498666556;
     private final PIDController pivotPID = new PIDController(8.0, 0.0, 0.0);
 
-    private final TalonFX extender;
-    TalonFXConfiguration extenderConfig;
-    private final TalonFX extenderFollower;
-    TalonFXConfiguration extenderFollowerConfig;
+    public static TalonFX extender;
+    public static TalonFXConfiguration extenderConfig;
+    public static TalonFX extenderFollower;
+    public static TalonFXConfiguration extenderFollowerConfig;
 
-    private final SparkMax wrist;
+    public static SparkMax wrist;
     private final SparkAbsoluteEncoder wristEncoder;
-    SparkMaxConfig wristConfig = new SparkMaxConfig();
+    public static SparkMaxConfig wristConfig = new SparkMaxConfig();
     // private double kp0 = 0.0;
     // private double ki0 = 0.0;
     // private double kd0 = 0.0;
@@ -172,8 +172,8 @@ public class Arm extends SubsystemBase {
         pivot.getMotorVoltage().setUpdateFrequency(50);
         pivot.getTorqueCurrent().setUpdateFrequency(50);
         pivotConfig = new TalonFXConfiguration();
-        pivotConfig.MotorOutput.PeakForwardDutyCycle = 0.2;
-        pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.2;
+        pivotConfig.MotorOutput.PeakForwardDutyCycle = 0.6;
+        pivotConfig.MotorOutput.PeakReverseDutyCycle = -0.6;
         pivotConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         pivotConfig.SoftwareLimitSwitch.ForwardSoftLimitThreshold = Units.radiansToRotations(maxForwardPivotAngle_rad)
@@ -666,7 +666,7 @@ public class Arm extends SubsystemBase {
                     Units.inchesToMeters(-0.2),
                     Rotation2d.fromDegrees(0.5),
                     Rotation2d.fromDegrees(90));
-                Dashboard.scoringState.set(1);},
+                    Dashboard.scoringState.set(1);},
             () -> {},
             this
         );
@@ -679,7 +679,7 @@ public class Arm extends SubsystemBase {
                     Units.inchesToMeters(0.0),
                     Rotation2d.fromDegrees(-42),
                     Rotation2d.fromDegrees(-115));
-                Dashboard.scoringState.set(0);},
+                    Dashboard.scoringState.set(0);},
             () -> {},
             this
         );
